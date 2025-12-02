@@ -1,0 +1,1 @@
+<!-- # File kết nối SQL Server (sqlsrv_connect) [cite: 46] -->
