@@ -2,10 +2,13 @@
 import React from 'react';
 import { Form, Button, Container, Row, Col, Card } from 'react-bootstrap';
 import { FaSearch, FaShippingFast, FaUserShield, FaGlobeAsia } from 'react-icons/fa';
+import HeroVideo from '../../components/HeroVideo';
 
 const Home = () => {
     return (
         <div className="home-page">
+            {/* Hero Video Component */}
+            <HeroVideo />
             {/* 1. Hero Banner + Tracking Box */}
             <section className="hero-section">
                 <div className="tracking-box">
