@@ -9,10 +9,11 @@
     overflow: hidden;
     /* Cắt bỏ phần video thừa ra ngoài */
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     /* Căn giữa nội dung theo chiều dọc */
     justify-content: center;
     /* Căn giữa nội dung theo chiều ngang */
+    padding-bottom: 50px;
     color: white;
 }
 
@@ -48,7 +49,7 @@
     z-index: 1;
     /* Nổi lên trên cùng */
     text-align: center;
-    max-width: 800px;
+    /* max-width: 800px; */
 }
 
 .hero-title {

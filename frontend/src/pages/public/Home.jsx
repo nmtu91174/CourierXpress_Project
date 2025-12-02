@@ -22,7 +22,7 @@ const Home = () => {
                             className="border-2"
                         />
                         <Button variant="danger" className="btn-spx px-4" size="lg">
-                            <FaSearch /> Tra cứu
+                            <FaSearch /> Search
                         </Button>
                     </Form>
                 </div>

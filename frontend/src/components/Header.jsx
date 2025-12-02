@@ -86,7 +86,13 @@ const Header = () => {
                             </NavDropdown.Item>
                         </NavDropdown>
 
-                        <Button as={Link} to="/login" variant="outline-danger" className="ms-3 rounded-pill px-4">
+                        {/* Dùng as={Link} để biến Button thành liên kết, to="/login" là đích đến */}
+                        <Button
+                            as={Link}
+                            to="/login"
+                            variant="outline-danger"
+                            className="ms-3 rounded-pill px-4 btn-spx-outline" // Class tùy chỉnh nếu có
+                        >
                             Login
                         </Button>
 

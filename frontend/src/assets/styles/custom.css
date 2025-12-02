@@ -23,6 +23,7 @@ body {
     color: white;
     border: none;
     font-weight: bold;
+    min-width: 150px;
 }
 
 .btn-spx:hover {
@@ -33,11 +34,11 @@ body {
 
 /* Phần Banner chứa ô Tracking */
 .hero-section {
-    background-image: url('https://spx.vn/static/images/banner-pc.jpg');
+    background-image: url('../images/tracking.jpg');
     /* Tạm dùng ảnh của SPX hoặc ảnh mẫu */
     background-size: cover;
-    background-position: center;
-    height: 500px;
+    background-position: bottom;
+    height: 600px;
     position: relative;
     display: flex;
     align-items: center;
@@ -50,6 +51,6 @@ body {
     padding: 30px;
     border-radius: 8px;
     width: 100%;
-    max-width: 600px;
+    max-width: 800px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }

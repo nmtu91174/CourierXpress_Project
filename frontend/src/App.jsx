@@ -1,10 +1,14 @@
-// src/App.jsx
+// frontend/src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import 'bootstrap/dist/css/bootstrap.min.css'; // Đảm bảo đã import Bootstrap
+
+// Import các trang
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/public/Home';
+import Login from './pages/auth/Login'; // <--- QUAN TRỌNG: Import trang Login vào đây
 
-// Tạo component Layout để Header và Footer luôn hiển thị
+// Layout cho trang Public (Có Header và Footer)
 const PublicLayout = ({ children }) => (
   <>
     <Header />
@@ -15,17 +19,32 @@ const PublicLayout = ({ children }) => (
   </>
 );
 
+// Layout riêng cho Login (Trống trơn, không có Header/Footer)
+const AuthLayout = ({ children }) => (
+  <main style={{ minHeight: '100vh', backgroundColor: '#fff' }}>
+    {children}
+  </main>
+);
+
 function App() {
   return (
     <Router>
-      <PublicLayout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/tracking" element={<h2 className="text-center mt-5">Trang Tra cứu chi tiết (Đang phát triển)</h2>} />
-          <Route path="/login" element={<h2 className="text-center mt-5">Trang Đăng nhập (Đang phát triển)</h2>} />
-          {/* Sau này sẽ thêm các Route cho Admin/Agent ở đây */}
-        </Routes>
-      </PublicLayout>
+      <Routes>
+        {/* 1. Đường dẫn Trang chủ: http://localhost:5173/ */}
+        <Route path="/" element={
+          <PublicLayout>
+            <Home />
+          </PublicLayout>
+        } />
+
+        {/* 2. Đường dẫn Trang Login: http://localhost:5173/login */}
+        <Route path="/login" element={
+          <AuthLayout>
+            <Login />
+          </AuthLayout>
+        } />
+
+      </Routes>
     </Router>
   );
 }
