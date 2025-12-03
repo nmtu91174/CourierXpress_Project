@@ -46,7 +46,7 @@ function App() {
           </AuthLayout>
         } />
         <Route path="/admin" element={<AdminLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
         </Route>
 
       </Routes>
