@@ -6,7 +6,9 @@ import 'bootstrap/dist/css/bootstrap.min.css'; // Đảm bảo đã import Boots
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/public/Home';
-import Login from './pages/auth/Login'; // <--- QUAN TRỌNG: Import trang Login vào đây
+import Login from './pages/auth/Login';
+import AdminLayout from '../src/components/Layouts/AdminLayout.jsx';
+import Dashboard from './pages/admin/Dashboard';
 
 // Layout cho trang Public (Có Header và Footer)
 const PublicLayout = ({ children }) => (
@@ -44,7 +46,7 @@ function App() {
           </AuthLayout>
         } />
         <Route path="/admin" element={<AdminLayout />}>
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Route>
 
       </Routes>
