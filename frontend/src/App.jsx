@@ -43,6 +43,9 @@ function App() {
             <Login />
           </AuthLayout>
         } />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route path="dashboard" element={<Dashboard />} />
+        </Route>
 
       </Routes>
     </Router>

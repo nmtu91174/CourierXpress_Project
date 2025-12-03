@@ -1,0 +1,73 @@
+/* Màu chủ đạo */
+:root {
+    --sidebar-bg: #212529;
+    /* Màu đen xám chuyên nghiệp */
+    --sidebar-text: #adb5bd;
+    --primary-color: #ee4d2d;
+    /* Màu cam CourierXpress */
+}
+
+/* Wrapper bao quanh toàn bộ trang Admin */
+.admin-wrapper {
+    display: flex;
+    min-height: 100vh;
+    /* Chiều cao full màn hình */
+    background-color: #f4f6f9;
+    /* Màu nền xám nhạt cho nội dung */
+}
+
+/* Sidebar bên trái */
+.sidebar {
+    width: 260px;
+    background-color: var(--sidebar-bg);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    /* Không bị co lại khi màn hình nhỏ */
+    transition: all 0.3s;
+}
+
+.sidebar-header {
+    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.2);
+    text-align: center;
+    border-bottom: 1px solid #4b545c;
+}
+
+.sidebar-menu {
+    padding: 10px 0;
+    list-style: none;
+    margin: 0;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    transition: 0.2s;
+    font-size: 0.95rem;
+}
+
+.sidebar-link:hover,
+.sidebar-link.active {
+    color: #fff;
+    background-color: var(--primary-color);
+}
+
+.sidebar-link svg {
+    margin-right: 12px;
+    /* Khoảng cách giữa icon và chữ */
+    font-size: 1.1rem;
+}
+
+/* Nội dung chính bên phải */
+.admin-content {
+    flex-grow: 1;
+    /* Chiếm hết phần còn lại */
+    padding: 30px;
+    overflow-y: auto;
+    /* Cho phép cuộn nếu nội dung dài */
+}
