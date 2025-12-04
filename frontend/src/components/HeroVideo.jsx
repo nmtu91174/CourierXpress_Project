@@ -33,14 +33,14 @@ const HeroVideo = () => {
                         Reliable logistics solutions for your business. We deliver packages across the globe with precision and care.
                     </p>
 
-                    <div className="d-flex justify-content-center gap-3">
+                    {/* <div className="d-flex justify-content-center gap-3">
                         <Button variant="danger" size="lg" className="rounded-pill px-5 py-3 fw-bold">
                             Track Shipment
                         </Button>
                         <Button variant="outline-light" size="lg" className="rounded-pill px-5 py-3 fw-bold">
                             Get Quote
                         </Button>
-                    </div>
+                    </div> */}
                 </div>
             </Container>
 
