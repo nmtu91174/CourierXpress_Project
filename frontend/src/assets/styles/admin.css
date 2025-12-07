@@ -325,12 +325,7 @@
     display: none !important;
   }
 
-  /* CONTENT FIX (avoid overlap bottom nav) */
-  .admin-wrapper .admin-content {
-    margin-left: 0 !important;
-    padding-bottom: 90px;   /* space for bottom nav */
-  }
-}
+
 
 /* ======================================
    ACTIVE NAV STYLE MOBILE
@@ -345,4 +340,11 @@
     color: var(--primary-color) !important;
     transform: scale(1.25);
   }
+
+    /* CONTENT FIX (avoid overlap bottom nav) */
+  .admin-wrapper .admin-content {
+    margin-left: 0 !important;
+    padding-bottom: 90px;   /* space for bottom nav */
+  }
+}
 }

@@ -65,7 +65,7 @@ const Home = () => {
             <Form.Control
               type="text"
               placeholder="Nhập mã vận đơn..."
-              size="lg"
+              size="lggit add ."
               className="tracking-input"
               value={trackingid}
               onChange={(e) => setTrackingid(e.target.value)}
