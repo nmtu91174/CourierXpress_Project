@@ -1,0 +1,194 @@
+/* =======================================================
+   ORDER MANAGEMENT - PREMIUM UI (DQN LUXURY SYSTEM)
+   Pixel Perfect + Glass Hover + Smooth Interaction
+======================================================= */
+
+/* PAGE */
+.admin-page {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* BUTTON STYLE */
+.btn-lux-primary {
+    background: linear-gradient(135deg, #ff4d24, #ff7a45);
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    letter-spacing: .15px;
+    color: #fff;
+    transition: .25s ease;
+}
+
+.btn-lux-primary:hover {
+    filter: brightness(1.08);
+}
+
+.btn-lux-secondary {
+    background: linear-gradient(135deg, #0d6efd, #4098ff);
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    letter-spacing: .15px;
+    color: #fff;
+}
+
+.btn-lux-outline {
+    border: 1px solid rgba(0,0,0,.16);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* INPUT */
+.lux-input {
+    border-radius: 10px;
+    padding: 12px;
+    border: 1px solid rgba(0,0,0,.12);
+    font-size: .92rem;
+}
+
+/* TABLE CONTAINER */
+.lux-table-wrapper {
+    overflow-x: auto;
+}
+
+/* TABLE */
+.lux-table thead tr {
+    background: #f7f8fa;
+}
+
+.lux-table th {
+    padding: 14px;
+    font-weight: 600;
+    font-size: .86rem;
+    color: #7a8594;
+}
+
+.lux-table td {
+    padding: 14px;
+    font-size: .92rem;
+}
+
+/* ROW HOVER GLASS */
+.lux-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(6px);
+    transition: .25s ease;
+}
+
+/* STATUS BADGES */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: .78rem;
+    display: inline-block;
+}
+
+.status-blue {
+    background: #0d6efd;
+    color: #fff;
+}
+
+.status-yellow {
+    background: #ffc107;
+    color: #000;
+}
+
+.status-green {
+    background: #36c689;
+    color: #fff;
+}
+
+.status-red {
+    background: #ff4d6d;
+    color: #fff;
+}
+
+/* =======================================================
+   LUXURY SEARCH BAR - DQN STYLE
+======================================================= */
+
+.search-bar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    /* pill background */
+    background: #fff;
+    border-radius: 14px;
+    padding: 16px 18px;
+
+    box-shadow:
+        0 1px 3px rgba(0,0,0,0.08),
+        0 8px 24px rgba(0,0,0,0.04);
+}
+
+/* INPUT */
+.lux-search-input {
+    flex: 1;
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,.14);
+    font-size: .94rem;
+
+    background: #fafbfc;
+    transition: .25s ease;
+}
+
+.lux-search-input:focus {
+    outline: none;
+    background: #fff;
+
+    /* Soft glow */
+    border-color: #0d6efd;
+    box-shadow:
+        0 0 0 3px rgba(13,110,253,0.15),
+        0 6px 20px rgba(13,110,253,.08);
+}
+
+/* BUTTON */
+.lux-search-btn {
+    padding: 14px 34px;
+    border-radius: 12px;
+    border: none;
+    font-size: .94rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #fff;
+    cursor: pointer;
+
+    /* Luxury Gradient */
+    background: linear-gradient(
+        135deg,
+        #0066ff 0%,
+        #00a2ff 100%
+    );
+
+    transition: .28s cubic-bezier(.4,0,.2,1);
+}
+
+/* Hover lift */
+.lux-search-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+}
+
+/* Click */
+.lux-search-btn:active {
+    transform: scale(.97);
+}
+

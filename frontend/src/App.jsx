@@ -1,4 +1,5 @@
 // src/App.jsx
+
 // 1. Chú phải import BrowserRouter và đặt tên tắt là Router
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -8,11 +9,18 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/public/Home';
 import Login from './pages/auth/Login';
-import AdminLayout from '../src/components/Layouts/AdminLayout';
-import Dashboard from './pages/admin/Dashboard';
 import TrackingResult from './pages/public/TrackingResult';
 
+// Admin import
+import AdminLayout from './components/Layouts/AdminLayout.jsx';
+import Dashboard from './pages/admin/Dashboard';
+import OrderManagement from './pages/admin/OrderManagement.jsx';
+import AgentsManagement from './pages/admin/AgentsManagement.jsx';
+import Reports from './pages/admin/Reports.jsx';
+
 // (Các phần Layout PublicLayout, AuthLayout chú giữ nguyên như cũ...)
+
+// Layout cho trang Public
 const PublicLayout = ({ children }) => (
   <>
     <Header />
@@ -21,15 +29,17 @@ const PublicLayout = ({ children }) => (
   </>
 );
 
+// Layout Login
 const AuthLayout = ({ children }) => (
   <main style={{ minHeight: '100vh', backgroundColor: '#fff' }}>{children}</main>
 );
 
-function App() {
+export default function App() {
   return (
-    // 2. QUAN TRỌNG: Vì main.jsx không có Router, nên ở đây PHẢI CÓ Router bọc ngoài cùng
-    <Router>
+    // main.jsx đã bọc Router rồi, nên ở đây không cần bọc nữa
       <Routes>
+
+        {/* Public */}
         <Route path="/" element={
           <PublicLayout>
             <Home />
@@ -42,19 +52,24 @@ function App() {
           </PublicLayout>
         } />
 
+        {/* Login */}
         <Route path="/login" element={
           <AuthLayout>
             <Login />
           </AuthLayout>
         } />
 
+        {/* Admin */}
         <Route path="/admin" element={<AdminLayout />}>
+
+          {/* 3. GIỮ FULL ROUTE BÊN NHÁNH MỚI */}
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="orders" element={<OrderManagement />} />
+          <Route path="agents" element={<AgentsManagement />} />
+          <Route path="reports" element={<Reports />} />
+
         </Route>
 
       </Routes>
-    </Router> // 3. Đóng thẻ Router lại
   );
 }
-
-export default App;

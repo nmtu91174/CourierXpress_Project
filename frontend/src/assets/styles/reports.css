@@ -1,0 +1,86 @@
+.page-header {
+    margin-bottom: 28px;
+}
+
+.kpi-card {
+    border-radius: 14px;
+    padding: 20px;
+    color: #fff;
+    font-weight: 600;
+    box-shadow:
+        0 1px 3px rgba(0,0,0,.12),
+        0 8px 28px rgba(0,0,0,.08);
+}
+
+.kpi-card p {
+    margin: 0;
+    font-size: .9rem;
+    opacity: .8;
+}
+
+.kpi-card h2 {
+    margin: 8px 0 0;
+    font-size: 1.8rem;
+}
+
+.kpi-blue   { background: #0d6efd; }
+.kpi-green  { background: #36c689; }
+.kpi-yellow { background: #ffc107; }
+.kpi-red    { background: #ff4d6d; }
+
+.chart-card {
+    padding: 22px;
+    border-radius: 14px;
+}
+
+.chart-placeholder {
+    border-radius: 12px;
+    background: #f6f7fb;
+    height: 280px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #9fa6b2;
+    font-size: .9rem;
+    border: 1px dashed rgba(0,0,0,.2);
+}
+
+
+.admin-page {
+  padding: 2rem;
+}
+
+.card-lux {
+  border-radius: 14px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+  border: none;
+  background: #ffffff;
+}
+
+.kpi-card {
+  border-radius: 14px;
+  color: #fff;
+  text-align: center;
+  padding: 1.4rem 0;
+  font-weight: 600;
+}
+
+.kpi-blue    { background: linear-gradient(135deg,#007bff,#3bb8ff); }
+.kpi-green   { background: linear-gradient(135deg,#43a047,#8bc34a); }
+.kpi-yellow  { background: linear-gradient(135deg,#ff9800,#ffc107); }
+.kpi-red     { background: linear-gradient(135deg,#e53935,#ff5252); }
+
+.page-header h3 {
+  font-weight: 700;
+}
+
+.filter-panel select {
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-weight: 500;
+}
+
+.filter-panel select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.15rem rgba(13,110,253,.25);
+}

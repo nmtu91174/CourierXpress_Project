@@ -1,0 +1,99 @@
+/* =======================================================
+   AGENTS PAGE LUXURY UI - DQN STANDARD
+======================================================= */
+
+/* search layout */
+.search-bar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #fff;
+    padding: 16px 18px;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08),
+                0 8px 24px rgba(0,0,0,.04);
+}
+
+.lux-search-input {
+    flex: 1;
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,.14);
+    background: #fafbfc;
+    transition: .25s ease;
+}
+
+.lux-search-input:focus {
+    outline: none;
+    background: #fff;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13,110,253,.15),
+                0 6px 20px rgba(13,110,253,.08);
+}
+
+/* btn */
+.lux-search-btn {
+    padding: 14px 34px;
+    border-radius: 12px;
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    background: linear-gradient(135deg, #007bff 0%, #009dff 100%);
+    transition: .28s cubic-bezier(.4,0,.2,1);
+}
+
+.lux-search-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+}
+
+.lux-search-btn:active {
+    transform: scale(.97);
+}
+
+/* table */
+.lux-table th {
+    padding: 14px 18px;
+    color: #8a8f9a;
+    font-weight: 600;
+    font-size: .82rem;
+    text-transform: uppercase;
+    letter-spacing: .04rem;
+}
+
+.lux-table td {
+    padding: 14px 18px;
+    font-size: .93rem;
+}
+
+/* STATUS BADGES */
+.agent-badge {
+    padding: 6px 12px;
+    font-size: .75rem;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+.agent-green {
+    background: rgba(52,168,83,.18);
+    color: rgb(52,168,83);
+}
+
+.agent-yellow {
+    background: rgba(255,193,7,.18);
+    color: rgb(204,145,0);
+}
+
+.agent-red {
+    background: rgba(255,82,82,.18);
+    color: rgb(240,70,70);
+}
+
+/* card */
+.card-lux {
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08),
+                0 12px 32px rgba(0,0,0,.04);
+    border: none;
+}

@@ -1,0 +1,149 @@
+/* ======================================
+   BUTTON 3 MÀU CHO DASHBOARD
+====================================== */
+
+/* XANH DƯƠNG - TẠO ĐƠN */
+.btn-lux-primary-blue {
+  background: linear-gradient(135deg,#007bff,#35a0ff);
+  color: #fff !important;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-weight: 600;
+  transition: .25s ease;
+}
+.btn-lux-primary-blue:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 128, 255, .25);
+}
+
+/* VÀNG - PHÂN CÔNG SHIPPER */
+.btn-lux-primary-yellow {
+  background: linear-gradient(135deg,#ffc107,#ffde59);
+  color: #4d3b00 !important;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-weight: 600;
+  transition: .25s ease;
+}
+.btn-lux-primary-yellow:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, .35);
+}
+
+/* XANH LÁ - XEM BÁO CÁO */
+.btn-lux-primary-green {
+  background: linear-gradient(135deg,#43a047,#8bc34a);
+  color: #fff !important;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-weight: 600;
+  transition: .25s ease;
+}
+.btn-lux-primary-green:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(67, 160, 71, .35);
+}
+
+/* HIỆU ỨNG CHUNG */
+.btn-hover-scale {
+  transition: transform .25s ease;
+}
+.btn-hover-scale:hover {
+  transform: scale(1.03);
+}
+
+/* ===================================
+   BUTTON - LUX BLUE SOFT (Chi tiết)
+=================================== */
+.btn-lux-primary-blue-soft {
+  background: linear-gradient(135deg,#167bff,#49a8ff);
+  color: #fff !important;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 14px;
+  font-weight: 600;
+  transition: .25s ease;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.btn-lux-primary-blue-soft:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(22,123,255,.35);
+}
+
+
+/* ===================================
+   STATUS BADGE (đồng bộ OrderManagement)
+=================================== */
+
+.status-badge {
+  font-size: .75rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 999px;
+  display: inline-block;
+  letter-spacing: .25px;
+}
+
+/* STATUS BADGES */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: .78rem;
+    display: inline-block;
+}
+
+.status-blue {
+    background: #0d6efd;
+    color: #fff;
+}
+
+.status-yellow {
+    background: #ffc107;
+    color: #000;
+}
+
+.status-green {
+    background: #36c689;
+    color: #fff;
+}
+
+.status-red {
+    background: #ff4d6d;
+    color: #fff;
+}
+
+
+/* ===================================
+   TABLE LOOK (Luxury flat border)
+=================================== */
+.lux-table th {
+  font-size: .82rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  font-weight: 600;
+  color: #9099a7;
+  border-bottom: 1px solid #eef0f4 !important;
+}
+
+.lux-table td {
+  font-size: .9rem;
+  padding: 14px 12px;
+  border-top: 1px solid #f1f3f7;
+}
+
+/* Hover row effect */
+.lux-table tbody tr:hover {
+  background: #f9fcff;
+}
+
+
