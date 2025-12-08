@@ -11,6 +11,12 @@ import Home from './pages/public/Home';
 import Login from './pages/auth/Login';
 import TrackingResult from './pages/public/TrackingResult';
 
+//Shipper 
+import HomePageShipper from './pages/shipper/HomePageShipper.jsx';
+import AboutUsShipper from './pages/shipper/AboutUsShipper.jsx';
+import ContactShipper from './pages/shipper/ContactShipper.jsx';
+
+
 // Admin import
 import AdminLayout from './components/Layouts/AdminLayout.jsx';
 import Dashboard from './pages/admin/Dashboard';
@@ -52,7 +58,26 @@ export default function App() {
           </PublicLayout>
         } />
 
-        {/* Login */}
+        {/*  SHIPPER ROUTE  */}
+        <Route path="/shipper/home" element={
+          <PublicLayout>
+            <HomePageShipper />
+          </PublicLayout>
+        } />
+
+        <Route path="/shipper/about" element={
+          <PublicLayout>
+            <AboutUsShipper />
+          </PublicLayout>
+        } />
+
+        <Route path="/shipper/contact" element={
+          <PublicLayout>
+            <ContactShipper />
+          </PublicLayout>
+        } />
+
+        {/* Login */}   
         <Route path="/login" element={
           <AuthLayout>
             <Login />
