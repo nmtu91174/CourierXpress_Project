@@ -1,0 +1,30 @@
+[
+  {
+    "id": "CX001",
+    "receiver": "Trần Văn B",
+    "area": "Quận 1, TP.HCM",
+    "date": "2025-12-01",
+    "status": "Đang giao"
+  },
+  {
+    "id": "CX002",
+    "receiver": "Lê Văn C",
+    "area": "Quận 7, TP.HCM",
+    "date": "2025-12-02",
+    "status": "Đã giao"
+  },
+  {
+    "id": "CX003",
+    "receiver": "Phạm Thị D",
+    "area": "Thủ Đức, TP.HCM",
+    "date": "2025-12-03",
+    "status": "Đã hủy"
+  },
+  {
+    "id": "CX004",
+    "receiver": "Nguyễn Văn E",
+    "area": "Bình Thạnh, TP.HCM",
+    "date": "2025-12-04",
+    "status": "Đang giao"
+  }
+]

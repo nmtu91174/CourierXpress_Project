@@ -71,3 +71,25 @@
     overflow-y: auto;
     /* Cho phép cuộn nếu nội dung dài */
 }
+.app-wrapper {
+  display: flex;
+  flex-direction: column;   /* ✅ HEADER Ở TRÊN */
+  min-height: 100vh;
+}
+
+.body-wrapper {
+  display: flex;            /* ✅ SIDEBAR + MAIN CÙNG HÀNG */
+  flex: 1;
+}
+
+.sidebar {
+  width: 240px;
+  min-height: 100%;
+  background: #111;
+}
+
+.admin-content {
+  flex: 1;
+  padding: 24px;
+  background: #f4f6f9;
+}
