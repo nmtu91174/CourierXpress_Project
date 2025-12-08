@@ -38,17 +38,34 @@ const Header = () => {
 
                         <Nav.Link as={Link} to="/" className="fw-bold fs-10 text-dark">Home</Nav.Link>
 
-                        <NavDropdown title="Shipping" id="basic-nav-dropdown" className="fw-bold fs-10 text-dark">
-                            <NavDropdown.Item href="#action/3.1">Single Create</NavDropdown.Item>
-                            <NavDropdown.Item href="#action/3.2">
-                                Mass Create
-                            </NavDropdown.Item>
-                            <NavDropdown.Divider />
-                            <NavDropdown.Item href="#action/3.3">How To Ship With CourierXpress</NavDropdown.Item>
-                            <NavDropdown.Item href="#action/3.4">
-                                Shipping Fee Estimation
-                            </NavDropdown.Item>
-                        </NavDropdown>
+                <NavDropdown title="Shipper" id="basic-nav-dropdown" className="fw-bold fs-10 text-dark">
+                    
+                    <NavDropdown.Item 
+                        as={Link} 
+                        to="/shipper/home"
+                        className="fw-semibold"
+                    >
+                        Shipper Dashboard
+                    </NavDropdown.Item>
+
+                    <NavDropdown.Divider />
+
+                    <NavDropdown.Item 
+                        as={Link} 
+                        to="/shipper/about"
+                    >
+                        About Us
+                    </NavDropdown.Item>
+
+                    <NavDropdown.Item 
+                        as={Link} 
+                        to="/shipper/contact"
+                    >
+                        Contact
+                    </NavDropdown.Item>
+
+                </NavDropdown>
+
 
                         <NavDropdown title="Services" id="basic-nav-dropdown" className="fw-bold fs-10 text-dark">
                             <NavDropdown.Item href="#action/3.1">Action</NavDropdown.Item>

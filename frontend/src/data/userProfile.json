@@ -1,0 +1,22 @@
+{
+  "name": "Nguyễn Văn A",
+  "role": "Shipper",
+  "email": "shipper@courierxpress.com",
+  "phone": "0123456789",
+  "address": "Hà Nội",
+  "area": "Quận 1, TP.HCM",
+  "vehicle": "59X3-123.45",
+  "status": "Online",
+  "rating": 4.8,
+  "totalOrders": 150,
+  "inDelivery": 45,
+  "completed": 98,
+  "canceled": 7,
+  "avatar": "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+  "cccd": "079203001234",
+  "ngayThamGia": "01/2023",
+  "capDo": "Shipper chính thức",
+  "khuVucPhuTrach": "Quận 1, Quận 3 - TP.HCM",
+  "phuongTien": "Xe máy",
+  "taiKhoanNganHang": "VCB - 1023456789"
+}

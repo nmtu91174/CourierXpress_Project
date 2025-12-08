@@ -1,0 +1,55 @@
+/* SHIPPER HOME PAGE  */
+.shipper-home-page {
+  background: #f8f9fa;
+}
+
+/* Greeting */
+.shipper-home-page h2 {
+  color: #d9534f;
+}
+
+/* Cards */
+.shipper-home-page .card {
+  border-radius: 14px;
+  transition: 0.25s ease;
+}
+
+.shipper-home-page .card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* Stats Section Icons */
+.shipper-home-page .card svg {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+}
+
+/* Orders Table */
+.shipper-home-page table {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.shipper-home-page th {
+  background: #dc3545;
+  color: white;
+  font-weight: 600;
+}
+
+.shipper-home-page td span {
+  font-size: 14px;
+}
+
+/* Action Button */
+.shipper-home-page .btn-danger {
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .shipper-home-page h2 {
+    font-size: 22px;
+  }
+}

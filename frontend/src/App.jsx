@@ -1,7 +1,7 @@
 // src/App.jsx
 
 // 1. Chú phải import BrowserRouter và đặt tên tắt là Router
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 // Import các trang
@@ -17,6 +17,17 @@ import Dashboard from './pages/admin/Dashboard';
 import OrderManagement from './pages/admin/OrderManagement.jsx';
 import AgentsManagement from './pages/admin/AgentsManagement.jsx';
 import Reports from './pages/admin/Reports.jsx';
+
+//Shipper 
+import HomePageShipper from './pages/shipper/HomePageShipper.jsx';
+import AboutUsShipper from './pages/shipper/AboutUsShipper.jsx';
+import ContactShipper from './pages/shipper/ContactShipper.jsx';
+
+
+// User import
+import UserOrdersPage from './pages/user/UserOrdersPage.jsx';
+import UserProfilePage from './pages/user/UserProfilePage.jsx';
+
 
 // (Các phần Layout PublicLayout, AuthLayout chú giữ nguyên như cũ...)
 
@@ -63,12 +74,46 @@ export default function App() {
         <Route path="/admin" element={<AdminLayout />}>
 
           {/* 3. GIỮ FULL ROUTE BÊN NHÁNH MỚI */}
+          <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="orders" element={<OrderManagement />} />
           <Route path="agents" element={<AgentsManagement />} />
           <Route path="reports" element={<Reports />} />
 
         </Route>
+
+        {/*  SHIPPER ROUTE  */}
+        <Route path="/shipper/home" element={
+          <PublicLayout>
+            <HomePageShipper />
+          </PublicLayout>
+        } />
+
+        <Route path="/shipper/about" element={
+          <PublicLayout>
+            <AboutUsShipper />
+          </PublicLayout>
+        } />
+
+        <Route path="/shipper/contact" element={
+          <PublicLayout>
+            <ContactShipper />
+          </PublicLayout>
+        } />
+
+        {/* USER ROUTES */}
+        <Route path="/user/profile" element={
+          <PublicLayout>
+            <UserProfilePage />
+          </PublicLayout>
+        } />
+
+        <Route path="/user/orders" element={
+          <PublicLayout>
+            <UserOrdersPage />
+          </PublicLayout>
+        } />
+
 
       </Routes>
   );
