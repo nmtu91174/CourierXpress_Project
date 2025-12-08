@@ -1,19 +1,11 @@
 
-
 import "../../assets/styles/shipper/AboutUsShipper.css";
-
-// Dùng import để Vite bundle đúng các ảnh (thay vì đường dẫn /images không tồn tại trong public)
-import bannerImg from "../../assets/images/Banner.jpg";
-import whoWeAreImg from "../../assets/images/Who We Are.avif";
-import fastDeliveryImg from "../../assets/images/FastDelivery.jpg";
-import trackingImg from "../../assets/images/Real-Time Tracking.jpg";
-import secureHandlingImg from "../../assets/images/Secure Handling.jpg";
 export default function About() {
   return (
     <>
 
       <section className="banner-full">
-        <img src={bannerImg} alt="Banner" />
+        <img src="/images/Banner.jpg" alt="Banner" />
       </section>
 
       {/* 🔶 WHO WE ARE */}
@@ -31,7 +23,7 @@ export default function About() {
 
           <div className="col-md-6 text-center">
             <div className="square-img">
-              <img src={whoWeAreImg} alt="Who We Are" />
+              <img src="/images/Who We Are.avif" alt="Who We Are" />
             </div>
           </div>
 
@@ -48,7 +40,7 @@ export default function About() {
           <div className="col-lg-3 col-md-4 col-sm-6 d-flex justify-content-center">
             <div className="feature-box text-center">
               <div className="square-img mb-3">
-                <img src={fastDeliveryImg} alt="Fast Delivery" />
+                <img src="/images/FastDelivery.jpg" alt="Fast Delivery" />
               </div>
               <h4 className="fw-bold">Fast Delivery</h4>
               <p className="text-muted">Giao hàng từ 2–4 giờ trong nội thành.</p>
@@ -59,7 +51,7 @@ export default function About() {
           <div className="col-lg-3 col-md-4 col-sm-6 d-flex justify-content-center">
             <div className="feature-box text-center">
               <div className="square-img mb-3">
-                <img src={trackingImg} alt="Tracking" />
+                <img src="/images/Real-Time Tracking.jpg" alt="Tracking" />
               </div>
               <h4 className="fw-bold">Real-Time Tracking</h4>
               <p className="text-muted">Theo dõi đơn hàng từng phút.</p>
@@ -70,7 +62,7 @@ export default function About() {
           <div className="col-lg-3 col-md-4 col-sm-6 d-flex justify-content-center">
             <div className="feature-box text-center">
               <div className="square-img mb-3">
-                <img src={secureHandlingImg} alt="Secure" />
+                <img src="/images/Secure Handling.jpg" alt="Secure" />
               </div>
               <h4 className="fw-bold">Secure Handling</h4>
               <p className="text-muted">An toàn tuyệt đối.</p>
