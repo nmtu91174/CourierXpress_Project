@@ -3,34 +3,38 @@
    Pixel-Perfect + Smooth Motion
 ================================ */
 
+
 /* BRAND COLOR SYSTEM (SCOPED) */
+
 .admin-wrapper {
     --sidebar-bg: #1a1d21;
     --sidebar-text: #9da5b1;
-    --primary-color: #ff4d24;          
-    --secondary-color: #0d6efd;        
+    --primary-color: #ff4d24;
+    --secondary-color: #0d6efd;
     --success-color: #36c689;
     --warning-color: #ffc107;
-    --danger-color:  #ff4d6d;
-
+    --danger-color: #ff4d6d;
     --border-color: rgba(255, 255, 255, 0.08);
     --glass-bg: rgba(255, 255, 255, 0.06);
-
     --font-family: "Inter", "Segoe UI", system-ui, sans-serif;
 }
+
 
 /* ==============================
    RESET (SCOPED, NO GLOBAL IMPACT)
 ================================ */
+
 .admin-wrapper * {
     box-sizing: border-box;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 }
 
+
 /* ==============================
    LAYOUT
 ================================ */
+
 .admin-wrapper {
     display: flex;
     min-height: 100vh;
@@ -39,27 +43,30 @@
     font-family: var(--font-family);
 }
 
+
 /* ==============================
    SIDEBAR (LUXURY STYLE)
 ================================ */
+
 .admin-wrapper .sidebar {
     position: fixed;
     top: 0;
     left: 0;
     width: 260px;
     height: 100vh;
-    overflow: hidden;              
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-
     background: var(--sidebar-bg);
     color: #fff;
     border-right: 1px solid var(--border-color);
     backdrop-filter: blur(8px);
-    box-shadow: 8px 0 16px rgba(0,0,0,0.24);
+    box-shadow: 8px 0 16px rgba(0, 0, 0, 0.24);
 }
 
+
 /* HEADER */
+
 .admin-wrapper .sidebar-header {
     padding: 24px 20px;
     border-bottom: 1px solid var(--border-color);
@@ -68,14 +75,18 @@
     letter-spacing: .2px;
 }
 
+
 /* NAVIGATION LIST */
+
 .admin-wrapper .sidebar-menu {
     margin: 0;
     padding: 18px 0;
     list-style: none;
 }
 
+
 /* LINK */
+
 .admin-wrapper .sidebar-link {
     display: flex;
     align-items: center;
@@ -89,27 +100,28 @@
     transition: background .25s ease, color .2s ease, transform .25s ease;
 }
 
+
 /* ICON */
+
 .admin-wrapper .sidebar-link svg {
     font-size: 1.18rem;
     margin-right: 14px;
     opacity: .9;
 }
 
+
 /* HOVER + ACTIVE */
+
 .admin-wrapper .sidebar-link:hover,
 .admin-wrapper .sidebar-link.active {
     color: #fff !important;
-    background: linear-gradient(
-        90deg,
-        rgba(255,77,36,0.9) 0%,
-        rgba(255,77,36,0.6) 60%,
-        rgba(255,77,36,0.2) 100%
-    );
+    background: linear-gradient( 90deg, rgba(255, 77, 36, 0.9) 0%, rgba(255, 77, 36, 0.6) 60%, rgba(255, 77, 36, 0.2) 100%);
     transform: translateX(4px);
 }
 
+
 /* ACTIVE BAR */
+
 .admin-wrapper .sidebar-link.active::before {
     content: "";
     width: 4px;
@@ -121,47 +133,49 @@
     top: 0;
 }
 
+
 /* ==============================
    CONTENT
 ================================ */
+
 .admin-wrapper .admin-content {
     flex: 1;
-    margin-left: 260px;            
+    margin-left: 260px;
     padding: 32px;
     height: 100vh;
-    overflow-y: auto;              
+    overflow-y: auto;
     background: #f5f7fa;
 }
+
 
 /* ==============================
    CARD
 ================================ */
+
 .admin-wrapper .card-lux {
     background: #fff;
     border-radius: 12px;
     padding: 24px;
-    box-shadow:
-        0 2px 4px rgba(0,0,0,0.1),
-        0 8px 24px rgba(0,0,0,0.08);
-    transition: all .28s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.08);
+    transition: all .28s cubic-bezier(.4, 0, .2, 1);
 }
 
 .admin-wrapper .card-lux:hover {
     transform: translateY(-3px);
-    box-shadow:
-        0 4px 8px rgba(0,0,0,0.12),
-        0 12px 28px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12), 0 12px 28px rgba(0, 0, 0, 0.12);
 }
+
 
 /* ==============================
    TABLE
 ================================ */
+
 .admin-wrapper .table th {
     padding: 14px 18px !important;
     font-weight: 600;
     font-size: .86rem;
     color: #8892a0;
-    border-bottom: 1px solid rgba(0,0,0,.05);
+    border-bottom: 1px solid rgba(0, 0, 0, .05);
 }
 
 .admin-wrapper .table td {
@@ -169,9 +183,11 @@
     font-size: .92rem;
 }
 
+
 /* ==============================
    BADGE
 ================================ */
+
 .admin-wrapper .badge {
     border-radius: 6px;
     font-weight: 500;
@@ -179,9 +195,11 @@
     font-size: .78rem;
 }
 
+
 /* ==============================
    BUTTON
 ================================ */
+
 .admin-wrapper .btn-lux {
     padding: 10px 18px;
     border-radius: 8px;
@@ -194,9 +212,11 @@
     transform: scale(.96);
 }
 
+
 /* ==============================
    GSAP UTILS
 ================================ */
+
 .admin-wrapper .opacity-0 {
     opacity: 0;
 }
@@ -208,7 +228,7 @@
 .admin-wrapper .fade-in {
     opacity: 1 !important;
     transform: translateY(0) !important;
-    transition: all .6s cubic-bezier(.4,0,.2,1);
+    transition: all .6s cubic-bezier(.4, 0, .2, 1);
 }
 
 .text-muted {
@@ -219,6 +239,7 @@
 /* ==============================
    RESPONSIVE
 ================================ */
+
 @media(max-width: 991px) {
     .admin-wrapper .sidebar {
         width: 72px;
@@ -237,114 +258,116 @@
    Dành cho Dương Quang Nhật sinh ngày 21/03/2000
 ====================================== */
 
+
 /* TABLET (icon-only sidebar) */
+
 @media (max-width: 991px) {
-  .admin-wrapper .sidebar {
-    width: 72px;
-  }
-
-  .admin-wrapper .admin-content {
-    margin-left: 72px;
-  }
-
-  .admin-wrapper .sidebar-header small,
-  .admin-wrapper .sidebar-header h4 span,
-  .admin-wrapper .sidebar-header h4 {
-    font-size: 0; /* hidden but keeps space */
-  }
-
-  .admin-wrapper .sidebar-link span {
-    display: none;
-  }
-
-  .admin-wrapper .sidebar-link svg {
-    margin: 0 auto;
-    font-size: 1.35rem;
-  }
+    .admin-wrapper .sidebar {
+        width: 72px;
+    }
+    .admin-wrapper .admin-content {
+        margin-left: 72px;
+    }
+    .admin-wrapper .sidebar-header small,
+    .admin-wrapper .sidebar-header h4 span,
+    .admin-wrapper .sidebar-header h4 {
+        font-size: 0;
+        /* hidden but keeps space */
+    }
+    .admin-wrapper .sidebar-link span {
+        display: none;
+    }
+    .admin-wrapper .sidebar-link svg {
+        margin: 0 auto;
+        font-size: 1.35rem;
+    }
 }
+
 
 /* ======================================
    MOBILE — SIDEBAR = NAVBAR BOTTOM
    (Tableau style)
 ====================================== */
+
 @media (max-width: 768px) {
-  .admin-wrapper {
-    flex-direction: column;
-  }
-
-  /* SIDEBAR becomes bottom nav */
-  .admin-wrapper .sidebar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-
-    height: 100px;
-    width: 100% !important;
-
-    flex-direction: row;
-    justify-content: space-around;
-    align-items: center;
-
-    border-right: none;
-    border-top: 1px solid var(--border-color);
-
-    padding: 0 12px;
-    box-shadow: 0 -6px 16px rgba(0,0,0,0.22);
-    z-index: 9999;
-  }
-
-  .admin-wrapper .sidebar-header {
-    display: none;
-  }
-
-  /* NAV items */
-  .admin-wrapper .sidebar-menu {
-    display: flex;
-    flex-direction: row;
-    gap: 12px;
-    width: 100%;
-    padding: 0;
-    margin: 0;
-    justify-content: space-around;
-  }
-
-  .admin-wrapper .sidebar-link {
-    padding: 6px;
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .admin-wrapper .sidebar-link svg {
-    margin: 0;
-    font-size: 1.4rem;
-    opacity: 1;
-  }
-
-  .admin-wrapper .sidebar-link span {
-    display: none !important;
-  }
-
-
-
-/* ======================================
+    .admin-wrapper {
+        flex-direction: column;
+    }
+    /* SIDEBAR becomes bottom nav */
+    .admin-wrapper .sidebar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 100px;
+        width: 100% !important;
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: center;
+        border-right: none;
+        border-top: 1px solid var(--border-color);
+        padding: 0 12px;
+        box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.22);
+        z-index: 9999;
+    }
+    .admin-wrapper .sidebar-header {
+        display: none;
+    }
+    /* NAV items */
+    .admin-wrapper .sidebar-menu {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+        justify-content: space-around;
+    }
+    .admin-wrapper .sidebar-link {
+        padding: 6px;
+        flex-direction: column;
+        text-align: center;
+    }
+    .admin-wrapper .sidebar-link svg {
+        margin: 0;
+        font-size: 1.4rem;
+        opacity: 1;
+    }
+    .admin-wrapper .sidebar-link span {
+        display: none !important;
+    }
+    /* ======================================
    ACTIVE NAV STYLE MOBILE
 ====================================== */
-.admin-wrapper .sidebar-link.active {
-  background: none !important;
-  color: #fff !important;
+    .admin-wrapper .sidebar-link.active {
+        background: none !important;
+        color: #fff !important;
+    }
+    @media (max-width: 768px) {
+        .admin-wrapper .sidebar-link.active svg {
+            color: var(--primary-color) !important;
+            transform: scale(1.25);
+        }
+        /* CONTENT FIX (avoid overlap bottom nav) */
+        .admin-wrapper .admin-content {
+            margin-left: 0 !important;
+            padding-bottom: 90px;
+            /* space for bottom nav */
+        }
+    }
 }
 
-@media (max-width: 768px) {
-  .admin-wrapper .sidebar-link.active svg {
-    color: var(--primary-color) !important;
-    transform: scale(1.25);
-  }
 
-    /* CONTENT FIX (avoid overlap bottom nav) */
-  .admin-wrapper .admin-content {
+/* ===== ẨN TẠM THỜI SIDEBAR USER ===== */
+
+.sidebar {
+    display: none !important;
+}
+
+
+/* Cho content chiếm full màn hình */
+
+.admin-content {
     margin-left: 0 !important;
-    padding-bottom: 90px;   /* space for bottom nav */
-  }
-}
+    width: 100% !important;
 }

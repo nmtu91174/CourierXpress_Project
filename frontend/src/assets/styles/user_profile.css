@@ -1,0 +1,426 @@
+/* ===============================
+   COURIERXPRESS USER PROFILE - PRO
+   Viettel Style | Clean | Professional
+================================ */
+
+:root {
+  --cx-primary: #ee4d2d;
+  --cx-bg: #f4f6f9;
+  --cx-border: #e5e7eb;
+  --cx-text-main: #111827;
+  --cx-text-sub: #6b7280;
+}
+
+/* ===== FONT TOÀN TRANG PROFILE ===== */
+.full-dashboard {
+  background: var(--cx-bg);
+  padding: 28px 36px 48px;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  color: var(--cx-text-main);
+}
+
+/* ===== KHỐI NỘI DUNG CHUNG ===== */
+.dashboard-block,
+.profile-card,
+.profile-info-pro {
+  background: #ffffff;
+  border: 1px solid var(--cx-border);
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin-bottom: 18px;
+}
+
+/* ===== TIÊU ĐỀ KHỐI ===== */
+.dashboard-block h3,
+.profile-card h5,
+.profile-info-pro h4 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: var(--cx-text-main);
+  letter-spacing: 0.2px;
+}
+
+/* ===================================
+   PROFILE HEADER (AVATAR + TÊN)
+=================================== */
+
+.profile-header-pro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.viettel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.viettel-header-left img {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px solid var(--cx-primary);
+  object-fit: cover;
+}
+
+.viettel-user-info h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.viettel-user-info p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--cx-text-sub);
+}
+
+/* ===== TRẠNG THÁI ===== */
+.status-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.status-badge.online { background: #16a34a; }
+.status-badge.offline { background: #9ca3af; }
+
+/* ===================================
+   PROFILE STATS
+=================================== */
+
+.stats-grid-pro {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stat-card-pro {
+  border: 1px solid var(--cx-border);
+  border-radius: 10px;
+  padding: 14px 10px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 12px;
+  color: var(--cx-text-sub);
+  margin-bottom: 6px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.stat-value {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--cx-primary);
+}
+
+/* ===================================
+   PROFILE INFO - TÁCH DÒNG RÕ RÀNG
+=================================== */
+
+.info-grid-pro {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 36px;
+}
+
+.info-grid-pro > div {
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #f0f0f0;
+}
+
+.info-grid-pro label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--cx-text-sub);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.info-grid-pro p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cx-text-main);
+}
+
+/* ===================================
+   CARD PHẢI
+=================================== */
+
+.profile-card p {
+  margin: 6px 0;
+  font-size: 14px;
+  color: var(--cx-text-main);
+}
+
+/* ===== HOẠT ĐỘNG ===== */
+.activity-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f1f1;
+  font-size: 13.5px;
+}
+
+.activity-list li:last-child {
+  border-bottom: none;
+}
+
+/* ===================================
+   RESPONSIVE
+=================================== */
+
+@media (max-width: 992px) {
+  .stats-grid-pro {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .info-grid-pro {
+    grid-template-columns: 1fr;
+  }
+}
+/* ===== MODAL ===== */
+/* ================= MODAL PRO ================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
+}
+
+.modal-box {
+  width: 880px;              /* ✅ RỘNG HƠN RÕ RỆT */
+  max-width: 95%;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  animation: zoom .25s ease;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+
+@keyframes zoom {
+  from { transform: scale(.9); opacity: 0 }
+  to { transform: scale(1); opacity: 1 }
+}
+
+.modal-header {
+  padding: 16px 22px;
+  background: linear-gradient(135deg, #ee4d2d, #ff784e);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h4 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.close-btn {
+  font-size: 24px;
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;   /* ✅ CHIA 2 CỘT RÕ RÀNG */
+  gap: 16px 20px;
+}
+
+.modal-footer {
+  padding: 14px 22px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid #eee;
+}
+
+/* ========== INPUT PRO ========== */
+.modal-body input,
+.modal-body select {
+  padding: 11px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  transition: .2s;
+  background: #f9fafb;
+}
+
+.modal-body input:focus,
+.modal-body select:focus {
+  border-color: var(--cx-primary);
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(238,77,45,0.12);
+}
+
+/* ================= BUTTON PRO ================= */
+
+.modal-footer .btn {
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.modal-footer .btn-primary {
+  background: var(--cx-primary);
+  color: white;
+}
+
+.modal-footer .btn-primary:hover {
+  opacity: 0.9;
+}
+/* ========== SELECT PRO (VAI TRÒ) ========== */
+
+.select-pro {
+  position: relative;
+  width: 100%;
+}
+
+.select-pro select {
+  width: 100%;
+  padding: 11px 40px 11px 12px;   /* chừa chỗ cho icon bên phải */
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  font-weight: 500;
+  appearance: none;     /* ✅ ẨN MŨI TÊN MẶC ĐỊNH */
+  background: #f9fafb;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.select-pro::after {
+  content: "▾";         /* ✅ ICON MŨI TÊN XỊN HƠN */
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #6b7280;
+  pointer-events: none;
+}
+
+.select-pro select:focus {
+  border-color: var(--cx-primary);
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(238,77,45,0.12);
+}
+
+.select-pro select:hover {
+  border-color: var(--cx-primary);
+}
+/* ===== AVATAR EDIT PRO ===== */
+
+.avatar-edit-box {
+  grid-column: span 2;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 10px;
+}
+
+.avatar-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--cx-primary);
+}
+
+.avatar-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--cx-primary);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.avatar-btn:hover {
+  opacity: 0.9;
+}
+/* ===== GRID MODAL EDIT PROFILE ===== */
+.modal-grid {
+  display: grid;
+  grid-template-columns: 200px 1fr;  /* ✅ CỘT TRÁI CỐ ĐỊNH, PHẢI CO GIÃN */
+  gap: 24px;
+}
+
+/* ===== CỘT TRÁI: AVATAR ===== */
+.avatar-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding-top: 10px;
+}
+
+.avatar-preview {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--cx-primary);
+}
+
+/* ===== NÚT ĐỔI ẢNH ===== */
+.avatar-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--cx-primary);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+  border: none;
+}
+
+.avatar-btn:hover {
+  opacity: 0.9;
+}
+
+/* ===== CỘT PHẢI: FORM ===== */
+.profile-form-right {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+}
+
+/* Input full width đẹp hơn */
+.profile-form-right input,
+.profile-form-right select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
