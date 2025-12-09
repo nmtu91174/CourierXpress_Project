@@ -9,7 +9,11 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/public/Home';
 import Login from './pages/auth/Login';
+import Register from './pages/auth/Register.jsx';
+import Option from './pages/auth/Option.jsx';
 import TrackingResult from './pages/public/TrackingResult';
+import ProtectedRoute from "./pages/auth/ProtectedRoute.jsx";
+import NoPermission from "./pages/auth/NoPermission.jsx";
 
 // Admin import
 import AdminLayout from './components/Layouts/AdminLayout.jsx';
@@ -47,74 +51,94 @@ const AuthLayout = ({ children }) => (
 
 export default function App() {
   return (
-    // main.jsx đã bọc Router rồi, nên ở đây không cần bọc nữa
-      <Routes>
+    <Routes>
 
-        {/* Public */}
-        <Route path="/" element={
-          <PublicLayout>
-            <Home />
-          </PublicLayout>
-        } />
+      {/* Public */}
+      <Route path="/" element={
+        <PublicLayout>
+          <Home />
+        </PublicLayout>
+      } />
 
-        <Route path="/tracking/:id" element={
-          <PublicLayout>
-            <TrackingResult />
-          </PublicLayout>
-        } />
+      <Route path="/tracking/:id" element={
+        <PublicLayout>
+          <TrackingResult />
+        </PublicLayout>
+      } />
 
-        {/* Login */}
-        <Route path="/login" element={
-          <AuthLayout>
-            <Login />
-          </AuthLayout>
-        } />
+      {/* Login/Register/Option */}
+      <Route path="/login" element={
+        <AuthLayout>
+          <Login />
+        </AuthLayout>
+      } />
+      <Route path="/register" element={
+        <AuthLayout>
+          <Register />
+        </AuthLayout>
+      } />
+      <Route path="/option" element={
+        <AuthLayout>
+          <Option />
+        </AuthLayout>
+      } />
 
-        {/* Admin */}
-        <Route path="/admin" element={<AdminLayout />}>
+      {/* Admin Routes */}
+      <Route path="/admin" element={
+        <ProtectedRoute allowed={['admin']}>
+          <AdminLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="orders" element={<OrderManagement />} />
+        <Route path="agents" element={<AgentsManagement />} />
+        <Route path="reports" element={<Reports />} />
+      </Route>
 
-          {/* 3. GIỮ FULL ROUTE BÊN NHÁNH MỚI */}
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="orders" element={<OrderManagement />} />
-          <Route path="agents" element={<AgentsManagement />} />
-          <Route path="reports" element={<Reports />} />
-
-        </Route>
-
-        {/*  SHIPPER ROUTE  */}
-        <Route path="/shipper/home" element={
+      {/* Shipper Routes */}
+      <Route path="/shipper/home" element={
+        <ProtectedRoute allowed={['shipper']}>
           <PublicLayout>
             <HomePageShipper />
           </PublicLayout>
-        } />
-
-        <Route path="/shipper/about" element={
+        </ProtectedRoute>
+      } />
+      <Route path="/shipper/about" element={
+        <ProtectedRoute allowed={['shipper']}>
           <PublicLayout>
             <AboutUsShipper />
           </PublicLayout>
-        } />
-
-        <Route path="/shipper/contact" element={
+        </ProtectedRoute>
+      } />
+      <Route path="/shipper/contact" element={
+        <ProtectedRoute allowed={['shipper']}>
           <PublicLayout>
             <ContactShipper />
           </PublicLayout>
-        } />
+        </ProtectedRoute>
+      } />
 
-        {/* USER ROUTES */}
-        <Route path="/user/profile" element={
+      {/* Customer/User Routes */}
+      <Route path="/user/profile" element={
+        <ProtectedRoute allowed={['customer']}>
           <PublicLayout>
             <UserProfilePage />
           </PublicLayout>
-        } />
-
-        <Route path="/user/orders" element={
+        </ProtectedRoute>
+      } />
+      <Route path="/user/orders" element={
+        <ProtectedRoute allowed={['customer']}>
           <PublicLayout>
             <UserOrdersPage />
           </PublicLayout>
-        } />
+        </ProtectedRoute>
+      } />
 
+      {/* No permission */}
+      <Route path="/no-permission" element={<NoPermission />} />
 
-      </Routes>
+    </Routes>
   );
 }
+

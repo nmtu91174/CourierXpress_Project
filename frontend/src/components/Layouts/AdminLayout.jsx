@@ -1,7 +1,6 @@
 // frontend/src/components/Layouts/AdminLayout.jsx
-
-import React from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import {
     FaTachometerAlt,
     FaBoxOpen,
@@ -14,6 +13,19 @@ import "../../assets/styles/admin.css";
 
 const AdminLayout = () => {
     const location = useLocation();
+    const navigate = useNavigate();
+    const [user, setUser] = useState(null);
+
+    useEffect(() => {
+        const storedUser = JSON.parse(localStorage.getItem("user"));
+        if (storedUser) setUser(storedUser);
+    }, []);
+
+    const handleLogout = () => {
+        localStorage.removeItem("user");
+        setUser(null);
+        navigate("/login"); // Quay về trang login sau khi logout
+    };
 
     const isActive = (path) => (location.pathname === path ? "active" : "");
 
@@ -65,9 +77,12 @@ const AdminLayout = () => {
 
                 {/* LOGOUT SECTION — bottom anchor */}
                 <div className="mb-3">
-                    <Link to="/login" className="sidebar-link text-danger fw-semibold">
-                        <FaSignOutAlt /> <span>Đăng xuất</span>
-                    </Link>
+                    <button
+                        onClick={handleLogout}
+                        className="sidebar-link text-danger fw-semibold border-0 bg-transparent d-flex align-items-center"
+                    >
+                        <FaSignOutAlt /> <span className="ms-1">Đăng xuất</span>
+                    </button>
                 </div>
             </aside>
 
@@ -79,18 +94,23 @@ const AdminLayout = () => {
                     <h5 className="text-secondary m-0">Hệ thống quản lý vận chuyển</h5>
 
                     <div className="d-flex align-items-center">
-                        <span className="me-2 text-muted small">Xin chào,</span>
-                        <span className="fw-bold">Administrator</span>
+                        {user ? (
+                            <>
+                                <span className="me-2 text-muted small">Xin chào,</span>
+                                <span className="fw-bold">{user.name}</span>
 
-                        <div
-                            className="rounded-circle ms-2"
-                            style={{
-                                width: 35,
-                                height: 35,
-                                background:
-                                    "linear-gradient(135deg, #ff4d24, #ff824d)"
-                            }}
-                        ></div>
+                                <div
+                                    className="rounded-circle ms-2"
+                                    style={{
+                                        width: 35,
+                                        height: 35,
+                                        background: "linear-gradient(135deg, #ff4d24, #ff824d)"
+                                    }}
+                                ></div>
+                            </>
+                        ) : (
+                            <span className="fw-bold text-muted">Administrator</span>
+                        )}
                     </div>
                 </header>
 

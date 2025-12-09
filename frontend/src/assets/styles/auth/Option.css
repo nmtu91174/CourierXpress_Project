@@ -1,0 +1,185 @@
+/* ================== Container ================== */
+.landing-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ================== Backgrounds ================== */
+.bg-left,
+.bg-right {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+
+.bg-left { left: 0; }
+.bg-right { right: 0; }
+
+.bg-left::after,
+.bg-right::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.bg-left::after {
+  background: linear-gradient(to bottom right, rgba(251,146,60,0.75), rgba(230,88,12,0.75));
+}
+
+.bg-right::after {
+  background: linear-gradient(to bottom left, rgba(6,182,212,0.75), rgba(13,148,136,0.75));
+}
+
+/* ================== Section Links ================== */
+.section-link {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1;
+
+  /* Mặc định mờ xám */
+  filter: grayscale(40%) brightness(70%);
+  transition: all 0.3s;
+}
+
+.section-link-left { left: 0; }
+.section-link-right { right: 0; }
+
+/* Hover rõ lên */
+.section-link.hovered {
+  filter: none;
+}
+
+/* Overlay */
+.section-link .overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.section-link-left.hovered .overlay {
+  opacity: 1;
+  background: linear-gradient(to bottom right, rgba(251,146,60,0.3), rgba(230,88,12,0.3));
+}
+
+.section-link-right.hovered .overlay {
+  opacity: 1;
+  background: linear-gradient(to bottom left, rgba(6,182,212,0.3), rgba(13,148,136,0.3));
+}
+
+/* ================== Card ================== */
+.card {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  border-radius: 1.25rem;
+  background-color: rgba(255,255,255,0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.2);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transition: all 0.3s;
+}
+
+.section-link.hovered .card {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+  background-color: rgba(255,255,255,0.3);
+}
+
+/* ================== Text ================== */
+.section-link h1,
+.section-link p,
+.section-link .stats > div p,
+.section-link .btn-start span {
+  color: rgba(255,255,255,0.7); /* mặc định hơi mờ */
+  transition: all 0.3s;
+}
+
+.section-link.hovered h1,
+.section-link.hovered p,
+.section-link.hovered .stats > div p,
+.section-link.hovered .btn-start span {
+  color: #ffffff; /* hover trắng nổi bật */
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* ================== Headings ================== */
+.section-link h1 {
+  font-size: 4rem;
+  font-weight: bold;
+  text-align: center;
+  margin: 1rem 0 0.5rem;
+}
+
+.section-link p {
+  font-size: 1.125rem;
+  max-width: 20rem;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ================== Button ================== */
+.btn-start {
+  margin-top: 1.5rem;
+  padding: 0.75rem 2rem;
+  border-radius: 9999px;
+  background-color: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s;
+  text-decoration: none; /* Loại bỏ gạch chân của link */
+  color: inherit; /* Giữ màu chữ trắng */
+}
+
+.section-link.hovered .btn-start {
+  background-color: rgba(255,255,255,0.35);
+  transform: scale(1.05);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+}
+
+/* ================== Stats ================== */
+.stats {
+  margin-top: 2rem;
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.stats > div { text-align: center; }
+
+.stats .divider {
+  width: 1px;
+  background-color: rgba(255,255,255,0.3);
+}
+
+/* ================== Responsive ================== */
+@media (max-width: 768px) {
+  .landing-container { flex-direction: column; }
+  .bg-left, .bg-right, .section-link { width: 100%; height: 50%; }
+  .section-link h1 { font-size: 3rem; }
+  .section-link p { max-width: 80%; font-size: 1rem; }
+}
