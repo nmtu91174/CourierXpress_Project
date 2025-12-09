@@ -1,13 +1,11 @@
-:root {
+.login-container {
     --primary-color: #ff6b3d;
     --primary-hover: #e45121;
     --soft-bg: #f3f4f6;
     --shadow-1: 0 10px 30px rgba(0, 0, 0, 0.08);
     --shadow-2: 0 20px 55px rgba(0, 0, 0, 0.12);
-}
 
-/* TOÀN TRANG */
-.login-container {
+    /* TOÀN TRANG */
     min-height: 100vh;
     background: linear-gradient(135deg, #fff1ec, #ffe3d6);
     animation: fadeIn 0.6s ease;
@@ -19,7 +17,7 @@
 }
 
 /* BANNER HÌNH ẢNH */
-.login-banner {
+.login-container .login-banner {
     background-image: url('https://images.unsplash.com/photo-1593642532744-d377ab507dc8?auto=format&fit=crop&w=1350&q=80');
     background-size: cover;
     background-position: center;
@@ -28,7 +26,7 @@
     filter: brightness(0.9);
 }
 
-.login-banner::before {
+.login-container .login-banner::before {
     content: "";
     position: absolute;
     top: 0;
@@ -39,7 +37,7 @@
     background: linear-gradient(135deg, rgba(255, 107, 61, 0.8), rgba(0, 0, 0, 0.6));
 }
 
-.banner-content {
+.login-container .banner-content {
     position: relative;
     z-index: 5;
     color: white;
@@ -50,7 +48,7 @@
     justify-content: center;
 }
 
-.banner-content h1 {
+.login-container .banner-content h1 {
     font-size: 3.5rem;
     text-transform: uppercase;
     font-weight: 900;
@@ -58,14 +56,14 @@
     text-shadow: 0 8px 25px rgba(0,0,0,0.45);
 }
 
-.banner-content p {
+.login-container .banner-content p {
     font-size: 1.4rem;
     opacity: 0.9;
 }
 
 
 /* KHU VỰC FORM – KHÔNG CARD */
-.login-form-section {
+.login-container .login-form-section {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -74,7 +72,7 @@
 }
 
 /* FORM FULL-WIDTH SANG TRỌNG */
-.login-form-wrapper {
+.login-container .login-form-wrapper {
     width: 100%;
     max-width: 550px; /* tăng chiều rộng */
     padding: 40px 35px;
@@ -91,21 +89,21 @@
 }
 
 /* TIÊU ĐỀ FORM */
-.login-form-wrapper h2 {
+.login-container .login-form-wrapper h2 {
     font-weight: 800;
     font-size: 2.1rem;
     color: #222;
     text-align: center;
 }
 
-.login-form-wrapper p {
+.login-container .login-form-wrapper p {
     text-align: center;
     opacity: 0.75;
     margin-bottom: 30px;
 }
 
 /* INPUT SANG TRỌNG */
-.custom-input {
+.login-container .custom-input {
     padding: 15px 18px;
     border-radius: 12px;
     border: 1px solid #ccc;
@@ -114,14 +112,14 @@
     font-size: 15px;
 }
 
-.custom-input:focus {
+.login-container .custom-input:focus {
     border-color: var(--primary-color);
     background: white;
     box-shadow: 0 0 0 4px rgba(255, 107, 61, 0.25);
 }
 
 /* ICON INPUT */
-.input-group-text {
+.login-container .input-group-text {
     border-radius: px    0 0 12px !important;
     background: #ffffff;
     border-color: #ccc !important;
@@ -129,8 +127,8 @@
 }
 
 /* BUTTON */
-.btn-login,
-.btn-register {
+.login-container .btn-login,
+.login-container .btn-register {
     background: linear-gradient(135deg, var(--primary-color), #ff8c63);
     border: none;
     padding: 15px;
@@ -143,20 +141,20 @@
     transition: all 0.25s ease;
 }
 
-.btn-login:hover,
-.btn-register:hover {
+.login-container .btn-login:hover,
+.login-container .btn-register:hover {
     background: linear-gradient(135deg, var(--primary-hover), #ff743c);
     transform: translateY(-3px);
     box-shadow: 0 13px 30px rgba(255, 107, 61, 0.55);
 }
 
 /* LINK */
-a {
+.login-container a {
     text-decoration: none;
     font-weight: 600;
     color: var(--primary-color);
 }
 
-a:hover {
+.login-container a:hover {
     opacity: 0.8;
 }

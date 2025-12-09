@@ -26,6 +26,7 @@ import {
   Phone,
 } from 'lucide-react';
 
+
 function App() {
   const [trackingId, setTrackingId] = useState('');
 
@@ -47,7 +48,7 @@ function App() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <div className="min-h-screen">
+    <div className="home-page min-h-screen">
       {/* KHỐI STYLE CHO HIỆU ỨNG ANIMATION (GIỮ LẠI TRONG JSX) */}
       <style>{`
         @keyframes fade-in {
