@@ -172,7 +172,7 @@ button {
 /* 3. HERO SECTION */
 /* ================================================= */
 
-.hero-section {
+.hero-section1 {
   position: relative;
   background: linear-gradient(to bottom right, #1e3a8a, #1d4ed8, #1e3a8a); /* Gradient */
   color: var(--color-light);

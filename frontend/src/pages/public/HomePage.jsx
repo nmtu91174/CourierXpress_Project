@@ -92,7 +92,7 @@ function App() {
       {/* END KHỐI STYLE */}
 
       {/* 1. HERO SECTION */}
-      <section className="hero-section">
+      <section className="hero-section1">
         <div className="hero-overlay"></div>
 
         <div className="container hero-content">
