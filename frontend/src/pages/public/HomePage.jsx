@@ -26,7 +26,6 @@ import {
   Phone,
 } from 'lucide-react';
 
-
 function App() {
   const [trackingId, setTrackingId] = useState('');
 
