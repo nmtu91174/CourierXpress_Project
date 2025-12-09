@@ -29,10 +29,13 @@ import HomePageShipper from './pages/shipper/HomePageShipper.jsx';
 import AboutUsShipper from './pages/shipper/AboutUsShipper.jsx';
 import ContactShipper from './pages/shipper/ContactShipper.jsx';
 
+//User import
+import UserOrdersPage from './pages/shipper/UserOrdersPage.jsx';
+import UserProfilePage from './pages/shipper/UserProfilePage.jsx';
 
-// User import
-import UserOrdersPage from './pages/user/UserOrdersPage.jsx';
-import UserProfilePage from './pages/user/UserProfilePage.jsx';
+
+// Customer import
+import CreateOrder from './pages/user/CreateOrder.jsx';
 
 
 // (Các phần Layout PublicLayout, AuthLayout chú giữ nguyên như cũ...)
@@ -90,6 +93,14 @@ export default function App() {
       <Route path="/option" element={
         <AuthLayout>
           <Option />
+        </AuthLayout>
+      } />
+
+
+
+      <Route path="/createorder" element={
+        <AuthLayout>
+          <CreateOrder />
         </AuthLayout>
       } />
 

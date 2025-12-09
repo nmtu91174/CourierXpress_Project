@@ -42,9 +42,12 @@ const Header = ({ className }) => {
                             <Nav.Link as={Link} to="/" className="fw-bold fs-10 text-dark">Home</Nav.Link>
                         )}
 
-                        {(!user || user.role === 'customer') && (
-                            <Nav.Link as={Link} to="/tracking" className="fw-bold fs-10 text-dark">Tracking</Nav.Link>
-                        )}
+                        {/* Tracking luôn hiển thị */}
+                        <NavDropdown title="Tracking" id="services-nav-dropdown" className="fw-bold fs-10 text-dark">
+                            <NavDropdown.Item href="/tracking">Tracking</NavDropdown.Item>
+                            <NavDropdown.Divider />
+                            <NavDropdown.Item href="/createorder">Make An Order</NavDropdown.Item>
+                        </NavDropdown>
 
                         {/* Menu Shipper chỉ hiển thị khi role = 'shipper' */}
                         {user?.role === 'shipper' && (
