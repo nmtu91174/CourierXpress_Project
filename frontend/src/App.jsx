@@ -7,13 +7,15 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 // Import các trang
 import Header from './components/Header';
 import Footer from './components/Footer';
-import Home from './pages/public/Home';
+import Tracking from './pages/public/Tracking.jsx';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register.jsx';
 import Option from './pages/auth/Option.jsx';
 import TrackingResult from './pages/public/TrackingResult';
 import ProtectedRoute from "./pages/auth/ProtectedRoute.jsx";
 import NoPermission from "./pages/auth/NoPermission.jsx";
+import HomePageCostumer from './pages/public/HomePage.jsx'
+
 
 // Admin import
 import AdminLayout from './components/Layouts/AdminLayout.jsx';
@@ -54,9 +56,17 @@ export default function App() {
     <Routes>
 
       {/* Public */}
+      <Route path="/tracking" element={
+        <PublicLayout>
+          <Tracking />
+        </PublicLayout>
+      } />
+
+
+      {/* Homepage customer */}
       <Route path="/" element={
         <PublicLayout>
-          <Home />
+          <HomePageCostumer />
         </PublicLayout>
       } />
 

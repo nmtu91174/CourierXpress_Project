@@ -4,7 +4,8 @@ import { Navbar, Container, Nav, Button, NavDropdown } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaShippingFast } from "react-icons/fa";
 
-const Header = () => {
+// THAY ĐỔI: Chấp nhận props className
+const Header = ({ className }) => {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
 
@@ -21,7 +22,8 @@ const Header = () => {
     };
 
     return (
-        <Navbar bg="white" expand="lg" className="shadow-sm sticky-top">
+        // THAY ĐỔI: Loại bỏ sticky-top và dùng className từ props
+        <Navbar bg="white" expand="lg" className={`shadow-sm ${className}`}>
             <Container>
                 <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
                     <FaShippingFast size={50} style={{ transform: 'scaleX(-1)' }} className="me-2 text-danger" />
@@ -38,6 +40,10 @@ const Header = () => {
                         {/* Home chỉ hiển thị cho customer hoặc khi chưa login */}
                         {(!user || user.role === 'customer') && (
                             <Nav.Link as={Link} to="/" className="fw-bold fs-10 text-dark">Home</Nav.Link>
+                        )}
+
+                        {(!user || user.role === 'customer') && (
+                            <Nav.Link as={Link} to="/tracking" className="fw-bold fs-10 text-dark">Tracking</Nav.Link>
                         )}
 
                         {/* Menu Shipper chỉ hiển thị khi role = 'shipper' */}
