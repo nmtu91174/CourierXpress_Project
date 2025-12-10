@@ -141,7 +141,7 @@ export default function App() {
         </ProtectedRoute>
       } />
 
-      <Route path="/shipper/OrderDetailShipper" element={
+      <Route path="/shipper/order/:id" element={
         <ProtectedRoute allowed={['shipper']}>
           <PublicLayout>
             <OrderDetailShipper />

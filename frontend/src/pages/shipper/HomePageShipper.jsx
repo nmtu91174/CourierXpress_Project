@@ -8,7 +8,7 @@ import { FaMotorcycle, FaTasks, FaCheckCircle, FaClock } from "react-icons/fa";
 import "../../assets/styles/shipper/HomePageShipper.css";
 
 const ShipperHome = () => {
-  
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
