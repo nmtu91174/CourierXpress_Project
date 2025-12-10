@@ -1,10 +1,8 @@
 // src/pages/public/Tracking.jsx
 
-// KEEP: React + Hooks
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-// KEEP: Bootstrap + Icons
 import {
   Form,
   Button,
@@ -13,6 +11,7 @@ import {
   Col,
   Card
 } from "react-bootstrap";
+
 import {
   FaSearch,
   FaShippingFast,
@@ -20,20 +19,14 @@ import {
   FaGlobeAsia,
 } from "react-icons/fa";
 
-// KEEP: Hero
 import HeroVideo from "../../components/HeroVideo";
 
-// KEEP: GSAP animation
 import { featureCardsReveal } from "../../animations/homeAnimation";
 
 const Home = () => {
-  //  Tracking input
   const [trackingid, setTrackingid] = useState("");
-
-  //  Navigate hook
   const navigate = useNavigate();
 
-  //  Chạy animation khi mount
   useEffect(() => {
     featureCardsReveal();
   }, []);
@@ -47,10 +40,8 @@ const Home = () => {
   };
 
   return (
-    <div className="home-page">
-      {/* Hero Video Component */}
+    <div className="tracking-page">
       <HeroVideo />
-
       {/* 1. Hero Banner + Tracking Box */}
       <section className="hero-section">
         <div className="tracking-box tracking-box-lux">
@@ -65,7 +56,7 @@ const Home = () => {
             <Form.Control
               type="text"
               placeholder="Nhập mã vận đơn..."
-              size="lggit add ."
+              size="lg"
               className="tracking-input"
               value={trackingid}
               onChange={(e) => setTrackingid(e.target.value)}
@@ -95,9 +86,7 @@ const Home = () => {
                 <div className="feature-icon-wrap mb-3">
                   <FaShippingFast className="feature-icon" />
                 </div>
-                <Card.Title className="fw-semibold">
-                  Giao hàng siêu tốc
-                </Card.Title>
+                <Card.Title className="fw-semibold">Giao hàng siêu tốc</Card.Title>
                 <Card.Text className="text-muted">
                   Cam kết giao hàng đúng hẹn với mạng lưới logistics rộng khắp.
                 </Card.Text>
@@ -109,9 +98,7 @@ const Home = () => {
                 <div className="feature-icon-wrap mb-3">
                   <FaUserShield className="feature-icon" />
                 </div>
-                <Card.Title className="fw-semibold">
-                  An toàn tuyệt đối
-                </Card.Title>
+                <Card.Title className="fw-semibold">An toàn tuyệt đối</Card.Title>
                 <Card.Text className="text-muted">
                   Bảo hiểm hàng hóa 100% và quy trình xử lý chuyên nghiệp.
                 </Card.Text>
@@ -123,9 +110,7 @@ const Home = () => {
                 <div className="feature-icon-wrap mb-3">
                   <FaGlobeAsia className="feature-icon" />
                 </div>
-                <Card.Title className="fw-semibold">
-                  Tra cứu thời gian thực
-                </Card.Title>
+                <Card.Title className="fw-semibold">Tra cứu thời gian thực</Card.Title>
                 <Card.Text className="text-muted">
                   Tracking System giúp bạn biết đơn hàng đang ở đâu.
                 </Card.Text>
@@ -134,8 +119,7 @@ const Home = () => {
           </Row>
         </Container>
       </section>
-
-      {/* 3. Sitemap Area */}
+      {/* 3. Sitemap */}
       <section className="bg-light py-4 sitemap-section">
         <Container>
           <h5 className="mb-3 fw-semibold">Sitemap</h5>
