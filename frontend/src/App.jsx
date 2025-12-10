@@ -28,6 +28,7 @@ import Reports from './pages/admin/Reports.jsx';
 import HomePageShipper from './pages/shipper/HomePageShipper.jsx';
 import AboutUsShipper from './pages/shipper/AboutUsShipper.jsx';
 import ContactShipper from './pages/shipper/ContactShipper.jsx';
+import OrderDetailShipper from './pages/shipper/OrderDetailShipper.jsx';
 
 //User import
 import UserOrdersPage from './pages/shipper/UserOrdersPage.jsx';
@@ -136,6 +137,14 @@ export default function App() {
         <ProtectedRoute allowed={['shipper']}>
           <PublicLayout>
             <ContactShipper />
+          </PublicLayout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/shipper/OrderDetailShipper" element={
+        <ProtectedRoute allowed={['shipper']}>
+          <PublicLayout>
+            <OrderDetailShipper />
           </PublicLayout>
         </ProtectedRoute>
       } />
