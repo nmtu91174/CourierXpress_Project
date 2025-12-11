@@ -1,6 +1,5 @@
 
-// 👉 IMPORT CSS ĐÚNG ĐƯỜNG DẪN BẠN YÊU CẦU
-import "../../assets/styles/shipper/ACshipper.css";
+import "../../assets/styles/shipper/AboutUsShipper.css";
 export default function About() {
   return (
     <>

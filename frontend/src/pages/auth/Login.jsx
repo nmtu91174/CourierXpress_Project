@@ -1,87 +1,163 @@
-// frontend/src/pages/auth/Login.jsx
-
 import React, { useState } from 'react';
-import { Container, Row, Col, Form, Button } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaGoogle, FaFacebookF } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
-import '../../assets/styles/login.css'; // Import file CSS vừa tạo
+import { Link, useNavigate } from 'react-router-dom';
+import Swal from "sweetalert2";
+import "../../assets/styles/auth/login.css";
+
 
 const Login = () => {
-    // State giả lập cho giao diện (xử lý ẩn hiện password)
+    const navigate = useNavigate();
+
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+
+    const [message, setMessage] = useState("");
+    const [status, setStatus] = useState("");
 
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword);
     };
+    
 
-    // Hàm submit giả (chưa xử lý data)
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        alert("Login button clicked! Logic will be implemented later.");
-    };
+    const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const Toast = Swal.mixin({
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 2500,
+        timerProgressBar: true,
+    });
+
+    // --- VALIDATE THỦ CÔNG ---
+
+    if (!email.trim()) {
+        return Toast.fire({ icon: "error", title: "Vui lòng nhập email!" });
+    }
+
+    // regex kiểm tra email hợp lệ
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return Toast.fire({ icon: "error", title: "Email không hợp lệ!" });
+    }
+
+    if (!password.trim()) {
+        return Toast.fire({ icon: "error", title: "Vui lòng nhập mật khẩu!" });
+    }
+
+    // --- GỌI API ---
+    try {
+        const res = await fetch("http://localhost:8888/login.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+
+        if (data.status === "success") {
+            Toast.fire({
+                icon: "success",
+                title: "Đăng nhập thành công!"
+            });
+
+            localStorage.setItem("user", JSON.stringify(data.user));
+
+            setTimeout(() => {
+                if (data.user.role === "admin") {
+                    navigate("/admin");     
+                } else if (data.user.role === "shipper") {
+                    navigate("/shipper/home");     
+                } else {
+                    navigate("/");       
+                }
+            }, 1500);
+
+        } else {
+            Toast.fire({
+                icon: "error",
+                title: data.message || "Đăng nhập thất bại!"
+            });
+        }
+
+    } catch (error) {
+        Toast.fire({
+            icon: "error",
+            title: "Không thể kết nối server!"
+        });
+    }
+};
+
+
+
+
 
     return (
         <Container fluid className="login-container">
             <Row className="h-100">
 
-                {/* LEFT SIDE: Banner Image & Slogan */}
+                {/* LEFT BANNER */}
                 <Col md={6} lg={7} className="login-banner d-none d-md-block">
                     <div className="banner-content">
                         <h1 className="display-4 fw-bold mb-3">CourierXpress</h1>
                         <p className="lead fs-4">Fast. Reliable. Worldwide.</p>
                         <p className="mt-4 w-75">
-                            Manage your shipments, track deliveries in real-time, and connect with your customers seamlessly.
-                            Join the future of logistics management today.
+                            Manage shipments and track deliveries with ease.
                         </p>
                     </div>
                 </Col>
 
-                {/* RIGHT SIDE: Login Form */}
+                {/* FORM */}
                 <Col md={6} lg={5} className="login-form-section">
                     <div className="login-card">
+
                         <div className="text-center mb-5">
                             <h2 className="fw-bold text-dark">Welcome Back</h2>
-                            <p className="text-muted">Please enter your details to sign in.</p>
+                            <p className="text-muted">Please login to continue</p>
                         </div>
 
+            
+
+
                         <Form onSubmit={handleSubmit}>
-                            {/* Username / Email Input */}
-                            <Form.Group className="mb-4" controlId="formBasicEmail">
-                                <Form.Label className="fw-medium text-secondary">Username or Email</Form.Label>
+
+                            {/* EMAIL */}
+                            <Form.Group className="mb-4">
+                                <Form.Label>Email</Form.Label>
                                 <div className="input-group">
                                     <span className="input-group-text bg-white border-end-0 text-muted">
                                         <FaEnvelope />
                                     </span>
                                     <Form.Control
                                         type="text"
-                                        placeholder="Enter your username"
+                                        placeholder="Enter email"
                                         className="custom-input border-start-0 ps-0"
-                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
                                     />
                                 </div>
                             </Form.Group>
 
-                            {/* Password Input */}
-                            <Form.Group className="mb-4" controlId="formBasicPassword">
-                                <div className="d-flex justify-content-between">
-                                    <Form.Label className="fw-medium text-secondary">Password</Form.Label>
-                                    <Link to="/forgot-password" style={{ textDecoration: 'none', fontSize: '0.9rem', color: '#ee4d2d' }}>
-                                        Forgot Password?
-                                    </Link>
-                                </div>
+                            {/* PASSWORD */}
+                            <Form.Group className="mb-4">
+                                <Form.Label>Password</Form.Label>
                                 <div className="input-group">
                                     <span className="input-group-text bg-white border-end-0 text-muted">
                                         <FaLock />
                                     </span>
                                     <Form.Control
                                         type={showPassword ? "text" : "password"}
-                                        placeholder="Enter your password"
+                                        placeholder="Enter password"
                                         className="custom-input border-start-0 ps-0 border-end-0"
-                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
                                     />
                                     <span
                                         className="input-group-text bg-white border-start-0 text-muted"
-                                        style={{ cursor: 'pointer' }}
+                                        style={{ cursor: "pointer" }}
                                         onClick={togglePasswordVisibility}
                                     >
                                         {showPassword ? <FaEyeSlash /> : <FaEye />}
@@ -89,45 +165,23 @@ const Login = () => {
                                 </div>
                             </Form.Group>
 
-                            {/* Remember Me Checkbox */}
-                            <Form.Group className="mb-4" controlId="formBasicCheckbox">
-                                <Form.Check type="checkbox" label="Remember me for 30 days" className="text-muted small" />
-                            </Form.Group>
-
-                            {/* Submit Button */}
-                            <Button variant="primary" type="submit" className="w-100 btn-login mb-4 text-white">
+                            <Button type="submit" className="w-100 btn-login mb-4 text-white">
                                 Log In
                             </Button>
 
-                            {/* Divider */}
-                            <div className="d-flex align-items-center mb-4">
-                                <hr className="flex-grow-1" />
-                                <span className="mx-3 text-muted small">OR CONTINUE WITH</span>
-                                <hr className="flex-grow-1" />
-                            </div>
-
-                            {/* Social Buttons (Optional UI) */}
-                            <div className="d-flex gap-2 mb-4">
-                                <Button variant="light" className="w-50 social-btn d-flex align-items-center justify-content-center">
-                                    <FaGoogle className="me-2" /> Google
-                                </Button>
-                                <Button variant="light" className="w-50 social-btn d-flex align-items-center justify-content-center">
-                                    <FaFacebookF className="me-2" style={{ color: '#1877F2' }} /> Facebook
-                                </Button>
-                            </div>
-
-                            {/* Footer Link */}
-                            <div className="text-center mt-3">
+                            <div className="text-center">
                                 <p className="text-muted">
-                                    Don't have an account?{' '}
-                                    <Link to="/register" className="fw-bold" style={{ color: '#ee4d2d', textDecoration: 'none' }}>
-                                        Create an account
+                                    Don't have an account?{" "}
+                                    <Link to="/option" className="fw-bold" style={{ color: "#ee4d2d" }}>
+                                        Create one
                                     </Link>
                                 </p>
                             </div>
                         </Form>
+
                     </div>
                 </Col>
+
             </Row>
         </Container>
     );

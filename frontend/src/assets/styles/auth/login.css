@@ -1,0 +1,160 @@
+.login-container {
+    --primary-color: #ff6b3d;
+    --primary-hover: #e45121;
+    --soft-bg: #f3f4f6;
+    --shadow-1: 0 10px 30px rgba(0, 0, 0, 0.08);
+    --shadow-2: 0 20px 55px rgba(0, 0, 0, 0.12);
+
+    /* TOÀN TRANG */
+    min-height: 100vh;
+    background: linear-gradient(135deg, #fff1ec, #ffe3d6);
+    animation: fadeIn 0.6s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* BANNER HÌNH ẢNH */
+.login-container .login-banner {
+    background-image: url('https://images.unsplash.com/photo-1593642532744-d377ab507dc8?auto=format&fit=crop&w=1350&q=80');
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    min-height: 100vh;
+    filter: brightness(0.9);
+}
+
+.login-container .login-banner::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    backdrop-filter: blur(1px);
+    background: linear-gradient(135deg, rgba(255, 107, 61, 0.8), rgba(0, 0, 0, 0.6));
+}
+
+.login-container .banner-content {
+    position: relative;
+    z-index: 5;
+    color: white;
+    padding: 60px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.login-container .banner-content h1 {
+    font-size: 3.5rem;
+    text-transform: uppercase;
+    font-weight: 900;
+    letter-spacing: 2px;
+    text-shadow: 0 8px 25px rgba(0,0,0,0.45);
+}
+
+.login-container .banner-content p {
+    font-size: 1.4rem;
+    opacity: 0.9;
+}
+
+
+/* KHU VỰC FORM – KHÔNG CARD */
+.login-container .login-form-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+    background: var(--soft-bg);
+}
+
+/* FORM FULL-WIDTH SANG TRỌNG */
+.login-container .login-form-wrapper {
+    width: 100%;
+    max-width: 550px; /* tăng chiều rộng */
+    padding: 40px 35px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(18px);
+    border-radius: 26px;
+    box-shadow: var(--shadow-2);
+    animation: slideUp 0.5s ease;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(25px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* TIÊU ĐỀ FORM */
+.login-container .login-form-wrapper h2 {
+    font-weight: 800;
+    font-size: 2.1rem;
+    color: #222;
+    text-align: center;
+}
+
+.login-container .login-form-wrapper p {
+    text-align: center;
+    opacity: 0.75;
+    margin-bottom: 30px;
+}
+
+/* INPUT SANG TRỌNG */
+.login-container .custom-input {
+    padding: 15px 18px;
+    border-radius: 12px;
+    border: 1px solid #ccc;
+    background: #f9fafb;
+    transition: 0.25s ease;
+    font-size: 15px;
+}
+
+.login-container .custom-input:focus {
+    border-color: var(--primary-color);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(255, 107, 61, 0.25);
+}
+
+/* ICON INPUT */
+.login-container .input-group-text {
+    border-radius: px    0 0 12px !important;
+    background: #ffffff;
+    border-color: #ccc !important;
+    padding: 12px 15px;
+}
+
+/* BUTTON */
+.login-container .btn-login,
+.login-container .btn-register {
+    background: linear-gradient(135deg, var(--primary-color), #ff8c63);
+    border: none;
+    padding: 15px;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 1rem;
+    color: white !important;
+    letter-spacing: 0.7px;
+    box-shadow: 0 6px 20px rgba(255, 107, 61, 0.45);
+    transition: all 0.25s ease;
+}
+
+.login-container .btn-login:hover,
+.login-container .btn-register:hover {
+    background: linear-gradient(135deg, var(--primary-hover), #ff743c);
+    transform: translateY(-3px);
+    box-shadow: 0 13px 30px rgba(255, 107, 61, 0.55);
+}
+
+/* LINK */
+.login-container a {
+    text-decoration: none;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.login-container a:hover {
+    opacity: 0.8;
+}

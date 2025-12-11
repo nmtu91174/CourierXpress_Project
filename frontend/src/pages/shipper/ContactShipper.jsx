@@ -1,4 +1,4 @@
-import "../../assets/styles/shipper/ACshipper.css";
+import "../../assets/styles/shipper/ContactShipper.css";
 export default function Contact() {
   return (
     <>

@@ -356,18 +356,3 @@
         }
     }
 }
-
-
-/* ===== ẨN TẠM THỜI SIDEBAR USER ===== */
-
-.sidebar {
-    display: none !important;
-}
-
-
-/* Cho content chiếm full màn hình */
-
-.admin-content {
-    margin-left: 0 !important;
-    width: 100% !important;
-}
