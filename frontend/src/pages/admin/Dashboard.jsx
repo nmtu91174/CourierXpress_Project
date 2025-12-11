@@ -30,17 +30,17 @@ import "../../assets/styles/dashboard.css";
 export default function Dashboard() {
 
   // KPI
-  const totalOrders  = 3650;
+  const totalOrders = 3650;
   const totalRevenue = "₫ 12.8B";
-  const successRate  = "94%";
-  const cancelRate   = "4%";
+  const successRate = "94%";
+  const cancelRate = "4%";
 
   // Chart data
-  const branches = ["Hà Nội","HCM","Đà Nẵng","Cần Thơ"];
+  const branches = ["Hà Nội", "HCM", "Đà Nẵng", "Cần Thơ"];
   const ordersByBranch = [32, 21, 18, 9];
 
-  const days = ["2/12","3/12","4/12","5/12","6/12","7/12","8/12"];
-  const ordersLast7Days = [30,42,38,45,50,46,53];
+  const days = ["2/12", "3/12", "4/12", "5/12", "6/12", "7/12", "8/12"];
+  const ordersLast7Days = [30, 42, 38, 45, 50, 46, 53];
 
   const chartOrdersByBranch = {
     labels: branches,
@@ -48,7 +48,7 @@ export default function Dashboard() {
       {
         label: "Đơn hàng",
         data: ordersByBranch,
-        backgroundColor: ["#0d6efd","#4caf50","#ffeb3b","#f44336"],
+        backgroundColor: ["#0d6efd", "#4caf50", "#ffeb3b", "#f44336"],
         borderRadius: 6
       }
     ]
@@ -62,7 +62,7 @@ export default function Dashboard() {
         data: ordersLast7Days,
         borderColor: "#2196f3",
         backgroundColor: "rgba(33,150,243,0.25)",
-        tension:0.4
+        tension: 0.4
       }
     ]
   };
@@ -75,7 +75,7 @@ export default function Dashboard() {
 
         <Col md={3}>
           <Card className="border-0 shadow-sm text-white"
-            style={{ background:"linear-gradient(135deg,#007bff,#35a0ff)" }}>
+            style={{ background: "linear-gradient(135deg,#007bff,#35a0ff)" }}>
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
@@ -90,7 +90,7 @@ export default function Dashboard() {
 
         <Col md={3}>
           <Card className="border-0 shadow-sm text-white"
-            style={{ background:"linear-gradient(135deg,#43a047,#8bc34a)" }}>
+            style={{ background: "linear-gradient(135deg,#43a047,#8bc34a)" }}>
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
@@ -105,7 +105,7 @@ export default function Dashboard() {
 
         <Col md={3}>
           <Card className="border-0 shadow-sm text-white"
-            style={{ background:"linear-gradient(135deg,#ffc107,#ffde59)" }}>
+            style={{ background: "linear-gradient(135deg,#ffc107,#ffde59)" }}>
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
@@ -120,7 +120,7 @@ export default function Dashboard() {
 
         <Col md={3}>
           <Card className="border-0 shadow-sm text-white"
-            style={{ background:"linear-gradient(135deg,#e53935,#ff5252)" }}>
+            style={{ background: "linear-gradient(135deg,#e53935,#ff5252)" }}>
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
@@ -142,14 +142,16 @@ export default function Dashboard() {
           <div className="d-flex gap-3 flex-wrap">
 
             <Link
-              to="/admin/orders/create"
+              to="/admin/orders"
+              state={{ action: "create" }}
               className="btn btn-sm btn-lux-primary-blue btn-hover-scale"
             >
               <FaClipboardList className="me-2" /> Tạo vận đơn
             </Link>
 
             <Link
-              to="/admin/shipper/assign"
+              to="/admin/orders"
+              state={{ action: "assign" }}
               className="btn btn-sm btn-lux-primary-yellow btn-hover-scale"
             >
               <FaShippingFast className="me-2" /> Phân công shipper
@@ -196,61 +198,61 @@ export default function Dashboard() {
               </tr>
             </thead>
 
-          <tbody>
-            <tr>
+            <tbody>
+              <tr>
                 <td className="fw-bold text-primary">ORD-0001</td>
                 <td>Nguyễn Văn A</td>
                 <td>Trần Thị B</td>
                 <td>03/12/2025</td>
                 <td>
-                <span className="status-badge status-blue">Booked</span>
+                  <span className="status-badge status-blue">Booked</span>
                 </td>
                 <td>
-                <Link
+                  <Link
                     to="/admin/orders/1"
                     className="btn-lux-primary-blue-soft btn-hover-scale"
-                >
+                  >
                     Chi tiết
-                </Link>
+                  </Link>
                 </td>
-            </tr>
+              </tr>
 
-            <tr>
+              <tr>
                 <td className="fw-bold text-primary">ORD-0002</td>
                 <td>Lê Văn C</td>
                 <td>Phạm Thị D</td>
                 <td>02/12/2025</td>
                 <td>
-                <span className="status-badge status-yellow">In Transit</span>
+                  <span className="status-badge status-yellow">In Transit</span>
                 </td>
                 <td>
-                <Link
+                  <Link
                     to="/admin/orders/2"
                     className="btn-lux-primary-blue-soft btn-hover-scale"
-                >
+                  >
                     Chi tiết
-                </Link>
+                  </Link>
                 </td>
-            </tr>
+              </tr>
 
-            <tr>
+              <tr>
                 <td className="fw-bold text-primary">ORD-0003</td>
                 <td>Công ty XYZ</td>
                 <td>Kho Hà Nội</td>
                 <td>01/12/2025</td>
                 <td>
-                <span className="status-badge status-green">Delivered</span>
+                  <span className="status-badge status-green">Delivered</span>
                 </td>
                 <td>
-                <Link
+                  <Link
                     to="/admin/orders/3"
                     className="btn-lux-primary-blue-soft btn-hover-scale"
-                >
+                  >
                     Chi tiết
-                </Link>
+                  </Link>
                 </td>
-            </tr>
-        </tbody>
+              </tr>
+            </tbody>
 
 
           </Table>
@@ -268,12 +270,12 @@ export default function Dashboard() {
         <Col md={6}>
           <Card className="card-lux p-3">
             <h6 className="fw-bold mb-3">Đơn hàng theo chi nhánh</h6>
-            <div style={{ height:240 }}>
+            <div style={{ height: 240 }}>
               <Bar
                 data={chartOrdersByBranch}
                 options={{
-                  plugins:{ legend:{ display:true, position:"bottom" } },
-                  maintainAspectRatio:false
+                  plugins: { legend: { display: true, position: "bottom" } },
+                  maintainAspectRatio: false
                 }}
               />
             </div>
@@ -283,12 +285,12 @@ export default function Dashboard() {
         <Col md={6}>
           <Card className="card-lux p-3">
             <h6 className="fw-bold mb-3">7 ngày gần nhất</h6>
-            <div style={{ height:240 }}>
+            <div style={{ height: 240 }}>
               <Line
                 data={chartOrders7Days}
                 options={{
-                  plugins:{ legend:{ display:true, position:"bottom" } },
-                  maintainAspectRatio:false
+                  plugins: { legend: { display: true, position: "bottom" } },
+                  maintainAspectRatio: false
                 }}
               />
             </div>

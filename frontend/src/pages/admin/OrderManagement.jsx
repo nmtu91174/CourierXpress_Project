@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Card, Table, Button, Row, Col, Modal, Form, Badge } from "react-bootstrap";
 import { FaSearch, FaPlus, FaEdit, FaTrash, FaUserCog, FaBox, FaShippingFast, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import { Bar, Pie } from "react-chartjs-2";
@@ -160,6 +161,27 @@ export default function OrderManagement() {
     if (status === 7) return <Badge bg="success">Delivered</Badge>;
     return <Badge bg="secondary">Status {status}</Badge>;
   };
+
+  // 1. Khai báo hook
+  const location = useLocation();
+
+  // 2. useEffect để bắt tín hiệu từ Dashboard
+  useEffect(() => {
+    if (location.state?.action === "create") {
+      setShowCreateModal(true);
+      // Xóa state để tránh mở lại khi refresh (tùy chọn)
+      window.history.replaceState({}, document.title);
+    }
+
+    // Với tác vụ "Phân công shipper" (assign), vì cần chọn cụ thể một đơn hàng 
+    // nên ta không thể mở modal ngay. Thay vào đó, bạn có thể cuộn chuột xuống bảng 
+    // hoặc lọc danh sách đơn hàng cần phân công (nếu có logic lọc).
+    if (location.state?.action === "assign") {
+      // Ví dụ: Cuộn xuống bảng danh sách
+      const tableElement = document.querySelector('.lux-table-wrapper');
+      if (tableElement) tableElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [location]);
 
   return (
     <div className="admin-page">
