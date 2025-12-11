@@ -203,7 +203,26 @@ export default function OrderManagement() {
       {/* --- CHARTS (ĐƯỢC GIỮ NGUYÊN) --- */}
       <Row className="g-4 mb-4">
         <Col md={6}><Card className="card-lux p-3"><h6 className="fw-bold mb-3">Thống kê tuần</h6><div style={{ height: 200 }}><Bar data={chartDailyStatus} /></div></Card></Col>
-        <Col md={6}><Card className="card-lux p-3"><h6 className="fw-bold mb-3">Tỷ lệ trạng thái</h6><div style={{ height: 200 }}><Pie data={chartPie} /></div></Card></Col>
+        <Col md={6}>
+          <Card className="card-lux p-3">
+            <h6 className="fw-bold mb-3">Tỷ lệ trạng thái</h6>
+            {/* Thêm position: 'relative' và chiều cao cố định */}
+            <div style={{ height: '200px', position: 'relative' }}>
+              <Pie
+                data={chartPie}
+                options={{
+                  maintainAspectRatio: false, // <-- QUAN TRỌNG: Giúp chart ko bị phình to
+                  responsive: true,
+                  plugins: {
+                    legend: {
+                      position: 'right', // Đưa chú thích sang phải cho gọn (tuỳ chọn)
+                    }
+                  }
+                }}
+              />
+            </div>
+          </Card>
+        </Col>
       </Row>
 
       {/* TABLE (CẬP NHẬT THÊM NÚT) */}
