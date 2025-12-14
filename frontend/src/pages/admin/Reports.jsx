@@ -20,6 +20,7 @@ import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
 import "../../assets/styles/reports.css";
 import "../../assets/styles/dashboard.css";
+import { initPageAnimations } from "../../utils/gsapAnimations";
 
 /**
  * ENTERPRISE REPORTS (ECharts only)
@@ -228,7 +229,7 @@ export default function Reports() {
   // FETCH REAL DATA FROM API
   // ==========================
   const [kpi, setKpi] = useState({
-    revenueB: 0,
+    total_revenue: 0,
     orders: 0,
     deliveredRate: 0,
     cancelRate: 0,
@@ -289,6 +290,26 @@ export default function Reports() {
 
     fetchReportsData();
   }, [filters]);
+
+  // Initialize GSAP animations for KPI cards
+  useEffect(() => {
+    // Wait for KPI cards to render before animating
+    if (!loading) {
+      // Small delay to ensure DOM is ready
+      let cleanup = null;
+      const timer = setTimeout(() => {
+        cleanup = initPageAnimations({ kpiSelector: ".kpi-item" });
+      }, 100);
+      
+      // Return cleanup function that clears both timer and GSAP context
+      return () => {
+        clearTimeout(timer);
+        if (cleanup) {
+          cleanup();
+        }
+      };
+    }
+  }, [loading]);
 
   // Transform API data to chart format
   const serviceDist = useMemo(() => {
@@ -422,7 +443,7 @@ export default function Reports() {
   function exportCSV() {
     const data = [
       ["Báo cáo", "Giá trị"],
-      ["Doanh thu (Tỷ)", kpi.revenueB],
+      ["Doanh thu (VNĐ)", kpi.total_revenue || 0],
       ["Tổng đơn", kpi.orders],
       ["Tỷ lệ giao thành công (%)", kpi.deliveredRate],
       ["Tỷ lệ thất bại (%)", kpi.cancelRate],
@@ -442,7 +463,7 @@ export default function Reports() {
     // KPI Sheet
     const kpiData = [
       ["Chỉ số", "Giá trị"],
-      ["Doanh thu (Tỷ)", kpi.revenueB],
+      ["Doanh thu (VNĐ)", kpi.total_revenue || 0],
       ["Tổng đơn", kpi.orders],
       ["Tỷ lệ giao thành công (%)", kpi.deliveredRate],
       ["Tỷ lệ thất bại (%)", kpi.cancelRate],
@@ -968,7 +989,14 @@ export default function Reports() {
               <div className="d-flex justify-content-between align-items-center">
                 <div>
                   <p className="m-0 opacity-75 small">Doanh thu</p>
-                  <h2 className="fw-bold my-1">{loading ? "..." : `${kpi.revenueB}B`}</h2>
+                  <h2 className="fw-bold my-1">
+                    {loading
+                      ? "..."
+                      : Number(kpi.total_revenue || 0).toLocaleString("vi-VN", {
+                          style: "currency",
+                          currency: "VND",
+                        })}
+                  </h2>
                 </div>
                 <FaMoneyBillWave className="fs-1 opacity-50" />
               </div>

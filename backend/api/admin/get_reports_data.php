@@ -115,7 +115,9 @@ $delivered = (int)$kpiData["delivered"];
 $failed = (int)$kpiData["failed"];
 $totalRevenue = (float)$kpiData["total_revenue"];
 
+// Tỷ lệ giao thành công: tính trên những đơn Delivered
 $deliveredRate = $totalOrders > 0 ? round(($delivered / $totalOrders) * 100) : 0;
+// Tỷ lệ thất bại: tính trên đơn Failed
 $cancelRate = $totalOrders > 0 ? round(($failed / $totalOrders) * 100) : 0;
 
 // ==========================
@@ -338,10 +340,10 @@ while ($row = $failedRiskResult->fetch_assoc()) {
 // ==========================
 Response::success("Reports data", [
     "kpi" => [
-        "revenueB" => round($totalRevenue / 1000000000, 2), // Convert to billions
+        "total_revenue" => $totalRevenue, // Tổng doanh thu (VNĐ) - format như dashboard
         "orders" => $totalOrders,
-        "deliveredRate" => $deliveredRate,
-        "cancelRate" => $cancelRate,
+        "deliveredRate" => $deliveredRate, // Tỷ lệ giao thành công: delivered / total_orders
+        "cancelRate" => $cancelRate, // Tỷ lệ thất bại: failed / total_orders
     ],
     "statusTimeData" => $statusTimeData,
     "revenueTimeData" => $revenueTimeData,

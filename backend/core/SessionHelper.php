@@ -37,9 +37,9 @@ class SessionHelper
                 ini_set('session.cookie_samesite', 'None');
                 ini_set('session.cookie_secure', 1);
             } elseif ($isLocalhost) {
-                // Localhost HTTP: thử dùng SameSite=None với Secure=false
-                // Chrome và các trình duyệt hiện đại cho phép điều này trên localhost
-                ini_set('session.cookie_samesite', 'None');
+                // Localhost HTTP: dùng Lax (không cần None vì không có cross-site issue)
+                // Lax hoạt động tốt hơn trên localhost và không cần Secure flag
+                ini_set('session.cookie_samesite', 'Lax');
                 ini_set('session.cookie_secure', 0);
             } else {
                 // Fallback: dùng Lax

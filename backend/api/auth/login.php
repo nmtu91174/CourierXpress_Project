@@ -12,9 +12,19 @@ ini_set('log_errors', 1);
 // =====================================================
 // CORS (PHẢI ĐẶT TRƯỚC)
 // =====================================================
-require_once __DIR__ . "/../../core/Cors.php";
-Cors::handlePreflight();
-Cors::setHeaders();
+try {
+    require_once __DIR__ . "/../../core/Cors.php";
+    Cors::handlePreflight();
+    Cors::setHeaders();
+} catch (Exception $e) {
+    error_log("CORS ERROR: " . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        "status" => "error",
+        "message" => "CORS configuration error"
+    ]);
+    exit;
+}
 
 // ✅ OPTIONS phải exit sớm
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
