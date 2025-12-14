@@ -26,9 +26,17 @@ if (!function_exists("require_login")) {
         // ==========================
         // 1️⃣ AUTH VIA SESSION
         // ==========================
-        if (isset($_SESSION["user"]) && is_array($_SESSION["user"])) {
-            $GLOBALS["auth_user"] = $_SESSION["user"];
-            return;
+        // ⭐ FIX: Kiểm tra session một cách an toàn
+        if (isset($_SESSION["user"]) && is_array($_SESSION["user"]) && !empty($_SESSION["user"])) {
+            // ⭐ QUAN TRỌNG: Đảm bảo session có đủ thông tin cần thiết
+            if (isset($_SESSION["user"]["id"]) && isset($_SESSION["user"]["role"])) {
+                $GLOBALS["auth_user"] = $_SESSION["user"];
+                return;
+            } else {
+                // Session không hợp lệ - clear và yêu cầu login lại
+                unset($_SESSION["user"]);
+                error_log("AUTH: Session user missing required fields (id or role)");
+            }
         }
 
         // ==========================
