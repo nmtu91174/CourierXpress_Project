@@ -49,3 +49,9 @@ time=2025-12-13T20:25:35+00:00 event=DELETE_ORDER actor_id=1 actor_role=admin re
 time=2025-12-14T14:46:59+00:00 event=DELETE_ORDER actor_id=1 actor_role=admin resource=order resource_id=1 outcome=SUCCESS message="Delete order ORD001"
 [2025-12-14 14:47:05] user=1 role=admin action=ASSIGN_SHIPPER order=4 note=shipper=4
 [2025-12-14 14:48:03] user=1 role=admin action=CREATE_ORDER order=6 note=ORD0006
+[2025-12-14 22:00:46] user=1 role=admin action=ASSIGN_AGENT order=6 note=agent=3
+[2025-12-14 22:03:37] user=1 role=admin action=CREATE_ORDER order=8 note=ORD0008
+[2025-12-14 22:04:03] user=1 role=admin action=UPDATE_STATUS order=1 note=Cập nhật đơn hàng
+[2025-12-14 22:04:07] user=1 role=admin action=UPDATE_STATUS order=2 note=Cập nhật đơn hàng
+[2025-12-14 22:04:11] user=1 role=admin action=UPDATE_STATUS order=3 note=Cập nhật đơn hàng
+[2025-12-14 22:04:27] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng

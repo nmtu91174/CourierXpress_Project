@@ -1,53 +1,57 @@
 // src/App.jsx
 
-// 1. main.jsx đã bọc BrowserRouter → App.jsx CHỈ dùng Routes
 import { Routes, Route, Navigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// ================= IMPORT CÁC TRANG =================
+// ================= IMPORT =================
 import Header from './components/Header';
 import Footer from './components/Footer';
+
+// Public pages
 import Tracking from './pages/public/Tracking.jsx';
+import TrackingResult from './pages/public/TrackingResult';
+import HomePageCostumer from './pages/public/HomePage.jsx';
+
+// Auth pages
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register.jsx';
 import Option from './pages/auth/Option.jsx';
-import TrackingResult from './pages/public/TrackingResult';
 import ProtectedRoute from "./pages/auth/ProtectedRoute.jsx";
 import NoPermission from "./pages/auth/NoPermission.jsx";
-import HomePageCostumer from './pages/public/HomePage.jsx';
 
-// ================= ADMIN IMPORT =================
+// Customer pages
+import CreateOrder from './pages/user/CreateOrder.jsx';
+import UserOrdersPage from './pages/shipper/UserOrdersPage.jsx';
+import UserProfilePage from './pages/shipper/UserProfilePage.jsx';
+import OrderDetail from './pages/user/OrderDetail.jsx';
+
+// Admin pages
 import AdminLayout from './components/Layouts/AdminLayout.jsx';
 import Dashboard from './pages/admin/Dashboard';
 import OrderManagement from './pages/admin/OrderManagement.jsx';
 import AgentsManagement from './pages/admin/AgentsManagement.jsx';
 import Reports from './pages/admin/Reports.jsx';
 
-// ================= SHIPPER =================
+// Shipper pages
 import HomePageShipper from './pages/shipper/HomePageShipper.jsx';
 import AboutUsShipper from './pages/shipper/AboutUsShipper.jsx';
 import ContactShipper from './pages/shipper/ContactShipper.jsx';
 import OrderDetailShipper from './pages/shipper/OrderDetailShipper.jsx';
 
-// ================= USER =================
-import UserOrdersPage from './pages/shipper/UserOrdersPage.jsx';
-import UserProfilePage from './pages/shipper/UserProfilePage.jsx';
+// ================= LAYOUT =================
 
-// ================= CUSTOMER =================
-import CreateOrder from './pages/user/CreateOrder.jsx';
-
-// (Các phần Layout PublicLayout, AuthLayout chú giữ nguyên như cũ...)
-
-// Layout cho trang Public
+// Layout cho các trang public (có Header + Footer)
 const PublicLayout = ({ children }) => (
   <>
     <Header />
-    <main style={{ minHeight: '80vh' }}>{children}</main>
+    <main style={{ minHeight: '80vh' }}>
+      {children}
+    </main>
     <Footer />
   </>
 );
 
-// Layout Login / Register / Option
+// Layout cho login / register / option / create order
 const AuthLayout = ({ children }) => (
   <main style={{ minHeight: '100vh', backgroundColor: '#fff' }}>
     {children}
@@ -59,21 +63,21 @@ export default function App() {
     <Routes>
 
       {/* ================= PUBLIC ================= */}
-      <Route
-        path="/tracking"
-        element={
-          <PublicLayout>
-            <Tracking />
-          </PublicLayout>
-        }
-      />
 
-      {/* Homepage customer */}
       <Route
         path="/"
         element={
           <PublicLayout>
             <HomePageCostumer />
+          </PublicLayout>
+        }
+      />
+
+      <Route
+        path="/tracking"
+        element={
+          <PublicLayout>
+            <Tracking />
           </PublicLayout>
         }
       />
@@ -87,7 +91,8 @@ export default function App() {
         }
       />
 
-      {/* ================= LOGIN / REGISTER / OPTION ================= */}
+      {/* ================= AUTH ================= */}
+
       <Route
         path="/login"
         element={
@@ -115,18 +120,18 @@ export default function App() {
         }
       />
 
-      {/* ================= CUSTOMER (USER) ================= */}
-      {/* Tạo đơn hàng – chỉ customer được phép */}
+      {/* ================= CREATE ORDER ================= */}
+      {/* Trang tạo đơn dùng chung cho khách vãng lai và user đã đăng nhập */}
       <Route
         path="/createorder"
         element={
-          <ProtectedRoute allowed={['customer']}>
-            <AuthLayout>
-              <CreateOrder />
-            </AuthLayout>
-          </ProtectedRoute>
+          <AuthLayout>
+            <CreateOrder />
+          </AuthLayout>
         }
       />
+
+      {/* ================= CUSTOMER (LOGIN) ================= */}
 
       <Route
         path="/user/profile"
@@ -140,7 +145,7 @@ export default function App() {
       />
 
       <Route
-        path="/user/orders"
+        path="/orders"
         element={
           <ProtectedRoute allowed={['customer']}>
             <PublicLayout>
@@ -150,7 +155,19 @@ export default function App() {
         }
       />
 
-      {/* ================= ADMIN + AGENT (DASHBOARD) ================= */}
+      <Route
+        path="/user/orders/:id"
+        element={
+          <ProtectedRoute allowed={['customer']}>
+            <PublicLayout>
+              <OrderDetail />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ================= ADMIN + AGENT ================= */}
+
       <Route
         path="/admin"
         element={
@@ -164,10 +181,10 @@ export default function App() {
         <Route path="orders" element={<OrderManagement />} />
         <Route path="agents" element={<AgentsManagement />} />
         <Route path="reports" element={<Reports />} />
-        {/* sau này nếu thêm route admin khác thì gắn ở đây */}
       </Route>
 
       {/* ================= SHIPPER ================= */}
+
       <Route
         path="/shipper/home"
         element={
@@ -212,10 +229,8 @@ export default function App() {
         }
       />
 
+      {/* ================= FALLBACK ================= */}
 
-
-
-      {/* ================= NO PERMISSION / FALLBACK ================= */}
       <Route path="/no-permission" element={<NoPermission />} />
       <Route path="*" element={<Navigate to="/" replace />} />
 

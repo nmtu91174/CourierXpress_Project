@@ -20,20 +20,6 @@
     transform: scale(1.08);
   }
   
-  /* FEATURE BOX */
-  .feature-box {
-    border: 1px solid #ebebeb;
-    padding: 25px;
-    border-radius: 12px;
-    background: white;
-    transition: 0.3s;
-  }
-  
-  .feature-box:hover {
-    transform: translateY(-4px);
-    box-shadow: 0px 8px 20px rgba(0,0,0,0.1);
-  }
-  
   /* STATISTICS */
   .stat-number {
     font-size: 2rem;
@@ -44,8 +30,8 @@
     font-size: 1rem;
     color: #555555;
   }
-  /*
-     BANNER FULL WIDTH + ZOOM CENTER */
+  
+  /* BANNER FULL WIDTH + ZOOM CENTER */
   .banner-full {
     width: 100%;
     height: 330px;
@@ -61,10 +47,7 @@
     transform: scale(1.15);
   }
   
-  
-  /* 
-     SQUARE IMAGE (3 HÌNH DỊCH VỤ)
-      */
+  /* SQUARE IMAGE (3 HÌNH DỊCH VỤ) */
   .square-img {
     width: 160px;                 
     height: 160px;
@@ -87,10 +70,7 @@
     transform: scale(1.08);
   }
   
-  
-  /* 
-     FEATURE BOX
-     */
+  /* FEATURE BOX */
   .feature-box {
     padding: 20px;
     background: #fff;
@@ -104,16 +84,6 @@
   .feature-box:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-  }
-  
-  
-  /* 
-     STAT NUMBER
-      */
-  .stat-number {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #ff8c00;
   }
   /* CONTACT HEADER STYLE */
   .contact-header {
