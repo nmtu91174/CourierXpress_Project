@@ -2,51 +2,59 @@
 /**
  * SessionHelper.php
  * ------------------------------------
- * Helper để config và start session đúng cách cho CORS
+ * Cross-browser safe session cookie policy
+ * - HTTP (dev): SameSite=Lax (Firefox/Chrome/Edge đều nhận)
+ * - HTTPS:
+ *    - same-host: Lax
+ *    - cross-host (frontend khác domain): None + Secure
  */
 
 class SessionHelper
 {
-    /**
-     * Start session với config phù hợp cho CORS và credentials
-     */
     public static function start()
     {
         if (session_status() !== PHP_SESSION_NONE) {
-            return; // Session đã được start
+            return;
         }
 
         try {
-            // Kiểm tra nếu đang dùng HTTPS
-            $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') 
-                       || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
-            
-            // Kiểm tra nếu là localhost
-            $isLocalhost = in_array($_SERVER['HTTP_HOST'] ?? '', [
-                'localhost',
-                'localhost:8888',
-                '127.0.0.1',
-                '127.0.0.1:8888'
-            ]);
-            
-            // ⭐ QUAN TRỌNG: Dùng session_set_cookie_params() để đảm bảo cookie được set đúng cách
-            $lifetime = 0; // Session cookie (expires khi đóng browser)
-            $path = '/';
-            $domain = ''; // Để trống để dùng domain hiện tại (localhost)
-            $secure = $isHttps; // Secure chỉ khi HTTPS
-            $httponly = true; // HttpOnly để bảo vệ khỏi XSS
-            
-            // ⭐ FIX: Trên localhost HTTP, vẫn dùng None (browsers hiện đại cho phép)
-            // Vì cần CORS với credentials từ frontend (port 5173) đến backend (port 8888)
-            if ($isHttps) {
-                $samesite = 'None'; // HTTPS: dùng None với Secure=1
-            } elseif ($isLocalhost) {
-                $samesite = 'None'; // Localhost HTTP: dùng None với Secure=0 (browsers cho phép)
-            } else {
-                $samesite = 'Lax'; // Fallback: dùng Lax
+            // Detect HTTPS
+            $isHttps =
+                (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+                (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
+
+            // Server host (strip port)
+            $hostHeader = $_SERVER['HTTP_HOST'] ?? '';
+            $serverHost = strtolower(trim(preg_replace('/:\d+$/', '', $hostHeader)));
+
+            // Origin host (strip port) if present
+            $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+            $originHost = '';
+            if ($origin) {
+                $parsed = parse_url($origin);
+                $originHost = strtolower(trim($parsed['host'] ?? ''));
             }
-            
-            // PHP 7.3+ hỗ trợ SameSite trong session_set_cookie_params
+
+            // Decide SameSite policy
+            // - HTTP: ALWAYS Lax (this fixes Firefox reject)
+            // - HTTPS: if cross-host then None+Secure else Lax
+            $sameSite = 'Lax';
+            if ($isHttps) {
+                if ($originHost !== '' && $originHost !== $serverHost) {
+                    $sameSite = 'None';
+                } else {
+                    $sameSite = 'Lax';
+                }
+            } else {
+                $sameSite = 'Lax';
+            }
+
+            $lifetime = 0;
+            $path = '/';
+            $domain = '';          // keep default host-only cookie
+            $secure = $isHttps;    // Secure only on HTTPS
+            $httponly = true;
+
             if (PHP_VERSION_ID >= 70300) {
                 session_set_cookie_params([
                     'lifetime' => $lifetime,
@@ -54,22 +62,17 @@ class SessionHelper
                     'domain' => $domain,
                     'secure' => $secure,
                     'httponly' => $httponly,
-                    'samesite' => $samesite
+                    'samesite' => $sameSite,
                 ]);
             } else {
-                // PHP < 7.3: dùng cách cũ + set SameSite qua ini_set
                 session_set_cookie_params($lifetime, $path, $domain, $secure, $httponly);
-                ini_set('session.cookie_samesite', $samesite);
+                ini_set('session.cookie_samesite', $sameSite);
             }
-            
-            // ⭐ QUAN TRỌNG: Start session
-            // PHP sẽ tự động write session khi script kết thúc
+
             session_start();
-            
-        } catch (Exception $e) {
+
+        } catch (Throwable $e) {
             error_log("SessionHelper::start() error: " . $e->getMessage());
-            // Không throw exception, chỉ log để không block request
         }
     }
 }
-
