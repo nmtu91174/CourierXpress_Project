@@ -1,86 +1,287 @@
-.page-header {
-    margin-bottom: 28px;
-}
+/* =======================================================
+   REPORTS PAGE - LUXURY DQN ENTERPRISE STANDARD
+   ======================================================= */
 
-.kpi-card {
-    border-radius: 14px;
-    padding: 20px;
-    color: #fff;
-    font-weight: 600;
-    box-shadow:
-        0 1px 3px rgba(0,0,0,.12),
-        0 8px 28px rgba(0,0,0,.08);
-}
-
-.kpi-card p {
-    margin: 0;
-    font-size: .9rem;
-    opacity: .8;
-}
-
-.kpi-card h2 {
-    margin: 8px 0 0;
-    font-size: 1.8rem;
-}
-
-.kpi-blue   { background: #0d6efd; }
-.kpi-green  { background: #36c689; }
-.kpi-yellow { background: #ffc107; }
-.kpi-red    { background: #ff4d6d; }
-
-.chart-card {
-    padding: 22px;
-    border-radius: 14px;
-}
-
-.chart-placeholder {
-    border-radius: 12px;
-    background: #f6f7fb;
-    height: 280px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #9fa6b2;
-    font-size: .9rem;
-    border: 1px dashed rgba(0,0,0,.2);
-}
-
-
+/* ===============================
+   PAGE
+   =============================== */
 .admin-page {
-  padding: 2rem;
+  padding: 2.25rem;
+  background: linear-gradient(180deg, #f7f8fb 0%, #ffffff 100%);
+  min-height: 100vh;
 }
 
-.card-lux {
-  border-radius: 14px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-  border: none;
-  background: #ffffff;
+/* ===============================
+   HEADER - LUXURY
+   =============================== */
+.page-header {
+  margin-bottom: 32px;
+  padding: 24px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
-
-.kpi-card {
-  border-radius: 14px;
-  color: #fff;
-  text-align: center;
-  padding: 1.4rem 0;
-  font-weight: 600;
-}
-
-.kpi-blue    { background: linear-gradient(135deg,#007bff,#3bb8ff); }
-.kpi-green   { background: linear-gradient(135deg,#43a047,#8bc34a); }
-.kpi-yellow  { background: linear-gradient(135deg,#ff9800,#ffc107); }
-.kpi-red     { background: linear-gradient(135deg,#e53935,#ff5252); }
 
 .page-header h3 {
   font-weight: 700;
+  letter-spacing: 0.3px;
+  font-size: 1.85rem;
+  background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0;
+}
+
+/* ===============================
+   KPI CARDS - LUXURY ENHANCED
+   =============================== */
+.kpi-card {
+  border-radius: 20px;
+  padding: 1.8rem 1.5rem;
+  color: #fff;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.16),
+    0 12px 48px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.kpi-card:hover::before {
+  opacity: 1;
+}
+
+.kpi-card p {
+  margin: 0;
+  font-size: 0.875rem;
+  opacity: 0.9;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpi-card h2 {
+  margin-top: 8px;
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+/* 🔒 LUXURY KPI COLORS */
+.kpi-blue {
+  background: linear-gradient(135deg, #007bff 0%, #3bb8ff 100%);
+}
+
+.kpi-green {
+  background: linear-gradient(135deg, #43a047 0%, #8bc34a 100%);
+}
+
+.kpi-yellow {
+  background: linear-gradient(135deg, #ff9800 0%, #ffc107 100%);
+}
+
+.kpi-red {
+  background: linear-gradient(135deg, #e53935 0%, #ff5252 100%);
+}
+
+/* ===============================
+   CARD LUX - ENHANCED
+   =============================== */
+.card-lux {
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 12px 32px rgba(15, 23, 42, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.card-lux:hover {
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.06),
+    0 16px 48px rgba(15, 23, 42, 0.12);
+  transform: translateY(-2px);
+}
+
+.card-lux h6 {
+  color: #1a1d29;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.2px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.06);
+}
+
+/* ===============================
+   FILTER PANEL - LUXURY
+   =============================== */
+.filter-panel {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  padding: 16px 20px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .filter-panel select {
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  font-weight: 500;
+  border-radius: 10px;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  background: #ffffff;
+  color: #1a1d29;
+  transition: all 0.25s ease;
+  min-width: 140px;
+}
+
+.filter-panel select:hover {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
 .filter-panel select:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 0.15rem rgba(13,110,253,.25);
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+  outline: none;
 }
+
+.filter-panel .btn {
+  border-radius: 10px;
+  padding: 8px 20px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.filter-panel .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ===============================
+   TABLE - LUXURY ENTERPRISE
+   =============================== */
+.card-lux table,
+.table-luxury {
+  margin-bottom: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.card-lux table thead,
+.table-luxury thead {
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.card-lux table thead th,
+.table-luxury thead th {
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  padding: 16px 18px;
+  border-bottom: 2px solid rgba(0, 123, 255, 0.15);
+  white-space: nowrap;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.card-lux table tbody td,
+.table-luxury tbody td {
+  padding: 14px 18px;
+  font-size: 0.9rem;
+  color: #1a1d29;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  vertical-align: middle;
+  transition: all 0.2s ease;
+}
+
+.card-lux table tbody tr,
+.table-luxury tbody tr {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #ffffff;
+}
+
+.card-lux table tbody tr:hover,
+.table-luxury tbody tr:hover {
+  background: linear-gradient(90deg, rgba(0, 123, 255, 0.06) 0%, rgba(0, 123, 255, 0.03) 100%);
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+}
+
+.card-lux table tbody tr:hover td,
+.table-luxury tbody tr:hover td {
+  color: #007bff;
+  font-weight: 500;
+}
+
+.card-lux table tbody tr:last-child td,
+.table-luxury tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Alternating row colors for better readability */
+.card-lux table tbody tr:nth-child(even),
+.table-luxury tbody tr:nth-child(even) {
+  background: rgba(248, 249, 250, 0.5);
+}
+
+.card-lux table tbody tr:nth-child(even):hover,
+.table-luxury tbody tr:nth-child(even):hover {
+  background: linear-gradient(90deg, rgba(0, 123, 255, 0.08) 0%, rgba(0, 123, 255, 0.04) 100%);
+}
+
+/* ===============================
+   CHART CARD
+   =============================== */
+.chart-card {
+  padding: 24px;
+  border-radius: 18px;
+}
+
+/* ===============================
+   PLACEHOLDER
+   =============================== */
+.chart-placeholder {
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f6f7fb 0%, #ffffff 100%);
+  height: 280px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #9fa6b2;
+  font-size: 0.9rem;
+  border: 2px dashed rgba(0, 0, 0, 0.1);
+}
+  

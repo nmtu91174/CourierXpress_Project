@@ -1,0 +1,102 @@
+/* ============================================================
+   ORDER DETAIL PANEL — Enterprise Luxury Sliding Panel (DQN)
+   ============================================================ */
+
+.order-panel {
+    position: fixed;
+    top: 0;
+    right: -480px;   /* Hidden default */
+    width: 420px;
+    height: 100vh;
+    background: #ffffff;
+    box-shadow: -4px 0 16px rgba(0,0,0,0.08);
+    z-index: 9999;
+    transition: right .35s cubic-bezier(.25,.1,.25,1);
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid #eef0f4;
+}
+
+.order-panel.open {
+    right: 0;
+}
+
+/* HEADER */
+.order-panel-header {
+    padding: 18px 20px;
+    border-bottom: 1px solid #eef0f4;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafbfc;
+}
+
+.order-panel-header h5 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+
+/* CLOSE BUTTON */
+.btn-close-panel {
+    border: none;
+    background: none;
+    color: #444;
+    font-size: 1.2rem;
+    transition: .18s ease;
+}
+
+.btn-close-panel:hover {
+    color: #0d6efd;
+    transform: scale(1.15);
+}
+
+/* BODY */
+.order-panel-body {
+    padding: 18px 22px;
+    overflow-y: auto;
+}
+
+/* SECTION */
+.panel-section {
+    margin-bottom: 24px;
+}
+
+.section-title {
+    font-size: .82rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #6d7380;
+    margin-bottom: 10px;
+    letter-spacing: .5px;
+}
+
+.section-content p {
+    font-size: .9rem;
+    margin-bottom: 6px;
+    color: #333;
+}
+
+.section-content strong {
+    color: #111;
+}
+
+/* SCROLLBAR */
+.order-panel-body::-webkit-scrollbar {
+    width: 7px;
+}
+.order-panel-body::-webkit-scrollbar-thumb {
+    background: #c7c7c7;
+    border-radius: 4px;
+}
+.order-panel-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+/* FOOTER ACTIONS (optional if needed) */
+.order-panel-footer {
+    border-top: 1px solid #eef0f4;
+    padding: 14px 18px;
+    background: #fafbfc;
+}

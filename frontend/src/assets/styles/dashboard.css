@@ -1,4 +1,29 @@
 /* ======================================
+   BUTTON CHUNG CHO ADMIN PAGES
+====================================== */
+
+/* NÚT TẠO MỚI (Tạo vận đơn, Thêm Đại Lý) - DÙNG CHUNG */
+.btn-lux-primary {
+  background: linear-gradient(135deg, #007bff, #35a0ff);
+  color: #fff !important;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-lux-primary:hover {
+  filter: brightness(1.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+/* ======================================
    BUTTON 3 MÀU CHO DASHBOARD
 ====================================== */
 
@@ -32,6 +57,22 @@
   filter: brightness(1.1);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(255, 193, 7, .35);
+}
+
+/* ĐỎ - PHÂN CÔNG AGENT */
+.btn-lux-primary-red {
+  background: linear-gradient(135deg,#e53935,#ff5252);
+  color: #ffffff !important;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-weight: 600;
+  transition: .25s ease;
+}
+.btn-lux-primary-red:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(229, 57, 53, .35);
 }
 
 /* XANH LÁ - XEM BÁO CÁO */

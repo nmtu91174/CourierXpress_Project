@@ -3,6 +3,359 @@
    Pixel Perfect + Glass Hover + Smooth Interaction
 ======================================================= */
 
+/* ================== LUXURY MODAL ================== */
+.modal-luxury .modal-dialog {
+    max-width: 1111px;
+    margin: 1.75rem auto;
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 3.5rem);
+}
+
+.modal-luxury.modal-dialog-centered .modal-dialog {
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 1rem);
+}
+
+.modal-luxury .modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    width: 100%;
+    margin: auto;
+}
+
+
+
+
+/* Responsive Mobile */
+@media (max-width: 768px) {
+    .modal-luxury .modal-dialog {
+        max-width: 95%;
+        margin: 0.5rem auto;
+        max-height: 95vh;
+    }
+    
+    .modal-luxury .modal-content {
+        max-height: 95vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .modal-luxury .modal-body {
+        padding: 1rem !important;
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+    }
+    
+    .modal-luxury .luxury-modal-header {
+        padding: 12px 16px !important;
+        flex-shrink: 0;
+    }
+    
+    .modal-luxury .luxury-modal-footer {
+        padding: 12px 16px !important;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .modal-luxury .luxury-modal-footer .btn {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    .luxury-order-info {
+        padding: 12px !important;
+    }
+    
+    .luxury-section-header {
+        margin-bottom: 12px;
+    }
+    
+    .luxury-info-item {
+        padding: 6px 0;
+    }
+    
+    .luxury-info-item small {
+        font-size: 0.7rem;
+        white-space: nowrap;
+    }
+    
+    .luxury-modal-header .modal-title {
+        font-size: 1.1rem;
+    }
+    
+    .luxury-info-item .fw-bold,
+    .luxury-info-item .small {
+        white-space: normal;
+        word-wrap: break-word;
+        font-size: 0.85rem;
+    }
+}
+
+/* Prevent text wrapping in labels */
+.luxury-info-item small {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    display: inline-block;
+}
+
+/* Ensure form labels don't wrap */
+.luxury-section-header h6 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Make sure inputs don't break layout */
+.luxury-input,
+.luxury-select,
+.luxury-textarea {
+    min-width: 0;
+    width: 100%;
+}
+
+/* Fix modal centering */
+.modal-luxury {
+    text-align: left;
+}
+
+/* Ensure modal is centered on all screen sizes */
+.modal.show .modal-dialog {
+    transform: none;
+}
+
+.luxury-modal-header {
+    padding: 20px 24px;
+    border-bottom: none !important;
+}
+
+.luxury-modal-header .modal-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.luxury-modal-header .btn-close {
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
+}
+
+.luxury-modal-header .btn-close:hover {
+    opacity: 1;
+}
+
+.luxury-modal-body {
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+}
+
+.luxury-order-info {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.luxury-info-item {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.luxury-info-item:last-child {
+    border-bottom: none;
+}
+
+.luxury-info-item small {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+.luxury-info-item .fw-bold {
+    font-size: 0.95rem;
+    color: #212529;
+    margin-top: 4px;
+}
+
+.luxury-select {
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: linear-gradient(180deg, #ffffff, #f9fafb);
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 12px 16px;
+    transition: all 0.22s ease;
+}
+
+.luxury-select:focus {
+    border-color: #2e90fa;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(46, 144, 250, 0.1);
+    outline: none;
+}
+
+.luxury-textarea {
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: linear-gradient(180deg, #ffffff, #f9fafb);
+    font-size: 0.9rem;
+    padding: 12px 16px;
+    transition: all 0.22s ease;
+    resize: vertical;
+}
+
+.luxury-textarea:focus {
+    border-color: #2e90fa;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(46, 144, 250, 0.1);
+    outline: none;
+}
+
+.luxury-modal-footer {
+    padding: 16px 24px;
+    background: #f8f9fa;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-lux-outline-secondary {
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 10px 20px;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    color: #495057;
+    transition: all 0.25s ease;
+}
+
+.btn-lux-outline-secondary:hover {
+    background: #f8f9fa;
+    border-color: rgba(0, 0, 0, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ================== LUXURY SECTION HEADER ================== */
+.luxury-section-header {
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+    margin-bottom: 16px;
+}
+
+.luxury-section-header h6 {
+    font-size: 1rem;
+    letter-spacing: 0.3px;
+}
+
+/* ================== LUXURY INPUT ================== */
+.luxury-input {
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: linear-gradient(180deg, #ffffff, #f9fafb);
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 12px 16px;
+    transition: all 0.22s ease;
+}
+
+.luxury-input:focus {
+    border-color: #2e90fa;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(46, 144, 250, 0.1);
+    outline: none;
+}
+
+.luxury-input::placeholder {
+    color: #98a2b3;
+    font-weight: 400;
+}
+
+/* File input specific styles */
+.luxury-input[type="file"] {
+    cursor: pointer !important;
+    padding: 10px 16px;
+    border: 2px dashed rgba(0, 0, 0, 0.15);
+    background: linear-gradient(180deg, #ffffff, #f9fafb);
+    transition: all 0.22s ease;
+}
+
+.luxury-input[type="file"]:hover {
+    border-color: #2e90fa;
+    background: #ffffff;
+}
+
+.luxury-input[type="file"]:focus {
+    border-color: #2e90fa;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(46, 144, 250, 0.1);
+    outline: none;
+}
+
+.luxury-input[type="file"]:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.6;
+    background: #f5f5f5;
+}
+
+/* ================== LUXURY IMAGE PREVIEW ================== */
+.luxury-image-preview {
+    margin-top: 12px;
+}
+
+.luxury-image-item {
+    width: 120px;
+    height: 120px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.25s ease;
+}
+
+.luxury-image-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.luxury-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.luxury-image-remove {
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+    transition: all 0.2s ease;
+}
+
+.luxury-image-remove:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.6);
+}
+
 /* PAGE */
 .admin-page {
     display: flex;
@@ -17,20 +370,8 @@
 }
 
 /* BUTTON STYLE */
-.btn-lux-primary {
-    background: linear-gradient(135deg, #ff4d24, #ff7a45);
-    border: none;
-    padding: 10px 18px;
-    border-radius: 8px;
-    font-weight: 600;
-    letter-spacing: .15px;
-    color: #fff;
-    transition: .25s ease;
-}
-
-.btn-lux-primary:hover {
-    filter: brightness(1.08);
-}
+/* Note: .btn-lux-primary is now defined in dashboard.css for consistency across admin pages */
+/* Only order-specific button styles are defined here */
 
 .btn-lux-secondary {
     background: linear-gradient(135deg, #0d6efd, #4098ff);

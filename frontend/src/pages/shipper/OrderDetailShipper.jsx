@@ -23,12 +23,20 @@ const OrderDetailShipper = () => {
     const fetchOrderDetail = async () => {
         setLoading(true);
         try {
-            const res = await axios.get(`${API_URL}?action=order_detail&order_id=${id}`);
-            setOrder(res.data.data);
-            setError(null);
+            const res = await axios.get(`${API_URL}?action=order_detail&order_id=${id}`, {
+                withCredentials: true, // Gửi cookie session
+            });
+            
+            if (res.data.status === "success") {
+                setOrder(res.data.data);
+                setError(null);
+            } else {
+                setError(res.data.message || "Không thể tải chi tiết đơn hàng");
+            }
         } catch (err) {
             console.error("Lỗi khi tải chi tiết đơn hàng:", err);
-            setError("Không thể tải chi tiết đơn hàng. Vui lòng kiểm tra mã đơn hoặc kết nối mạng.");
+            const errorMsg = err.response?.data?.message || err.message || "Không thể kết nối đến server";
+            setError(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -43,7 +51,9 @@ const OrderDetailShipper = () => {
         setIsSubmitting(true);
         try {
             // Gọi API PUT: action=confirm_pickup (Gói 2.2.4)
-            const res = await axios.put(`${API_URL}?action=confirm_pickup`, { order_id: id });
+            const res = await axios.put(`${API_URL}?action=confirm_pickup`, { order_id: id }, {
+                withCredentials: true, // Gửi cookie session
+            });
 
             if (res.data.status === 'success') {
                 Swal.fire({

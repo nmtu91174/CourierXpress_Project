@@ -60,21 +60,58 @@ const Register = () => {
         return Toast.fire({ icon: "error", title: "Mật khẩu xác nhận không khớp!" });
     }
 
-    // Nếu qua validate → gọi API
+
+    
     try {
-        const res = await fetch("http://localhost:8888/register.php", {
+        const requestBody = {
+            name,
+            email,
+            password,
+            confirmPassword,
+            role: role, // Gửi role từ query param để backend xử lý
+        };
+        
+        console.log("Register - Sending request with role:", requestBody.role);
+        
+        const res = await fetch("http://localhost:8888/api/auth/register.php", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                name,
-                email,
-                password,
-                confirmPassword,
-                role,
-            }),
+            headers: { 
+                "Content-Type": "application/json",
+            },
+            credentials: "include", // Quan trọng: gửi cookie để lưu session
+            body: JSON.stringify(requestBody),
         });
 
-        const data = await res.json();
+        // Kiểm tra response status
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error("API Error:", res.status, errorText);
+            try {
+                const errorData = JSON.parse(errorText);
+                return Toast.fire({
+                    icon: "error",
+                    title: errorData.message || "Đăng ký thất bại!"
+                });
+            } catch {
+                return Toast.fire({
+                    icon: "error",
+                    title: `Lỗi server (${res.status}): ${errorText.substring(0, 50)}`
+                });
+            }
+        }
+
+        // Parse JSON response
+        let data;
+        try {
+            const text = await res.text();
+            data = JSON.parse(text);
+        } catch (parseError) {
+            console.error("JSON Parse Error:", parseError);
+            return Toast.fire({
+                icon: "error",
+                title: "Lỗi định dạng response từ server!"
+            });
+        }
 
         if (data.status === "success") {
             Toast.fire({
@@ -82,7 +119,28 @@ const Register = () => {
                 title: data.message || "Đăng ký thành công!",
             });
 
-            setTimeout(() => navigate("/login"), 1500);
+            // Debug: log response data
+            console.log("Register - Response data:", data.data);
+            console.log("Register - Role from response:", data.data?.role);
+            console.log("Register - Role from query param:", role);
+
+            // Lưu user data vào localStorage nếu có
+            if (data.data && data.data.id) {
+                localStorage.setItem("user", JSON.stringify(data.data));
+                console.log("Register - Saved to localStorage:", data.data);
+            }
+
+            // Redirect dựa trên role từ response (ưu tiên) hoặc query param
+            const userRole = data.data?.role || role;
+            console.log("Register - Final role for redirect:", userRole);
+            
+            setTimeout(() => {
+                if (userRole === "shipper") {
+                    navigate("/shipper/home");
+                } else {
+                    navigate("/login");
+                }
+            }, 1500);
 
         } else {
             Toast.fire({
@@ -92,9 +150,10 @@ const Register = () => {
         }
 
     } catch (error) {
+        console.error("Register error:", error);
         Toast.fire({
             icon: "error",
-            title: "Không thể kết nối server!",
+            title: error.message || "Không thể kết nối server!",
         });
     }
 };
@@ -123,6 +182,11 @@ const Register = () => {
                         <div className="text-center mb-5">
                             <h2 className="fw-bold text-dark">Create Account</h2>
                             <p className="text-muted">Fill in the information below</p>
+                            {role && role !== "customer" && (
+                                <p className="text-info small mt-2">
+                                    Đang đăng ký với vai trò: <strong>{role}</strong>
+                                </p>
+                            )}
                         </div>
 
                         {message && (

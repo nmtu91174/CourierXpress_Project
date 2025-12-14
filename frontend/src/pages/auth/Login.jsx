@@ -48,28 +48,70 @@ const Login = () => {
         return Toast.fire({ icon: "error", title: "Vui lòng nhập mật khẩu!" });
     }
 
-    // --- GỌI API ---
     try {
-        const res = await fetch("http://localhost:8888/login.php", {
+        const res = await fetch("http://localhost:8888/api/auth/login.php", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+            },
+            credentials: "include", // Quan trọng: gửi cookie để lưu session
             body: JSON.stringify({ email, password }),
         });
 
-        const data = await res.json();
+        // Kiểm tra response status
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error("API Error:", res.status, errorText);
+            try {
+                const errorData = JSON.parse(errorText);
+                return Toast.fire({
+                    icon: "error",
+                    title: errorData.message || "Đăng nhập thất bại!"
+                });
+            } catch {
+                return Toast.fire({
+                    icon: "error",
+                    title: `Lỗi server (${res.status}): ${errorText.substring(0, 50)}`
+                });
+            }
+        }
+
+        // Parse JSON response
+        let data;
+        try {
+            const text = await res.text();
+            data = JSON.parse(text);
+        } catch (parseError) {
+            console.error("JSON Parse Error:", parseError);
+            return Toast.fire({
+                icon: "error",
+                title: "Lỗi định dạng response từ server!"
+            });
+        }
 
         if (data.status === "success") {
             Toast.fire({
                 icon: "success",
-                title: "Đăng nhập thành công!"
+                title: data.message || "Đăng nhập thành công!"
             });
 
-            localStorage.setItem("user", JSON.stringify(data.user));
+            // API mới trả về user trong data.data 
+            const userData = data.data || {};
+            
+            if (!userData.id || !userData.role) {
+                console.error("Invalid user data:", userData);
+                return Toast.fire({
+                    icon: "error",
+                    title: "Dữ liệu user không hợp lệ!"
+                });
+            }
+
+            localStorage.setItem("user", JSON.stringify(userData));
 
             setTimeout(() => {
-                if (data.user.role === "admin") {
+                if (userData.role === "admin") {
                     navigate("/admin");     
-                } else if (data.user.role === "shipper") {
+                } else if (userData.role === "shipper") {
                     navigate("/shipper/home");     
                 } else {
                     navigate("/");       
@@ -84,9 +126,10 @@ const Login = () => {
         }
 
     } catch (error) {
+        console.error("Login error:", error);
         Toast.fire({
             icon: "error",
-            title: "Không thể kết nối server!"
+            title: error.message || "Không thể kết nối server!"
         });
     }
 };

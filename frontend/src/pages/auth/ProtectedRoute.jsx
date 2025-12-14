@@ -1,16 +1,35 @@
+// src/pages/auth/ProtectedRoute.jsx
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
-const ProtectedRoute = ({ allowed, children }) => {
-    const user = JSON.parse(localStorage.getItem("user"));
+const ProtectedRoute = ({ allowed = [], children }) => {
+  const location = useLocation();
 
-    if (!user) return <Navigate to="/login" />;
+  let user = null;
+  try {
+    const raw = localStorage.getItem("user");
+    user = raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    user = null;
+  }
 
-    if (!allowed.includes(user.role)) {
-        return <Navigate to="/no-permission" />;
-    }
 
-    return children;
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+
+  if (user.status && user.status !== "active") {
+    return <Navigate to="/no-permission" replace />;
+  }
+
+
+  if (allowed.length > 0 && !allowed.includes(user.role)) {
+    return <Navigate to="/no-permission" replace />;
+  }
+
+
+  return children;
 };
 
 export default ProtectedRoute;

@@ -15,10 +15,41 @@ const Header = ({ className }) => {
         if (storedUser) setUser(storedUser);
     }, []);
 
-    const handleLogout = () => {
-        localStorage.removeItem("user");
-        setUser(null);
-        navigate("/"); // Quay về trang chủ sau khi logout
+    const handleLogout = async () => {
+        try {
+            // Gọi API logout mới (backend/api/auth/logout.php)
+            const userData = JSON.parse(localStorage.getItem("user") || "null");
+            
+            if (userData && userData.id) {
+                try {
+                    const res = await fetch("http://localhost:8888/api/auth/logout.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include", // ⭐ SỐNG CÒN: gửi cookie session
+                        body: JSON.stringify({
+                            user_id: userData.id,
+                            role: userData.role,
+                        }),
+                    });
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        console.log("Logout success:", data.message);
+                    }
+                } catch (apiError) {
+                    console.error("Logout API error:", apiError);
+                    // Vẫn tiếp tục logout dù API lỗi
+                }
+            }
+        } catch (error) {
+            console.error("Logout error:", error);
+            // Vẫn tiếp tục logout dù có lỗi
+        } finally {
+            // Xóa localStorage và redirect
+            localStorage.removeItem("user");
+            setUser(null);
+            navigate("/"); // Quay về trang chủ sau khi logout
+        }
     };
 
     return (

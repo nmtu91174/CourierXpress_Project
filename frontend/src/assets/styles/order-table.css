@@ -1,0 +1,129 @@
+/* ======================================================
+   ORDER TABLE — Luxury Enterprise UI by DQN
+   ====================================================== */
+
+.lux-table-wrapper {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 6px;
+}
+
+.lux-table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.lux-table-wrapper::-webkit-scrollbar-thumb {
+  background: #c7c7c7;
+  border-radius: 4px;
+}
+
+.lux-table-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+/* TABLE */
+.lux-table {
+  width: 100%;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  border-collapse: separate;
+}
+
+/* HEADER */
+.lux-table thead th {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.45px;
+  font-weight: 700;
+  color: #6d7380;
+  background: #fafbfc;
+  border-bottom: 1px solid #eef0f4 !important;
+  padding: 14px 12px;
+}
+
+/* BODY */
+.lux-table tbody td {
+  font-size: 0.92rem;
+  padding: 14px 12px;
+  color: #333;
+  border-top: 1px solid #f1f3f7;
+  vertical-align: middle;
+}
+
+/* HOVER */
+.lux-table tbody tr {
+  transition: 0.18s ease;
+}
+
+.lux-table tbody tr:hover {
+  background: #f9fbff;
+  cursor: pointer;
+}
+
+/* ORDER CODE */
+.lux-table .order-code {
+  font-weight: 700;
+  color: #167bff;
+}
+
+/* Meta line: SĐT + Địa chỉ dưới tên */
+.order-meta-line {
+  font-size: 0.8rem;
+  color: #7a7f8a;
+  line-height: 1.25;
+}
+
+.order-meta-line i {
+  font-size: 0.75rem;
+  position: relative;
+  top: -1px;
+}
+
+/* Action group: 4 nút căn trái, khoảng cách đẹp */
+.order-actions-group {
+  align-items: center;
+}
+
+/* --- ICON BUTTONS --- */
+.btn-icon-soft {
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+  background: #f4f6f9 !important;
+  border: 1px solid #e5e8ec !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.15s ease;
+}
+
+.btn-icon-soft:hover {
+  background: #e9edf5 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+.btn-icon-soft svg {
+  font-size: 14px;
+}
+
+/* Responsive mode: mobile collapse table */
+@media (max-width: 575px) {
+  .lux-table thead {
+    display: none;
+  }
+
+  .lux-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    font-size: 0.88rem;
+  }
+
+  .lux-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #6d7380;
+    margin-right: 12px;
+  }
+}

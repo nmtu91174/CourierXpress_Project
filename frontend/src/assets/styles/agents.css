@@ -1,99 +1,913 @@
 /* =======================================================
-   AGENTS PAGE LUXURY UI - DQN STANDARD
+   AGENTS MANAGEMENT - LUXURY UI (DQN STANDARD)
+   Enterprise Premium Design with Smooth Interactions
 ======================================================= */
 
-/* search layout */
+/* ================== PAGE HEADER ================== */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 20px 0;
+}
+
+.page-header h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1a1d29;
+    margin: 0;
+    background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ================== KPI CARDS ================== */
+.kpi-item {
+    /* Remove transition: all to avoid conflict with GSAP */
+    /* GSAP controls transform and opacity during animation */
+    border: none !important;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Only apply transition for hover (after GSAP animation completes) */
+.kpi-item.gsap-complete {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+}
+
+.kpi-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none; /* Prevent interference with GSAP */
+}
+
+.kpi-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+.kpi-item:hover::before {
+    opacity: 1;
+}
+
+.kpi-item .card-body {
+    position: relative;
+    z-index: 1;
+}
+
+/* ================== LUXURY CARD ================== */
+.card-lux {
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08),
+                0 12px 32px rgba(0, 0, 0, 0.04);
+    border: none;
+    background: #ffffff;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.card-lux:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1),
+                0 16px 48px rgba(0, 0, 0, 0.06);
+    transform: translateY(-2px);
+}
+
+.card-lux .card-body {
+    padding: 24px;
+}
+
+/* ================== FILTER BAR ================== */
+.card-lux .form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-lux .form-select,
+.card-lux .form-control {
+    border-radius: 10px;
+    border: 1.5px solid rgba(0, 0, 0, 0.1);
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    transition: all 0.25s ease;
+    background: #fafbfc;
+}
+
+.card-lux .form-select:focus,
+.card-lux .form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1),
+                0 4px 12px rgba(0, 123, 255, 0.08);
+}
+
+.card-lux .form-select:hover,
+.card-lux .form-control:hover {
+    border-color: rgba(0, 123, 255, 0.3);
+    background: #ffffff;
+}
+
+/* ================== LUXURY TABLE ================== */
+.lux-table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+}
+
+.lux-table {
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    background: #ffffff;
+}
+
+.lux-table thead {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.08);
+}
+
+.lux-table th {
+    padding: 16px 20px;
+    color: #6c757d;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    white-space: nowrap;
+    border: none;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.lux-table tbody tr {
+    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.lux-table tbody tr:hover {
+    background: linear-gradient(90deg, rgba(0, 123, 255, 0.03) 0%, rgba(0, 123, 255, 0.01) 100%);
+    transform: scale(1.001);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.lux-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.lux-table td {
+    padding: 16px 20px;
+    font-size: 0.9rem;
+    color: #2d3748;
+    vertical-align: middle;
+    border: none;
+}
+
+.lux-table td .fw-bold {
+    color: #1a1d29;
+    font-weight: 600;
+}
+
+.lux-table td small {
+    color: #718096;
+    font-size: 0.85rem;
+}
+
+/* ================== LUXURY BADGES ================== */
+.lux-table .badge {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 8px;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.lux-table .badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.badge.bg-success {
+    background: linear-gradient(135deg, #43a047, #66bb6a) !important;
+}
+
+.badge.bg-danger {
+    background: linear-gradient(135deg, #e53935, #ef5350) !important;
+}
+
+.badge.bg-warning {
+    background: linear-gradient(135deg, #ffc107, #ffca28) !important;
+    color: #4d3b00 !important;
+}
+
+.badge.bg-primary {
+    background: linear-gradient(135deg, #007bff, #35a0ff) !important;
+}
+
+.badge.bg-secondary {
+    background: linear-gradient(135deg, #6c757d, #9ca3af) !important;
+}
+
+/* ================== LUXURY BUTTONS (SCOPED FOR AGENTS PAGE) ================== */
+/* Note: .btn-lux-primary is now defined in dashboard.css for consistency across admin pages */
+/* Only agent-specific button styles are scoped here */
+
+/* Agent-specific blue button (different from dashboard) */
+.agents-management-page .btn-lux-primary-blue {
+    background: linear-gradient(135deg, #007bff, #35a0ff);
+    color: #fff !important;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.agents-management-page .btn-lux-primary-blue:hover {
+    filter: brightness(1.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+/* Scoped outline buttons for agents page */
+.agents-management-page .btn-lux-outline-secondary {
+    border: 1.5px solid rgba(108, 117, 125, 0.3);
+    color: #6c757d;
+    background: rgba(108, 117, 125, 0.05);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.agents-management-page .btn-lux-outline-secondary:hover {
+    background: linear-gradient(135deg, #6c757d, #9ca3af);
+    color: #ffffff;
+    border-color: #6c757d;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.agents-management-page .btn-lux-outline {
+    border: 1.5px solid rgba(0, 123, 255, 0.3);
+    color: #007bff;
+    background: rgba(0, 123, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.agents-management-page .btn-lux-outline:hover {
+    background: linear-gradient(135deg, #007bff, #35a0ff);
+    color: #ffffff;
+    border-color: #007bff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.agents-management-page .btn-lux-outline:active {
+    transform: translateY(0);
+}
+
+.agents-management-page .btn-lux-outline-primary {
+    border-color: rgba(0, 123, 255, 0.3);
+    color: #007bff;
+    background: rgba(0, 123, 255, 0.05);
+}
+
+.agents-management-page .btn-lux-outline-primary:hover {
+    background: linear-gradient(135deg, #007bff, #35a0ff);
+    color: #ffffff;
+    border-color: #007bff;
+}
+
+.agents-management-page .btn-lux-outline-success {
+    border-color: rgba(67, 160, 71, 0.3);
+    color: #43a047;
+    background: rgba(67, 160, 71, 0.05);
+}
+
+.agents-management-page .btn-lux-outline-success:hover {
+    background: linear-gradient(135deg, #43a047, #66bb6a);
+    color: #ffffff;
+    border-color: #43a047;
+}
+
+.agents-management-page .btn-lux-outline-danger {
+    border-color: rgba(229, 57, 53, 0.3);
+    color: #e53935;
+    background: rgba(229, 57, 53, 0.05);
+}
+
+.agents-management-page .btn-lux-outline-danger:hover {
+    background: linear-gradient(135deg, #e53935, #ef5350);
+    color: #ffffff;
+    border-color: #e53935;
+}
+
+/* ================== SEARCH BAR ================== */
 .search-bar-wrapper {
     display: flex;
     align-items: center;
-    gap: 14px;
-    background: #fff;
-    padding: 16px 18px;
-    border-radius: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.08),
-                0 8px 24px rgba(0,0,0,.04);
+    gap: 12px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .lux-search-input {
     flex: 1;
-    padding: 14px 18px;
-    border-radius: 12px;
-    border: 1px solid rgba(0,0,0,.14);
-    background: #fafbfc;
-    transition: .25s ease;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+    transition: all 0.25s ease;
+    font-size: 0.9rem;
 }
 
 .lux-search-input:focus {
     outline: none;
-    background: #fff;
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 3px rgba(13,110,253,.15),
-                0 6px 20px rgba(13,110,253,.08);
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1),
+                0 4px 12px rgba(0, 123, 255, 0.08);
 }
 
-/* btn */
 .lux-search-btn {
-    padding: 14px 34px;
-    border-radius: 12px;
+    padding: 12px 24px;
+    border-radius: 10px;
     border: none;
     color: #fff;
     font-weight: 600;
     cursor: pointer;
-    background: linear-gradient(135deg, #007bff 0%, #009dff 100%);
-    transition: .28s cubic-bezier(.4,0,.2,1);
+    background: linear-gradient(135deg, #007bff 0%, #35a0ff 100%);
+    transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
 }
 
 .lux-search-btn:hover {
     transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 123, 255, 0.3);
     filter: brightness(1.08);
 }
 
 .lux-search-btn:active {
-    transform: scale(.97);
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
 }
 
-/* table */
-.lux-table th {
-    padding: 14px 18px;
-    color: #8a8f9a;
-    font-weight: 600;
-    font-size: .82rem;
-    text-transform: uppercase;
-    letter-spacing: .04rem;
+/* ================== MODAL LUXURY ================== */
+.agent-modal-responsive .modal-dialog {
+    max-width: 800px;
+    margin: 1.75rem auto;
 }
 
-.lux-table td {
-    padding: 14px 18px;
-    font-size: .93rem;
-}
-
-/* STATUS BADGES */
-.agent-badge {
-    padding: 6px 12px;
-    font-size: .75rem;
-    font-weight: 600;
-    border-radius: 8px;
-}
-
-.agent-green {
-    background: rgba(52,168,83,.18);
-    color: rgb(52,168,83);
-}
-
-.agent-yellow {
-    background: rgba(255,193,7,.18);
-    color: rgb(204,145,0);
-}
-
-.agent-red {
-    background: rgba(255,82,82,.18);
-    color: rgb(240,70,70);
-}
-
-/* card */
-.card-lux {
-    border-radius: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.08),
-                0 12px 32px rgba(0,0,0,.04);
+.agent-modal-responsive .modal-content {
+    border-radius: 16px;
     border: none;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
 }
+
+.modal-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 20px 24px;
+}
+
+.modal-title {
+    font-weight: 700;
+    color: #1a1d29;
+    font-size: 1.25rem;
+}
+
+.modal-body {
+    padding: 24px;
+    background: #ffffff;
+}
+
+.modal-footer {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 16px 24px;
+}
+
+/* ================== KPI CARDS IN MODAL ================== */
+.modal-body .card {
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    transition: all 0.2s ease;
+}
+
+.modal-body .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.modal-body .card-body {
+    padding: 12px;
+}
+
+.modal-body .fw-bold {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+/* ================== RESPONSIVE ================== */
+
+/* Tablet and below */
+@media (max-width: 992px) {
+    /* KPI Cards - Stack on tablet */
+    .kpi-item .card-body {
+        padding: 16px;
+    }
+
+    .kpi-item h2 {
+        font-size: 1.75rem;
+    }
+
+    /* Filter bar - Stack filters */
+    .card-lux .card-body {
+        padding: 20px;
+    }
+
+    /* Table - Smaller font, tighter padding */
+    .lux-table {
+        font-size: 0.85rem;
+    }
+
+    .lux-table th,
+    .lux-table td {
+        padding: 12px 16px;
+    }
+
+    .lux-table th {
+        font-size: 0.75rem;
+    }
+
+    /* Modal adjustments */
+    .modal.show .modal-dialog {
+        max-width: 95%;
+        margin: 1rem auto;
+    }
+
+    .luxury-modal-body {
+        padding: 20px;
+    }
+
+    .modal-header {
+        padding: 16px 20px;
+    }
+
+    .modal-footer {
+        padding: 16px 20px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 16px 0;
+    }
+
+    .page-header h3 {
+        font-size: 1.5rem;
+    }
+
+    /* KPI Cards - Full width on mobile */
+    .kpi-item {
+        margin-bottom: 12px;
+    }
+
+    .kpi-item .card-body {
+        padding: 16px;
+    }
+
+    .kpi-item h2 {
+        font-size: 1.5rem;
+    }
+
+    .kpi-item p {
+        font-size: 0.8rem;
+    }
+
+    /* Filter bar - Stack all filters */
+    .card-lux .card-body {
+        padding: 16px;
+    }
+
+    .card-lux .form-label {
+        font-size: 0.8rem;
+        margin-bottom: 6px;
+    }
+
+    .card-lux .form-select,
+    .card-lux .form-control {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    /* Table - Horizontal scroll on mobile */
+    .lux-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -16px;
+        padding: 0 16px;
+    }
+
+    .lux-table {
+        font-size: 0.8rem;
+        min-width: 900px;
+    }
+
+    .lux-table th,
+    .lux-table td {
+        padding: 10px 12px;
+        white-space: nowrap;
+    }
+
+    .lux-table th {
+        font-size: 0.7rem;
+        padding: 12px 10px;
+    }
+
+    .lux-table td .badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+    }
+
+    /* Search bar - Stack */
+    .search-bar-wrapper {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px 16px;
+    }
+
+    .lux-search-input {
+        width: 100%;
+        padding: 10px 14px;
+    }
+
+    .lux-search-btn {
+        width: 100%;
+        padding: 10px 20px;
+    }
+
+    /* Modal - Full responsive */
+    .agent-modal-responsive .modal-dialog {
+        max-width: 100%;
+        margin: 0;
+        height: 100vh;
+        max-height: 100vh;
+        min-height: 100vh;
+    }
+
+    .agent-modal-responsive .modal-content {
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .luxury-modal-body {
+        padding: 16px;
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-body{
+        width
+    }
+
+    .modal-header {
+        padding: 12px 16px;
+        flex-shrink: 0;
+    }
+
+    .modal-title {
+        font-size: 1.1rem;
+    }
+
+    .modal-footer {
+        padding: 12px 16px;
+        flex-shrink: 0;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+        margin: 0;
+    }
+
+    /* Modal content - Stack columns */
+    .luxury-modal-body .row {
+        margin: 0;
+    }
+
+    .luxury-modal-body .col-md-6 {
+        margin-bottom: 20px;
+    }
+
+    .luxury-modal-body .col-md-6:last-child {
+        margin-bottom: 0;
+    }
+
+    /* KPI Cards in Modal - Smaller on mobile */
+    .luxury-modal-body .card {
+        margin-bottom: 8px;
+    }
+
+    .luxury-modal-body .card-body {
+        padding: 10px;
+    }
+
+    .luxury-modal-body .fw-bold {
+        font-size: 1.1rem;
+    }
+
+    .luxury-modal-body small {
+        font-size: 0.75rem;
+    }
+
+    .btn-drill-down {
+        font-size: 0.7rem;
+        padding: 4px 10px;
+    }
+
+    /* Action buttons in table */
+    .lux-table td .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 4px !important;
+    }
+
+    .lux-table td .btn {
+        min-width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 576px) {
+    .page-header h3 {
+        font-size: 1.25rem;
+    }
+
+    .kpi-item h2 {
+        font-size: 1.25rem;
+    }
+
+    .kpi-item p {
+        font-size: 0.75rem;
+    }
+
+    .lux-table {
+        min-width: 800px;
+        font-size: 0.75rem;
+    }
+
+    .lux-table th,
+    .lux-table td {
+        padding: 8px 10px;
+    }
+
+    .lux-table th {
+        font-size: 0.65rem;
+    }
+
+    .modal-title {
+        font-size: 1rem;
+    }
+
+    .luxury-modal-body {
+        padding: 12px;
+    }
+
+    .luxury-modal-body .fw-bold {
+        font-size: 1rem;
+    }
+
+    .luxury-modal-body .card-body {
+        padding: 8px;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 400px) {
+    .page-header {
+        padding: 12px 0;
+    }
+
+
+    .page-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .kpi-item .card-body {
+        padding: 12px;
+    }
+
+    .kpi-item h2 {
+        font-size: 1.1rem;
+    }
+
+    .card-lux .card-body {
+        padding: 12px;
+    }
+
+    .lux-table th,
+    .lux-table td {
+        padding: 6px 8px;
+        font-size: 0.7rem;
+    }
+
+    .lux-table th {
+        font-size: 0.6rem;
+    }
+
+    .modal-header,
+    .modal-footer {
+        padding: 10px 12px;
+    }
+
+    .luxury-modal-body {
+        padding: 10px;
+    }
+}
+
+/* ================== ANIMATIONS ================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.lux-table tbody tr {
+    animation: fadeInUp 0.3s ease forwards;
+}
+
+.lux-table tbody tr:nth-child(1) { animation-delay: 0.05s; }
+.lux-table tbody tr:nth-child(2) { animation-delay: 0.1s; }
+.lux-table tbody tr:nth-child(3) { animation-delay: 0.15s; }
+.lux-table tbody tr:nth-child(4) { animation-delay: 0.2s; }
+.lux-table tbody tr:nth-child(5) { animation-delay: 0.25s; }
+
+/* ================== SCROLLBAR STYLING ================== */
+.lux-table-wrapper::-webkit-scrollbar {
+    height: 8px;
+}
+
+.lux-table-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.lux-table-wrapper::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #007bff, #35a0ff);
+    border-radius: 10px;
+}
+
+.lux-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #0056b3, #007bff);
+}
+
+/* ================== EMPTY STATE ================== */
+.lux-table tbody tr td.text-center.text-muted {
+    padding: 48px 20px;
+    font-size: 1rem;
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* ================== ACTION BUTTONS GROUP ================== */
+.lux-table td .d-flex.gap-2 {
+    gap: 8px !important;
+}
+
+.lux-table td .btn {
+    min-width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.lux-table td .btn:hover {
+    transform: scale(1.1);
+}
+
+/* ================== DRILL-DOWN BUTTONS ================== */
+.btn-drill-down {
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-width: 1.5px;
+}
+
+.btn-drill-down:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-drill-down:active {
+    transform: translateY(0);
+}
+
+/* ================== KPI CARD HOVER LIFT ================== */
+.hover-lift {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+.modal-body .card.hover-lift:hover {
+    border-color: rgba(0, 123, 255, 0.3);
+}
+
+/* ================== MODAL RESPONSIVE ================== */
+.agent-modal-responsive .modal-dialog {
+    max-width: 800px;
+    margin: 1.75rem auto;
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 3.5rem);
+}
+
+.luxury-modal-body {
+    padding: 24px;
+    background: #ffffff;
+}
+
+/* Modal responsive adjustments */
+@media (max-width: 992px) {
+    .agent-modal-responsive .modal-dialog {
+        max-width: 90%;
+        margin: 1rem auto;
+    }
+    
+    .luxury-modal-body {
+        padding: 20px;
+    }
+}
+
+
+
+/* Mặc định (mobile + tablet) */
+.luxury-modal-body {
+    width: 888px;
+    margin: 0 auto;
+}
+
+/* Desktop lớn ≥ 1200px */
+@media (min-width: 1200px) {
+    .luxury-modal-body {
+        width: 1111px;
+    }
+}
+

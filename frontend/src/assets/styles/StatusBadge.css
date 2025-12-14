@@ -1,0 +1,72 @@
+/* ================================================
+   STATUS BADGE (Luxury Edition — by DQN System)
+   ================================================ */
+
+.status-badge-lux {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.25px;
+  color: #fff;
+  text-transform: none;
+  user-select: none;
+  backdrop-filter: blur(6px);
+  transition: all .25s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* Hover nâng cấp (premium subtle effect) */
+.status-badge-lux:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  filter: brightness(1.08);
+}
+
+/* BLUE — Booked */
+.sb-blue {
+  background: linear-gradient(135deg, #0d6efd, #3b78ff);
+}
+
+/* INDIGO — Approved */
+.sb-indigo {
+  background: linear-gradient(135deg, #6610f2, #7f39fb);
+}
+
+/* PURPLE — Assigned */
+.sb-purple {
+  background: linear-gradient(135deg, #6f42c1, #8a5ce6);
+}
+
+/* YELLOW — Pickup Pending */
+.sb-yellow {
+  background: linear-gradient(135deg, #ffc107, #fecd2c);
+  color: #000 !important;
+}
+
+/* ORANGE — Picked Up */
+.sb-orange {
+  background: linear-gradient(135deg, #fd7e14, #ff9a3d);
+}
+
+/* GREEN — Delivered */
+.sb-green {
+  background: linear-gradient(135deg, #198754, #28a86b);
+}
+
+/* RED — Failed */
+.sb-red {
+  background: linear-gradient(135deg, #dc3545, #e85b63);
+}
+
+/* GRAY — Other states */
+.sb-gray {
+  background: linear-gradient(135deg, #6c757d, #858e96);
+}
+
+/* DEFAULT fallback */
+.sb-default {
+  background: linear-gradient(135deg, #adb5bd, #c6ccd3);
+}
