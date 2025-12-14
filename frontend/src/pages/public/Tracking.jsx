@@ -1,7 +1,8 @@
-// src/pages/public/Tracking.jsx
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import Swal from "sweetalert2";
+
 
 import {
   Form,
@@ -20,7 +21,6 @@ import {
 } from "react-icons/fa";
 
 import HeroVideo from "../../components/HeroVideo";
-
 import { featureCardsReveal } from "../../animations/homeAnimation";
 
 const Home = () => {
@@ -31,25 +31,61 @@ const Home = () => {
     featureCardsReveal();
   }, []);
 
-  const handleSearch = () => {
-    if (trackingid.trim()) {
-      navigate(`/tracking/${trackingid}`);
-    } else {
-      alert("Vui lòng nhập mã vận đơn để tra cứu.");
+  const handleSearch = async () => {
+    if (!trackingid.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Chưa nhập mã vận đơn",
+        text: "Vui lòng nhập mã vận đơn để tra cứu.",
+      });
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        "http://localhost:8888/checkTracking.php",
+        { trackingid }
+      );
+
+      if (response.data.exists) {
+        Swal.fire({
+          icon: "success",
+          title: "Mã vận đơn hợp lệ!",
+          text: "Chuyển sang trang chi tiết đơn hàng...",
+          timer: 1500,
+          timerProgressBar: true,
+          showConfirmButton: false,
+          allowOutsideClick: false
+        }).then(() => {
+          navigate(`/tracking/${trackingid}`);
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Không tìm thấy",
+          text: response.data.message || "Mã vận đơn không tồn tại.",
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: "error",
+        title: "Lỗi server",
+        text: "Có lỗi xảy ra khi kiểm tra mã vận đơn.",
+      });
     }
   };
 
   return (
     <div className="tracking-page">
       <HeroVideo />
-      {/* 1. Hero Banner + Tracking Box */}
       <section className="hero-section">
         <div className="tracking-box tracking-box-lux">
           <h3 className="fw-bold mb-4 text-center tracking-title">
             Theo dõi đơn hàng
           </h3>
           <p className="text-muted text-center mb-4 tracking-subtitle">
-            Nhập mã vận đơn của bạn để tra cứu hành trình (VD: CX123456)
+            Nhập mã vận đơn của bạn để tra cứu hành trình (VD: ORD1234)
           </p>
 
           <Form className="d-flex gap-2 tracking-form">
@@ -72,14 +108,11 @@ const Home = () => {
           </Form>
         </div>
       </section>
-
-      {/* 2. Features Section */}
       <section className="py-5 features-section">
         <Container>
           <h2 className="text-center fw-bold mb-5 section-title-lux">
             Tại sao chọn CourierXpress?
           </h2>
-
           <Row>
             <Col md={4} className="mb-4">
               <Card className="h-100 border-0 text-center p-4 feature-card">
@@ -119,7 +152,6 @@ const Home = () => {
           </Row>
         </Container>
       </section>
-      {/* 3. Sitemap */}
       <section className="bg-light py-4 sitemap-section">
         <Container>
           <h5 className="mb-3 fw-semibold">Sitemap</h5>

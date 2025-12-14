@@ -15,6 +15,8 @@ import TrackingResult from './pages/public/TrackingResult';
 import ProtectedRoute from "./pages/auth/ProtectedRoute.jsx";
 import NoPermission from "./pages/auth/NoPermission.jsx";
 import HomePageCostumer from './pages/public/HomePage.jsx'
+import Orders from '../src/pages/user/Orders.jsx'
+import OrderDetail from '../src/pages/user/OrderDetail.jsx'
 
 
 // Admin import
@@ -79,6 +81,23 @@ export default function App() {
           <TrackingResult />
         </PublicLayout>
       } />
+
+
+      <Route path="/orders" element={
+        <PublicLayout>
+          <Orders />
+        </PublicLayout>
+      } />
+
+
+      <Route path="/user/orders/:id" element={
+        <ProtectedRoute allowed={['customer']}>
+          <PublicLayout>
+            <OrderDetail />
+          </PublicLayout>
+        </ProtectedRoute>
+      } />
+
 
       {/* Login/Register/Option */}
       <Route path="/login" element={

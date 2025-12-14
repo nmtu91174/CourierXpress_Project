@@ -7,18 +7,16 @@ import { FaShippingFast } from "react-icons/fa";
 // THAY ĐỔI: Chấp nhận props className
 const Header = ({ className }) => {
     const navigate = useNavigate();
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(() => {
+        return JSON.parse(localStorage.getItem("user"));
+    });
 
-    // Lấy user từ localStorage khi component mount
-    useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (storedUser) setUser(storedUser);
-    }, []);
+    const isLoggedIn = !!user;
 
     const handleLogout = () => {
         localStorage.removeItem("user");
         setUser(null);
-        navigate("/"); // Quay về trang chủ sau khi logout
+        navigate("/");
     };
 
     return (
@@ -43,11 +41,30 @@ const Header = ({ className }) => {
                         )}
 
                         {/* Tracking luôn hiển thị */}
-                        <NavDropdown title="Tracking" id="services-nav-dropdown" className="fw-bold fs-10 text-dark">
-                            <NavDropdown.Item href="/tracking">Tracking</NavDropdown.Item>
+                        <NavDropdown
+                            title={isLoggedIn ? "Order" : "Tracking"}
+                            id="services-nav-dropdown"
+                            className="fw-bold fs-10 text-dark"
+                        >
+                            {isLoggedIn ? (
+                                <>
+                                    <NavDropdown.Item href="/orders">Orders</NavDropdown.Item>
+                                </>
+                            ) : (
+                                <>
+                                    <NavDropdown.Item href="/tracking">
+                                        Tracking
+                                    </NavDropdown.Item>
+                                </>
+                            )}
+
                             <NavDropdown.Divider />
-                            <NavDropdown.Item href="/createorder">Make An Order</NavDropdown.Item>
+
+                            <NavDropdown.Item href="/createorder">
+                                Make An Order
+                            </NavDropdown.Item>
                         </NavDropdown>
+
 
                         {/* Menu Shipper chỉ hiển thị khi role = 'shipper' */}
                         {user?.role === 'shipper' && (

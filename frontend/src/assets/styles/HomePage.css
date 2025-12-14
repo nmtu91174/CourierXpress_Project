@@ -1102,12 +1102,6 @@
 /* 11. RESPONSIVENESS & ANIMATIONS */
 /* ================================================= */
 
-/* Animations defined in JSX are here for reference */
-/*
-@keyframes fade-in { ... }
-@keyframes float { ... }
-*/
-
 /* Media Queries cho Mobile */
 @media (max-width: 767px) {
   .hero-title {

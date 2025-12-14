@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import './HomePage.css'
+import '../../assets/styles/HomePage.css'
 import {
   Package,
   TrendingUp,
