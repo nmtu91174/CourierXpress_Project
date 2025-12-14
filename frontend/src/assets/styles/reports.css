@@ -34,19 +34,6 @@
 /* ===============================
    KPI CARDS - LUXURY ENHANCED
    =============================== */
-.kpi-item {
-  /* Remove transition: all to avoid conflict with GSAP */
-  /* GSAP controls transform and opacity during animation */
-  border: none !important;
-  overflow: hidden;
-  position: relative;
-}
-
-/* Only apply transition for hover (after GSAP animation completes) */
-.kpi-item.gsap-complete {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
-}
-
 .kpi-card {
   border-radius: 20px;
   padding: 1.8rem 1.5rem;
@@ -73,14 +60,6 @@
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
-}
-
-.kpi-item:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.16),
-    0 12px 48px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .kpi-card:hover {

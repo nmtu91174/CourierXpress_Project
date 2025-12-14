@@ -56,10 +56,6 @@ const Login = () => {
             },
             credentials: "include", // Quan trọng: gửi cookie để lưu session
             body: JSON.stringify({ email, password }),
-        }).catch((fetchError) => {
-            // Network error (server không chạy, CORS, etc.)
-            console.error("Fetch error:", fetchError);
-            throw new Error(`Không thể kết nối đến server. Vui lòng kiểm tra:\n1. Server PHP có đang chạy không?\n2. URL: http://localhost:8888\n3. CORS configuration`);
         });
 
         // Kiểm tra response status
@@ -112,15 +108,15 @@ const Login = () => {
 
             localStorage.setItem("user", JSON.stringify(userData));
 
-            // Navigate ngay sau khi set localStorage, không cần delay
-            // Vì ProtectedRoute sẽ check localStorage ngay lập tức
-            if (userData.role === "admin") {
-                navigate("/admin/dashboard", { replace: true });     
-            } else if (userData.role === "shipper") {
-                navigate("/shipper/home", { replace: true });     
-            } else {
-                navigate("/", { replace: true });       
-            }
+            setTimeout(() => {
+                if (userData.role === "admin") {
+                    navigate("/admin");     
+                } else if (userData.role === "shipper") {
+                    navigate("/shipper/home");     
+                } else {
+                    navigate("/");       
+                }
+            }, 1500);
 
         } else {
             Toast.fire({
@@ -131,18 +127,9 @@ const Login = () => {
 
     } catch (error) {
         console.error("Login error:", error);
-        let errorMessage = "Không thể kết nối server!";
-        
-        if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
-            errorMessage = "Không thể kết nối đến server. Vui lòng:\n1. Kiểm tra server PHP có đang chạy (http://localhost:8888)\n2. Kiểm tra CORS configuration\n3. Kiểm tra kết nối mạng";
-        } else if (error.message) {
-            errorMessage = error.message;
-        }
-        
         Toast.fire({
             icon: "error",
-            title: errorMessage,
-            html: errorMessage.includes("\n") ? errorMessage.replace(/\n/g, "<br>") : errorMessage
+            title: error.message || "Không thể kết nối server!"
         });
     }
 };
