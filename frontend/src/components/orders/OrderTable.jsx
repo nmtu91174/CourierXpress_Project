@@ -70,9 +70,14 @@ export default function OrderTable({
     if (isNaN(d.getTime())) return raw;
 
     const pad = (n) => String(n).padStart(2, "0");
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(
-      d.getHours()
-    )}:${pad(d.getMinutes())}`;
+    const date = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+    const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return (
+      <div style={{ lineHeight: 1.4 }}>
+        <div>{date}</div>
+        <div className="text-muted small" style={{ fontSize: "0.8rem" }}>{time}</div>
+      </div>
+    );
   };
 
   const canAssign = (order) => {
@@ -184,12 +189,12 @@ export default function OrderTable({
 
                   {/* Actions */}
                   <td className="text-start">
-                    <div className="d-inline-flex gap-1">
+                    <div className="d-flex gap-1 justify-content-start">
                       {/* View – all roles */}
                       <Button
-                        variant="light"
                         size="sm"
-                        className="btn-icon-soft text-secondary"
+                        variant="outline-primary"
+                        className="order-action-btn"
                         title="Xem chi tiết"
                         onClick={(e) => handleView(e, o)}
                       >
@@ -199,9 +204,9 @@ export default function OrderTable({
                       {/* Edit – admin only, không phải terminal status */}
                       {canEdit(o) && onEditOrder && (
                         <Button
-                          variant="light"
                           size="sm"
-                          className="btn-icon-soft text-primary"
+                          variant="outline-primary"
+                          className="order-action-btn"
                           title="Sửa đơn hàng"
                           onClick={(e) => handleEdit(e, o)}
                         >
@@ -212,9 +217,9 @@ export default function OrderTable({
                       {/* Delete – admin only */}
                       {canDelete(o) && onDeleteOrder && (
                         <Button
-                          variant="light"
                           size="sm"
-                          className="btn-icon-soft text-danger"
+                          variant="outline-danger"
+                          className="order-action-btn"
                           title="Xóa đơn hàng"
                           onClick={(e) => handleDelete(e, o)}
                         >
@@ -225,9 +230,9 @@ export default function OrderTable({
                       {/* Assign agent – admin only, status=BOOKED/APPROVED && !agent_id */}
                       {canAssignAgent(o) && onAssignAgent && (
                         <Button
-                          variant="light"
                           size="sm"
-                          className="btn-icon-soft text-danger"
+                          variant="outline-danger"
+                          className="order-action-btn"
                           title="Phân công agent (chỉ khi status=BOOKED/APPROVED và chưa có agent)"
                           onClick={(e) => handleAssignAgent(e, o)}
                         >
@@ -238,9 +243,9 @@ export default function OrderTable({
                       {/* Assign shipper – admin only, status=APPROVED && !shipper_id */}
                       {canAssign(o) && onAssignShipper && (
                         <Button
-                          variant="light"
                           size="sm"
-                          className="btn-icon-soft text-warning"
+                          variant="outline-warning"
+                          className="order-action-btn"
                           title="Phân công shipper (chỉ khi status=APPROVED và chưa có shipper)"
                           onClick={(e) => handleAssign(e, o)}
                         >

@@ -136,10 +136,12 @@
 }
 
 .btn-lux-outline:hover {
+    background: linear-gradient(135deg, #e53935, #1570ef);
+    color: #ffffff;
     transform: translateY(-1px);
     box-shadow:
-        0 6px 14px rgba(46, 144, 250, .35),
-        0 2px 6px rgba(46, 144, 250, .25);
+        0 6px 14px rgba(229, 57, 53, .35),
+        0 2px 6px rgba(229, 57, 53, .25);
 }
 
 .btn-lux-outline:active {
