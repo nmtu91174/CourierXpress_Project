@@ -19,120 +19,120 @@ const Login = () => {
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword);
     };
-    
+
 
     const handleSubmit = async (e) => {
-    e.preventDefault();
+        e.preventDefault();
 
-    const Toast = Swal.mixin({
-        toast: true,
-        position: "top-end",
-        showConfirmButton: false,
-        timer: 2500,
-        timerProgressBar: true,
-    });
-
-    // --- VALIDATE THỦ CÔNG ---
-
-    if (!email.trim()) {
-        return Toast.fire({ icon: "error", title: "Vui lòng nhập email!" });
-    }
-
-    // regex kiểm tra email hợp lệ
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        return Toast.fire({ icon: "error", title: "Email không hợp lệ!" });
-    }
-
-    if (!password.trim()) {
-        return Toast.fire({ icon: "error", title: "Vui lòng nhập mật khẩu!" });
-    }
-
-    try {
-        const res = await fetch("http://localhost:8888/api/auth/login.php", {
-            method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-            },
-            credentials: "include", // Quan trọng: gửi cookie để lưu session
-            body: JSON.stringify({ email, password }),
+        const Toast = Swal.mixin({
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 2500,
+            timerProgressBar: true,
         });
 
-        // Kiểm tra response status
-        if (!res.ok) {
-            const errorText = await res.text();
-            console.error("API Error:", res.status, errorText);
-            try {
-                const errorData = JSON.parse(errorText);
-                return Toast.fire({
-                    icon: "error",
-                    title: errorData.message || "Đăng nhập thất bại!"
-                });
-            } catch {
-                return Toast.fire({
-                    icon: "error",
-                    title: `Lỗi server (${res.status}): ${errorText.substring(0, 50)}`
-                });
-            }
+        // --- VALIDATE THỦ CÔNG ---
+
+        if (!email.trim()) {
+            return Toast.fire({ icon: "error", title: "Vui lòng nhập email!" });
         }
 
-        // Parse JSON response
-        let data;
+        // regex kiểm tra email hợp lệ
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return Toast.fire({ icon: "error", title: "Email không hợp lệ!" });
+        }
+
+        if (!password.trim()) {
+            return Toast.fire({ icon: "error", title: "Vui lòng nhập mật khẩu!" });
+        }
+
         try {
-            const text = await res.text();
-            data = JSON.parse(text);
-        } catch (parseError) {
-            console.error("JSON Parse Error:", parseError);
-            return Toast.fire({
-                icon: "error",
-                title: "Lỗi định dạng response từ server!"
-            });
-        }
-
-        if (data.status === "success") {
-            Toast.fire({
-                icon: "success",
-                title: data.message || "Đăng nhập thành công!"
+            const res = await fetch("http://localhost:8888/api/auth/login.php", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include", // Quan trọng: gửi cookie để lưu session
+                body: JSON.stringify({ email, password }),
             });
 
-            // API mới trả về user trong data.data 
-            const userData = data.data || {};
-            
-            if (!userData.id || !userData.role) {
-                console.error("Invalid user data:", userData);
+            // Kiểm tra response status
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error("API Error:", res.status, errorText);
+                try {
+                    const errorData = JSON.parse(errorText);
+                    return Toast.fire({
+                        icon: "error",
+                        title: errorData.message || "Đăng nhập thất bại!"
+                    });
+                } catch {
+                    return Toast.fire({
+                        icon: "error",
+                        title: `Lỗi server (${res.status}): ${errorText.substring(0, 50)}`
+                    });
+                }
+            }
+
+            // Parse JSON response
+            let data;
+            try {
+                const text = await res.text();
+                data = JSON.parse(text);
+            } catch (parseError) {
+                console.error("JSON Parse Error:", parseError);
                 return Toast.fire({
                     icon: "error",
-                    title: "Dữ liệu user không hợp lệ!"
+                    title: "Lỗi định dạng response từ server!"
                 });
             }
 
-            localStorage.setItem("user", JSON.stringify(userData));
+            if (data.status === "success") {
+                Toast.fire({
+                    icon: "success",
+                    title: data.message || "Đăng nhập thành công!"
+                });
 
-            setTimeout(() => {
-                if (userData.role === "admin") {
-                    navigate("/admin");     
-                } else if (userData.role === "shipper") {
-                    navigate("/shipper/home");     
-                } else {
-                    navigate("/");       
+                // API mới trả về user trong data.data 
+                const userData = data.data || {};
+
+                if (!userData.id || !userData.role) {
+                    console.error("Invalid user data:", userData);
+                    return Toast.fire({
+                        icon: "error",
+                        title: "Dữ liệu user không hợp lệ!"
+                    });
                 }
-            }, 1500);
 
-        } else {
+                localStorage.setItem("user", JSON.stringify(userData));
+
+                setTimeout(() => {
+                    if (userData.role === "admin") {
+                        navigate("/admin");
+                    } else if (userData.role === "shipper") {
+                        navigate("/shipper/home");
+                    } else {
+                        navigate("/");
+                    }
+                }, 1500);
+
+            } else {
+                Toast.fire({
+                    icon: "error",
+                    title: data.message || "Đăng nhập thất bại!"
+                });
+            }
+
+        } catch (error) {
+            console.error("Login error:", error);
             Toast.fire({
                 icon: "error",
-                title: data.message || "Đăng nhập thất bại!"
+                title: error.message || "Không thể kết nối server!"
             });
         }
-
-    } catch (error) {
-        console.error("Login error:", error);
-        Toast.fire({
-            icon: "error",
-            title: error.message || "Không thể kết nối server!"
-        });
-    }
-};
+    };
 
 
 
@@ -162,7 +162,7 @@ const Login = () => {
                             <p className="text-muted">Please login to continue</p>
                         </div>
 
-            
+
 
 
                         <Form onSubmit={handleSubmit}>
