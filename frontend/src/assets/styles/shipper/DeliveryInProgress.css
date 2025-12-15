@@ -1,0 +1,55 @@
+.delivery-wrapper {
+  max-width: 900px;
+}
+
+.delivery-title {
+  font-weight: 700;
+}
+
+.delivery-card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease;
+}
+
+.delivery-card:hover {
+  transform: scale(1.02);
+} 
+
+.upload-box {
+  border: 2px dashed #ccc;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upload-box:hover {
+  border-color: #28a745;
+  transform: scale(1.03);
+}
+
+.preview img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.delivery-btn {
+  width: 100%;
+  font-size: 18px;
+  padding: 12px;
+  transition: transform 0.3s ease;
+}
+
+.delivery-btn:hover {
+  transform: scale(1.03);
+}
+.delivery-block {
+  border-bottom: 1px dashed #ddd;
+  padding-bottom: 30px;
+}
