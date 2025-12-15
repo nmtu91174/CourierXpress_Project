@@ -18,6 +18,7 @@ import ReactECharts from "echarts-for-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
+import { initPageAnimations } from "../../utils/gsapAnimations";
 import "../../assets/styles/reports.css";
 import "../../assets/styles/dashboard.css";
 
@@ -245,6 +246,11 @@ export default function Reports() {
     failedRiskData: [],
   });
   const [loading, setLoading] = useState(true);
+
+  // GSAP Animation
+  useEffect(() => {
+    return initPageAnimations({ kpiSelector: ".kpi-item", chartSelector: ".chart-wrapper" });
+  }, []);
 
   useEffect(() => {
     const fetchReportsData = async () => {

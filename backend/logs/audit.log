@@ -55,3 +55,22 @@ time=2025-12-14T14:46:59+00:00 event=DELETE_ORDER actor_id=1 actor_role=admin re
 [2025-12-14 22:04:07] user=1 role=admin action=UPDATE_STATUS order=2 note=Cập nhật đơn hàng
 [2025-12-14 22:04:11] user=1 role=admin action=UPDATE_STATUS order=3 note=Cập nhật đơn hàng
 [2025-12-14 22:04:27] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng
+[2025-12-15 01:05:59] user=1 role=admin action=CREATE_ORDER order=6 note=ORD0006
+[2025-12-15 01:06:09] user=1 role=admin action=ASSIGN_AGENT order=6 note=agent=3
+[2025-12-15 01:06:23] user=1 role=admin action=ASSIGN_SHIPPER order=6 note=shipper=4
+[2025-12-15 01:07:16] user=1 role=admin action=UPDATE_STATUS order=1 note=Cập nhật đơn hàng
+[2025-12-15 01:07:22] user=1 role=admin action=UPDATE_STATUS order=2 note=Cập nhật đơn hàng
+[2025-12-15 01:07:31] user=1 role=admin action=UPDATE_STATUS order=3 note=Cập nhật đơn hàng
+[2025-12-15 01:07:39] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng
+[2025-12-15 03:45:00] user=1 role=admin action=UPDATE_STATUS order=2 note=Cập nhật đơn hàng
+[2025-12-15 03:45:07] user=1 role=admin action=UPDATE_STATUS order=2 note=Cập nhật đơn hàng
+[2025-12-15 04:54:46] user=1 role=admin action=UPDATE_STATUS order=6 note=Cập nhật đơn hàng
+[2025-12-15 05:42:15] user=1 role=admin action=UPDATE_STATUS order=6 note=Cập nhật đơn hàng
+[2025-12-15 05:56:15] user=1 role=admin action=CREATE_ORDER order=7 note=ORD0007
+[2025-12-15 05:57:41] user=1 role=admin action=ASSIGN_AGENT order=7 note=agent=3
+[2025-12-15 05:57:51] user=1 role=admin action=ASSIGN_SHIPPER order=7 note=shipper=4
+[2025-12-15 06:05:53] user=1 role=admin action=UPDATE_STATUS order=6 note=Cập nhật đơn hàng
+[2025-12-15 06:15:11] user=1 role=admin action=UPDATE_STATUS order=2 note=Cập nhật đơn hàng
+[2025-12-15 06:15:20] user=1 role=admin action=UPDATE_STATUS order=2 note=Cập nhật đơn hàng
+[2025-12-15 06:31:06] user=1 role=admin action=CREATE_ORDER order=8 note=ORD0008
+[2025-12-15 06:31:48] user=1 role=admin action=ASSIGN_AGENT order=8 note=agent=8
