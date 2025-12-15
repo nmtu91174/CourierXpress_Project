@@ -55,3 +55,6 @@ time=2025-12-14T14:46:59+00:00 event=DELETE_ORDER actor_id=1 actor_role=admin re
 [2025-12-14 22:04:07] user=1 role=admin action=UPDATE_STATUS order=2 note=Cập nhật đơn hàng
 [2025-12-14 22:04:11] user=1 role=admin action=UPDATE_STATUS order=3 note=Cập nhật đơn hàng
 [2025-12-14 22:04:27] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng
+[2025-12-15 02:01:04] user=1 role=admin action=CREATE_ORDER order=6 note=ORD0006
+[2025-12-15 02:02:49] user=1 role=admin action=ASSIGN_AGENT order=6 note=agent=3
+[2025-12-15 02:03:04] user=1 role=admin action=ASSIGN_SHIPPER order=6 note=shipper=4

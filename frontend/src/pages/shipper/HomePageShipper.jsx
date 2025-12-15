@@ -3,8 +3,8 @@
 import React, { useEffect } from "react";
 import { Container, Row, Col, Card, Button, Table } from "react-bootstrap";
 import { FaMotorcycle, FaTasks, FaCheckCircle, FaClock } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
-// 👉 IMPORT CSS ĐÚNG ĐƯỜNG DẪN BẠN YÊU CẦU
 import "../../assets/styles/shipper/HomePageShipper.css";
 
 const ShipperHome = () => {
@@ -12,7 +12,7 @@ const ShipperHome = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
-
+ 
   return (
     <div className="shipper-home-page">
       <Container className="py-4">
@@ -52,12 +52,19 @@ const ShipperHome = () => {
           </Col>
         </Row>
 
-        {/* Action Button */}
+        {/* QUICK PICK ORDERS */}
         <Card className="p-4 shadow-sm mb-4">
           <h5 className="fw-bold mb-3">🚀 Nhận đơn mới</h5>
+
+          <ul className="mb-3">
+            <li>📍 12 Trần Duy Hưng, Cầu Giấy, Hà Nội</li>
+            <li>📍 45 Nguyễn Trãi, Thanh Xuân, Hà Nội</li>
+            <li>📍 88 Láng Hạ, Đống Đa, Hà Nội</li>
+          </ul>
+
           <Button variant="danger" className="px-4 py-2">
             <FaMotorcycle className="me-2" />
-            Tìm đơn giao ngay
+            Nhận đơn
           </Button>
         </Card>
 
@@ -76,10 +83,12 @@ const ShipperHome = () => {
               </tr>
             </thead>
             <tbody>
+
+              {/* ĐANG GIAO */}
               <tr>
                 <td>CX90871</td>
                 <td>Nguyễn Minh T</td>
-                <td>Quận 7, TP.HCM</td>
+                <td>Thanh Xuân, Hà Nội</td>
                 <td>
                   <span className="text-warning fw-bold">Đang giao</span>
                 </td>
@@ -90,10 +99,11 @@ const ShipperHome = () => {
                 </td>
               </tr>
 
+              {/* HOÀN THÀNH */}
               <tr>
                 <td>CX77124</td>
                 <td>Trần Hoài B</td>
-                <td>Quận 3, TP.HCM</td>
+                <td>Đống Đa, Hà Nội</td>
                 <td>
                   <span className="text-success fw-bold">Hoàn thành</span>
                 </td>
@@ -104,16 +114,22 @@ const ShipperHome = () => {
                 </td>
               </tr>
 
+              {/* ĐANG LẤY HÀNG – ĐƠN 1 */}
               <tr>
-                <td>CX55689</td>
-                <td>Phạm Quỳnh A</td>
-                <td>Thủ Đức, TP.HCM</td>
+                <td>CX11223</td>
+                <td>Nguyễn Văn A</td>
+                <td>45 Nguyễn Trãi, Thanh Xuân, Hà Nội</td>
                 <td>
-                  <span className="text-primary fw-bold">Chờ nhận</span>
+                  <span className="text-primary fw-bold">Đang lấy hàng</span>
                 </td>
                 <td>
-                  <Button size="sm" variant="outline-primary">
-                    Nhận đơn
+                  <Button
+                    as={Link}
+                    to="/shipper/edit-order/:id"
+                    size="sm"
+                    variant="outline-warning"
+                  >
+                    Sửa đơn
                   </Button>
                 </td>
               </tr>

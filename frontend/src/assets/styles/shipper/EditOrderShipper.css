@@ -1,0 +1,40 @@
+.edit-order {
+  max-width: 720px;
+}
+
+.edit-card {
+  background: #fff;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease;
+}
+
+.edit-card:hover {
+  transform: scale(1.02);
+}
+
+.section-title {
+  font-weight: 700;
+  color: #333;
+}
+
+.form-control {
+  border-radius: 10px;
+}
+
+/* ===== READONLY STYLE ===== */
+.readonly {
+  background: #f1f3f5;
+  cursor: not-allowed;
+}
+
+.readonly:hover {
+  border-color: #dc3545;
+}
+
+/* ===== INPUT HOVER ===== */
+.form-control:not(.readonly):hover {
+  transform: scale(1.03);
+  transition: 0.2s ease;
+}

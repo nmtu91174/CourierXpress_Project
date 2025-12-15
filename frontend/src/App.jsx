@@ -24,6 +24,7 @@ import CreateOrder from './pages/user/CreateOrder.jsx';
 import UserOrdersPage from './pages/shipper/UserOrdersPage.jsx';
 import UserProfilePage from './pages/shipper/UserProfilePage.jsx';
 import OrderDetail from './pages/user/OrderDetail.jsx';
+import DeliveryInProgress from './pages/shipper/DeliveryInProgress.jsx';
 
 // Admin pages
 import AdminLayout from './components/Layouts/AdminLayout.jsx';
@@ -37,6 +38,10 @@ import HomePageShipper from './pages/shipper/HomePageShipper.jsx';
 import AboutUsShipper from './pages/shipper/AboutUsShipper.jsx';
 import ContactShipper from './pages/shipper/ContactShipper.jsx';
 import OrderDetailShipper from './pages/shipper/OrderDetailShipper.jsx';
+import EditOrderShipper from "./pages/shipper/EditOrderShipper.jsx";
+import OrderHistoryShipper from "./pages/shipper/OrderHistoryShipper.jsx";
+
+
 
 // ================= LAYOUT =================
 
@@ -228,6 +233,38 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+        <Route
+          path="/shipper/on-the-way"
+          element={
+            <ProtectedRoute allowed={['shipper']}>
+              <PublicLayout>
+                <DeliveryInProgress />
+              </PublicLayout>
+            </ProtectedRoute>
+          }
+        />
+              <Route
+        path="/shipper/edit-order/:id"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout>
+              <EditOrderShipper />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+            <Route
+        path="/shipper/order-history"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout>
+              <OrderHistoryShipper />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+
+
 
       {/* ================= FALLBACK ================= */}
 

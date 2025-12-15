@@ -10,7 +10,7 @@
 
 /* Cards */
 .shipper-home-page .card {
-  border-radius: 14px;
+  border-radius: 14px; 
   transition: 0.25s ease;
 }
 

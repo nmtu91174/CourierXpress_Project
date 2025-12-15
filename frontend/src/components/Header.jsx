@@ -124,6 +124,12 @@ const Header = ({ className = "" }) => {
                 <NavDropdown.Item as={Link} to="/shipper/contact">
                   Contact
                 </NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/shipper/on-the-way">
+                 Delivery In Progress
+                </NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/shipper/order-history">
+                  OrderHistory
+                </NavDropdown.Item>
               </NavDropdown>
             )}
 
