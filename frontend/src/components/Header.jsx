@@ -7,13 +7,16 @@ import { FaShippingFast } from "react-icons/fa";
 // THAY ĐỔI: Chấp nhận props className
 const Header = ({ className }) => {
     const navigate = useNavigate();
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem("user"));
+        } catch {
+            return null;
+        }
+    });
+
 
     // Lấy user từ localStorage khi component mount
-    useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (storedUser) setUser(storedUser);
-    }, []);
 
     const handleLogout = async () => {
         try {
@@ -22,7 +25,7 @@ const Header = ({ className }) => {
             
             if (userData && userData.id) {
                 try {
-                    const res = await fetch("http://localhost:8888/api/auth/logout.php", {
+                    const res = await fetch("http://localhost:8889/api/auth/logout.php", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         credentials: "include", // ⭐ SỐNG CÒN: gửi cookie session

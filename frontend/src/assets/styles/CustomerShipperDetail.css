@@ -1,0 +1,39 @@
+/* src/assets/styles/CustomerShipperDetail.css */
+
+/* Màu chủ đạo */
+:root {
+    --primary-blue: #004792; /* Xanh đậm CourierXpress */
+    --accent-orange: #E9522F; /* Cam/Đỏ Accent */
+}
+
+.shipper-detail-card {
+    /* Đảm bảo border-left nổi bật */
+    border-color: var(--primary-blue) !important;
+    border-left: 5px solid var(--accent-orange) !important;
+    border-radius: 8px;
+}
+
+.shipper-detail-card h5 {
+    color: var(--primary-blue);
+    font-size: 1.1rem;
+}
+
+.shipper-detail-card h5 .svg-inline--fa {
+    color: var(--accent-orange);
+}
+
+.shipper-detail-card h4 {
+    font-size: 1.5rem;
+}
+
+/* Biển số xe nổi bật */
+.shipper-detail-card .text-danger {
+    color: var(--accent-orange) !important;
+    letter-spacing: 0.5px;
+}
+
+/* Ảnh đại diện có viền */
+.shipper-detail-card img {
+    border: 3px solid var(--primary-blue) !important;
+    object-fit: cover;
+}

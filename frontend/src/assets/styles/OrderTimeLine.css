@@ -1,0 +1,96 @@
+/* src/assets/styles/OrderTimeline.css */
+
+/* Định nghĩa màu sắc */
+:root {
+    --primary-blue: #004792;
+    --accent-orange: #E9522F;
+    --success-green: #28a745;
+    --light-gray: #e9ecef;
+}
+
+.order-timeline-card {
+    border-radius: 10px;
+    border: 1px solid var(--light-gray);
+}
+
+.timeline-container {
+    position: relative;
+}
+
+.timeline-step {
+    position: relative;
+    padding-bottom: 30px; /* Dành chỗ cho icon và text */
+}
+
+/* Icon Wrapper */
+.timeline-icon-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Icon Style */
+.timeline-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    z-index: 10;
+    transition: all 0.3s;
+    box-shadow: 0 0 0 3px white, 0 0 0 4px var(--light-gray); /* Vòng ngoài mặc định */
+}
+
+/* Thanh kết nối */
+.timeline-line {
+    position: absolute;
+    top: 50%;
+    left: calc(50% + 20px); /* Bắt đầu sau icon */
+    width: 100%; /* Kéo dài hết Col hiện tại */
+    height: 3px;
+    transform: translateY(-50%);
+    background-color: var(--light-gray);
+    z-index: 5;
+}
+
+/* --- TRẠNG THÁI --- */
+
+/* 1. COMPLETED (Đã hoàn thành) */
+.timeline-step.completed .timeline-icon {
+    background-color: var(--success-green);
+    box-shadow: 0 0 0 3px white, 0 0 0 4px var(--success-green);
+}
+.timeline-step.completed .timeline-line {
+    background-color: var(--success-green);
+}
+
+/* 2. ACTIVE (Đang hoạt động - Trạng thái hiện tại) */
+.timeline-step.active .timeline-icon {
+    background-color: var(--accent-orange);
+    box-shadow: 0 0 0 3px white, 0 0 0 4px var(--accent-orange);
+    animation: pulse-active 1.5s infinite;
+}
+.timeline-step.active small {
+    color: var(--accent-orange) !important;
+}
+
+/* 3. PENDING (Chưa thực hiện) */
+.timeline-step.pending .timeline-icon {
+    background-color: var(--light-gray);
+    color: #6c757d;
+}
+
+/* Hiệu ứng pulse cho trạng thái Active */
+@keyframes pulse-active {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Xử lý line để nó không tràn ra ngoài ở bước cuối cùng */
+.timeline-step:last-child .timeline-line {
+    display: none;
+}

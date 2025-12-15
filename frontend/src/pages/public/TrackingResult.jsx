@@ -1,7 +1,7 @@
 // src/pages/public/TrackingResult.jsx
 
 // 1. Nhập khẩu công cụ
-import React from 'react';
+import React, { useEffect, useState } from "react";
 import { useParams, Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Badge } from 'react-bootstrap';
 // Import mấy cái icon đẹp đẹp (Mũi tên, Xe tải, Dấu tích)
@@ -15,22 +15,58 @@ const TrackingResult = () => {
     // Đây là một "Đối tượng" (Object) chứa toàn bộ thông tin của một đơn hàng
     const mockData = {
         trackingId: id,
-        status: "Đang vận chuyển", // Trạng thái hiện tại
+        status: "Đang vận chuyển",
         sender: "Nguyễn Văn A - Hà Nội",
         receiver: "Trần Thị B - TP.HCM",
-        // Đây là một "Danh sách" (Array) chứa các mốc thời gian
+        shipper_id: 4, // 👈 ID shipper trong DB
         timeline: [
-            { time: "08:00 05/10/2023", event: "Đã giao hàng thành công", completed: false }, // Sự kiện tương lai (chưa xong)
-            { time: "14:30 04/10/2023", event: "Đang vận chuyển đến kho Quận 1", completed: true }, // Đã xong (màu xanh)
+            { time: "08:00 05/10/2023", event: "Đã giao hàng thành công", completed: false },
+            { time: "14:30 04/10/2023", event: "Đang vận chuyển đến kho Quận 1", completed: true },
             { time: "09:00 03/10/2023", event: "Đã lấy hàng từ người gửi", completed: true },
             { time: "08:00 03/10/2023", event: "Đơn hàng đã được tạo", completed: true },
         ]
     };
 
+    const calcExperience = (createdAt) => {
+        if (!createdAt) return "Chưa rõ";
+
+        const start = new Date(createdAt);
+        const now = new Date();
+
+        let years = now.getFullYear() - start.getFullYear();
+        let months = now.getMonth() - start.getMonth();
+
+        if (months < 0) {
+            years--;
+            months += 12;
+        }
+
+        if (years <= 0) {
+            return `${months} tháng kinh nghiệm`;
+        }
+
+        return `${years} năm ${months} tháng kinh nghiệm`;
+    };
+    const [shipper, setShipper] = useState(null);
+
+        useEffect(() => {
+        if (!mockData.shipper_id) return;
+
+        fetch(`http://localhost:8889/api/shipper/get_shipper_info.php?id=${mockData.shipper_id}`)
+            .then(res => res.json())
+            .then(data => {
+            if (data.status === "success") {
+                setShipper(data.shipper);
+            }
+            })
+            .catch(err => console.error("Load shipper error", err));
+        }, [mockData.shipper_id]);
+
+
     return (
         <Container className="py-5">
             {/* Nút quay lại trang chủ cho đỡ lạc đường */}
-            <Link to="/" className="text-decoration-none mb-4 d-inline-block">
+            <Link to="/" className="text-decoration-none mb-4 d-inline-block">zzz
                 <FaArrowLeft className="me-2" /> Quay lại trang chủ
             </Link>
 
@@ -44,6 +80,39 @@ const TrackingResult = () => {
                     <Card className="shadow-sm border-0 h-100">
                         <Card.Header className="bg-primary text-white fw-bold">
                             <FaBox className="me-2" /> Thông tin kiện hàng
+                            {shipper && (
+                                <Card className="shadow-sm border-0 mt-4">
+                                    <Card.Header className="bg-success text-white fw-bold">
+                                    🚚 Shipper phụ trách
+                                    </Card.Header>
+
+                                    <Card.Body>
+                                    <div className="d-flex align-items-center mb-3">
+                                        <img
+                                        src={shipper.avatar || "https://via.placeholder.com/80"}
+                                        className="rounded-circle me-3"
+                                        width="70"
+                                        height="70"
+                                        alt="shipper"
+                                        />
+                                        <div>
+                                        <h6 className="fw-bold mb-1">{shipper.name}</h6>
+                                        <small className="text-muted">
+                                            {calcExperience(shipper.created_at)}
+                                        </small>
+                                        </div>
+                                    </div>
+
+                                    <p className="mb-1">
+                                        <strong>SĐT:</strong> {shipper.phone}
+                                    </p>
+                                    <p className="mb-0">
+                                        <strong>Biển số xe:</strong> {shipper.vehicle_plate}
+                                    </p>
+                                    </Card.Body>
+                                </Card>
+                                )}
+
                         </Card.Header>
                         <Card.Body>
                             <p><strong>Người gửi:</strong><br /> {mockData.sender}</p>

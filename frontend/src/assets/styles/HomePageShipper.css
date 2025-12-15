@@ -1,0 +1,55 @@
+/* src/assets/styles/shipper/HomePageShipper.css */
+
+.shipper-home-page {
+    background-color: #f8f9fa; 
+}
+
+.shipper-heading {
+    color: #004792; /* Xanh đậm */
+}
+
+/* Stat Cards */
+.stat-card {
+    border-radius: 10px;
+    transition: transform 0.2s;
+    border: none;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Màu Icon */
+.stat-card-primary .svg-inline--fa { color: #004792 !important; }
+.stat-card-warning .svg-inline--fa { color: #ff9800 !important; }
+.stat-card-success .svg-inline--fa { color: #28a745 !important; }
+
+/* Thẻ Nhận đơn mới (Gradient Xanh) */
+.search-order-card {
+    background: linear-gradient(135deg, #004792, #0056b3); 
+    color: white;
+    border-radius: 15px;
+}
+
+/* Nút Tìm đơn giao ngay (Màu cam/đỏ chủ đạo) */
+.custom-danger-btn {
+    background-color: #E9522F !important; 
+    border-color: #E9522F !important;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.custom-danger-btn:hover {
+    background-color: #c74526 !important;
+    border-color: #c74526 !important;
+}
+
+.order-list-card {
+    border-radius: 15px;
+}
+
+.order-list-card table thead th {
+    background-color: #f1f1f1;
+    color: #004792;
+    font-weight: bold;
+}

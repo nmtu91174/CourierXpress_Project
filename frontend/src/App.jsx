@@ -15,7 +15,6 @@ import TrackingResult from './pages/public/TrackingResult';
 import ProtectedRoute from "./pages/auth/ProtectedRoute.jsx";
 import NoPermission from "./pages/auth/NoPermission.jsx";
 import HomePageCostumer from './pages/public/HomePage.jsx';
-
 // ================= ADMIN IMPORT =================
 import AdminLayout from './components/Layouts/AdminLayout.jsx';
 import Dashboard from './pages/admin/Dashboard';
@@ -28,10 +27,12 @@ import HomePageShipper from './pages/shipper/HomePageShipper.jsx';
 import AboutUsShipper from './pages/shipper/AboutUsShipper.jsx';
 import ContactShipper from './pages/shipper/ContactShipper.jsx';
 import OrderDetailShipper from './pages/shipper/OrderDetailShipper.jsx';
+import ShipperProfileEdit from './pages/shipper/ShipperProfileEdit.jsx';
 
 // ================= USER =================
 import UserOrdersPage from './pages/shipper/UserOrdersPage.jsx';
 import UserProfilePage from './pages/shipper/UserProfilePage.jsx';
+import OrderDetailPage from './pages/user/OrderDetailPage';
 
 // ================= CUSTOMER =================
 import CreateOrder from './pages/user/CreateOrder.jsx';
@@ -207,6 +208,26 @@ export default function App() {
           <ProtectedRoute allowed={['shipper']}>
             <PublicLayout>
               <OrderDetailShipper />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shipper/profile/edit"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout>
+              <ShipperProfileEdit />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/order/detail"
+        element={
+          <ProtectedRoute allowed={['customer','shipper']}>
+            <PublicLayout>
+              <OrderDetailPage />
             </PublicLayout>
           </ProtectedRoute>
         }
