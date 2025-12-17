@@ -168,6 +168,7 @@ echo json_encode([
         "statusDesc"        => $order['status_text'],
         "serviceTypeName"   => $order['service_type_name'],
         "weight"            => $order['weight'],
+        "payer_type"        => $order['payer_type'],
         "length"            => $order['length'],
         "width"             => $order['width'],
         "height"            => $order['height'],

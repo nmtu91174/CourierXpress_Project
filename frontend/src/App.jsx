@@ -24,6 +24,7 @@ import CreateOrder from './pages/user/CreateOrder.jsx';
 import UserOrdersPage from './pages/shipper/UserOrdersPage.jsx';
 import UserProfilePage from './pages/shipper/UserProfilePage.jsx';
 import OrderDetail from './pages/user/OrderDetail.jsx';
+import Orders from './pages/user/Orders.jsx';
 import DeliveryInProgress from './pages/shipper/DeliveryInProgress.jsx';
 
 // Admin pages
@@ -154,7 +155,7 @@ export default function App() {
         element={
           <ProtectedRoute allowed={['customer']}>
             <PublicLayout>
-              <UserOrdersPage />
+              <Orders />
             </PublicLayout>
           </ProtectedRoute>
         }

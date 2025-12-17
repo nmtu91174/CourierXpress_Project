@@ -4,7 +4,6 @@ import hanoiData from "../data/hanoi.json";
 
 const API_KEY = "9aed6a93b4d540e6b3b740a688d9921e";
 const API_URL = 'http://localhost:8888/createorder.php'; 
-const WEIGHT_THRESHOLD = 1.0; 
 const DISTANCE_THRESHOLD = 0.0;
 
 const fieldMap = {
@@ -13,7 +12,7 @@ const fieldMap = {
     receiver_name: 'Tên Người Nhận (*)',
     receiver_phone: 'Số Điện Thoại Nhận (*)',
     receiver_email: 'Email Người Nhận (*)',
-    weight: 'Khối Lượng (kg) (*)',
+    weight: 'Khối Lượng (gram) (*)',
     length: 'Chiều Dài (cm) (*)',
     width: 'Chiều Rộng (cm) (*)',
     height: 'Chiều Cao (cm) (*)',
@@ -39,18 +38,19 @@ export const useOrderLogic = () => {
     const [filePreviews, setFilePreviews] = useState([]);
 
     const [formData, setFormData] = useState({
-        // Địa chỉ
         fromStreet: '', fromWard: '', fromDistrict: '',
         toStreet: '', toWard: '', toDistrict: '',
-        // Thông tin người dùng
         sender_name: '', sender_phone: '',
         receiver_name: '', receiver_phone: '', receiver_email: '', 
         category_id: '',
-        // Hàng hóa
-        weight: 1, length: 10, width: 10, height: 10, 
-        service_type: 1, cod_amount: 0, payment_method_id: 1, 
+        weight: 500, length: 10, width: 10, height: 10, 
+        service_type: 1,
+        payer_type: 1,
+        cod_amount: 0,
+        payment_method_id: 1, 
         note: "",
     });
+
 
     // =======================================================
     // --- Geocoding & Routing Logic (useCallback 1-3) ---
@@ -162,19 +162,28 @@ export const useOrderLogic = () => {
             });
         }
 
-        // 3. Phụ Phí Cân Nặng (ID 2)
-        if (weightFee && weight > WEIGHT_THRESHOLD) { 
-            const extraKg = Math.ceil(weight - WEIGHT_THRESHOLD);
-            const extraWeightFee = extraKg * WEIGHT_FEE_PER_KG;
-            if (extraWeightFee > 0) {
-                total_shipping_fee += extraWeightFee;
-                fees_detail.push({ 
-                    id: weightFee.id, 
-                    code: weightFee.code,
-                    name: weightFee.name, 
-                    amount: extraWeightFee 
-                });
-            }
+        // 3. Phụ Phí Cân Nặng (GRAM)
+        // Quy tắc:
+        // 0–500g: miễn phí
+        // >500g: mỗi 500g tính thêm 1 lần phí
+
+        const weightGram = Number(weight) || 0;
+        const FREE_WEIGHT = 500;   // 500g miễn phí
+        const BLOCK_WEIGHT = 500;  // mỗi block 500g
+
+        if (weightFee && weightGram > FREE_WEIGHT) {
+            const extraGram = weightGram - FREE_WEIGHT;
+            const blocks = Math.ceil(extraGram / BLOCK_WEIGHT);
+            const extraWeightFee = blocks * WEIGHT_FEE_PER_KG;
+
+            total_shipping_fee += extraWeightFee;
+
+            fees_detail.push({
+                id: weightFee.id,
+                code: weightFee.code,
+                name: `Phụ phí trọng lượng (${blocks} x 500g)`,
+                amount: extraWeightFee
+            });
         }
         
         // 4. Phụ Phí Bảo Hiểm (ID 3) - Giả định nếu COD > 500k
@@ -468,15 +477,23 @@ export const useOrderLogic = () => {
                     status: 'success',
                     text: loggedUser
                         ? "Đã tạo đơn hàng thành công!"
-                        : `Tạo đơn hàng thành công! Mã vận đơn: ${data.order_code}. Bạn đừng lo vì chúng tôi sẽ gửi Email! cho bạn!`
+                        : `Tạo đơn hàng thành công! Mã vận đơn: ${data.order_code}. Bạn đừng lo vì chúng tôi sẽ gửi Email cho bạn!`
                 });
 
                 setFormData({
-                    fromStreet: '', fromWard: '', fromDistrict: '', sender_name: '', sender_phone: '',
-                    toStreet: '', toWard: '', toDistrict: '', receiver_name: '', receiver_phone: '', receiver_email: '', 
-                    category_id: '', weight: 1, length: 10, width: 10, height: 10,
-                    service_type: 1, cod_amount: 0, payment_method_id: 1, note: "", 
+                    fromStreet: '', fromWard: '', fromDistrict: '',
+                    toStreet: '', toWard: '', toDistrict: '',
+                    sender_name: '', sender_phone: '',
+                    receiver_name: '', receiver_phone: '', receiver_email: '', 
+                    category_id: '',
+                    weight: 500, length: 10, width: 10, height: 10,
+                    service_type: 1,
+                    payer_type: 1,
+                    cod_amount: 0,
+                    payment_method_id: 1,
+                    note: "",
                 });
+
                 setSelectedFiles([]); setFilePreviews([]); setDistanceKm(null);
             } else {
                 setMessage({ status: 'error', text: data.message || 'Lỗi không xác định khi tạo đơn.' });

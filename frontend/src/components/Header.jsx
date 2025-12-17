@@ -92,20 +92,26 @@ const Header = ({ className = "" }) => {
               </Nav.Link>
             )}
 
-            {/* TRACKING – SPA SAFE */}
+            {/* TRACKING / ORDERS – SPA SAFE */}
             <NavDropdown
-              title="Tracking"
+              title={user ? "Orders" : "Tracking"}
               id="tracking-nav"
               className="fw-bold fs-10 text-dark"
             >
-              <NavDropdown.Item as={Link} to="/tracking">
-                Tracking
+              <NavDropdown.Item
+                as={Link}
+                to={user ? "/orders" : "/tracking"}
+              >
+                {user ? "Orders" : "Tracking"}
               </NavDropdown.Item>
+
               <NavDropdown.Divider />
+
               <NavDropdown.Item as={Link} to="/createorder">
                 Make An Order
               </NavDropdown.Item>
             </NavDropdown>
+
 
             {/* SHIPPER MENU */}
             {role === "shipper" && (

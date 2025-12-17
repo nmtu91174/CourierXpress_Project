@@ -41,9 +41,11 @@ $required_fields = [
     'length', 'width', 'height',
     'service_type_id',
     'payment_method_id',
+    'payer_type',
     'total_shipping_fee', 
     'total_amount_with_cod'
 ];
+
 
 foreach ($required_fields as $field) {
     if (empty($data[$field]) && $field !== 'cod_amount') { 
@@ -72,6 +74,15 @@ $payment_method_id = (int) $data['payment_method_id'];
 $notes = isset($data['note']) && trim($data['note']) !== '' 
          ? $conn->real_escape_string($data['note']) 
          : null;
+$payer_type = isset($data['payer_type']) ? (int)$data['payer_type'] : 1;
+if (!in_array($payer_type, [1, 2])) {
+    http_response_code(400);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Giá trị payer_type không hợp lệ (chỉ chấp nhận 1 hoặc 2)"
+    ]);
+    exit();
+}
 
 $total_shipping_fee = (float) $data['total_shipping_fee'];
 $total_amount_with_cod = (float) $data['total_amount_with_cod'];
@@ -133,39 +144,44 @@ $invoice_number = generateInvoiceNumber($conn);
 
 $conn->begin_transaction();
     try {
-        // 3. TẠO ĐƠN HÀNG (orders)
+    // 3. TẠO ĐƠN HÀNG (orders)
         $stmt_order = $conn->prepare("INSERT INTO orders (
-    customer_id, agent_id, order_code,
-    sender_name, sender_phone, sender_address,
-    receiver_name, receiver_phone, receiver_address,
-    weight, category_id,
-    length, width, height,
-    service_type, status,
-    total_amount, cod_amount, total_shipping_fee,
-    payment_method_id,
-    notes
-) VALUES (
-    ?, NULL, ?,
-    ?, ?, ?,
-    ?, ?, ?,
-    ?, ?,
-    ?, ?, ?,
-    ?, 1,
-    ?, ?, ?,
-    ?, ?
-)");
-            $stmt_order->bind_param(
-            "isssssssdidddidddss",
-            $customer_id, $order_code,
-            $sender_name, $sender_phone, $sender_address,
-            $receiver_name, $receiver_phone, $receiver_address,
-            $weight, $category_id,
-            $length, $width, $height,
-            $service_type_id,
-            $total_amount_with_cod, $cod_amount, $total_shipping_fee,
-            $payment_method_id,
-            $notes
-        );
+        customer_id, agent_id, order_code,
+        sender_name, sender_phone, sender_address,
+        receiver_name, receiver_phone, receiver_address,
+        weight, category_id,
+        length, width, height,
+        service_type,
+        payer_type,
+        status,
+        total_amount, cod_amount, total_shipping_fee,
+        payment_method_id,
+        notes
+    ) VALUES (
+        ?, NULL, ?,
+        ?, ?, ?,
+        ?, ?, ?,
+        ?, ?,
+        ?, ?, ?,
+        ?,
+        ?,
+        1,
+        ?, ?, ?,
+        ?, ?
+    )");
+        $stmt_order->bind_param(
+        "isssssssdidddiidddss",
+        $customer_id, $order_code,
+        $sender_name, $sender_phone, $sender_address,
+        $receiver_name, $receiver_phone, $receiver_address,
+        $weight, $category_id,
+        $length, $width, $height,
+        $service_type_id,
+        $payer_type,
+        $total_amount_with_cod, $cod_amount, $total_shipping_fee,
+        $payment_method_id,
+        $notes
+    );
         
         $stmt_order->execute();
         $order_id = $conn->insert_id;

@@ -35,6 +35,13 @@ const TrackingResult = () => {
 
   const formatCurrency = (value) => (value != null ? value.toLocaleString("vi-VN") : "0");
 
+  const formatPayerType = (type) => {
+    if (Number(type) === 1) return "Người gửi trả";
+    if (Number(type) === 2) return "Người nhận trả";
+    return "-";
+  };
+
+
   return (
     <Container className={`py-5 ${styles.container}`}>
       <h2 className={`fw-bold mb-4 ${styles.heading}`}>
@@ -123,7 +130,7 @@ const TrackingResult = () => {
               {/* Loại dịch vụ, trọng lượng, kích thước */}
               <Row className="mb-3">
                 <Col md={4}><strong>Loại dịch vụ:</strong> {order.serviceTypeName ?? '-'}</Col>
-                <Col md={4}><strong>Trọng lượng:</strong> {order.weight ?? '-'} kg</Col>
+                <Col md={4}><strong>Trọng lượng:</strong> {order.weight ?? '-'} g</Col>
                 <Col md={4}><strong>Kích thước:</strong> {order.length ?? '-'} x {order.width ?? '-'} x {order.height ?? '-'} cm</Col>
               </Row>
 
@@ -142,6 +149,12 @@ const TrackingResult = () => {
               <Row>
                 <Col md={6}><strong>Tổng tiền:</strong> {formatCurrency(order.total_amount)} đ</Col>
                 <Col md={6}><strong>COD:</strong> {formatCurrency(order.cod_amount)} đ</Col>
+              </Row>
+
+              <Row className="mt-2">
+                <Col md={6}>
+                  <strong>Người trả phí:</strong> {formatPayerType(order.payer_type)}
+                </Col>
               </Row>
             </Card.Body>
           </Card>

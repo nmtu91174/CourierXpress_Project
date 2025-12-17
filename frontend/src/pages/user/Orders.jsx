@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import "./Orders.css";
+import "../../assets/styles/Orders.css";
 import { useNavigate } from "react-router-dom";
 
 

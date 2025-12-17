@@ -65,6 +65,13 @@ const OrderDetail = () => {
     return FaBox;
   };
 
+  const formatPayerType = (type) => {
+    if (Number(type) === 1) return "Người gửi trả";
+    if (Number(type) === 2) return "Người nhận trả";
+    return "-";
+  };
+
+
   return (
     <Container className={`py-5 ${styles.container}`}>
       <h2 className={`fw-bold mb-4 ${styles.heading}`}>
@@ -127,7 +134,12 @@ const OrderDetail = () => {
                   <p className="text-muted">Chưa có trạng thái</p>
                 )}
 
-                {order.statuses.map((status) => {
+                  {order.statuses
+                    .filter(status => {
+                      if (Number(status.id) <= 5) return true;
+                      return Number(order.statusId) === Number(status.id);
+                    })
+                    .map((status) => {
                     const completed = Number(status.id) <= Number(order.statusId);
 
                     const timelineItem = order.timeline.find(
@@ -166,13 +178,21 @@ const OrderDetail = () => {
               <h5 className="fw-bold mb-4">Thông tin chi tiết</h5>
 
               <Row className="mb-3">
-                <Col md={4}><strong>Loại dịch vụ:</strong> {order.serviceTypeName}</Col>
-                <Col md={4}><strong>Trọng lượng:</strong> {order.weight} kg</Col>
-                <Col md={4}>
+                <Col md={3}><strong>Loại dịch vụ:</strong> {order.serviceTypeName}</Col>
+
+                <Col md={3}><strong>Trọng lượng:</strong> {order.weight} g</Col>
+
+                <Col md={3}>
+                  <strong>Người trả phí:</strong>{" "}
+                  {formatPayerType(order.payer_type)}
+                </Col>
+
+                <Col md={3}>
                   <strong>Kích thước:</strong>{" "}
                   {order.length} x {order.width} x {order.height} cm
                 </Col>
               </Row>
+
 
               <h6 className="fw-bold">Phí</h6>
               <ul className="list-group mb-3">

@@ -101,6 +101,7 @@ echo json_encode([
         "serviceTypeName" => $order['service_type_name'],
         "total_amount" => $order['total_amount'],
         "cod_amount" => $order['cod_amount'],
+        "payer_type" => (int)$order['payer_type'],
         "timeline" => $timeline,
         "statuses" => $statuses,
         "images" => $images,

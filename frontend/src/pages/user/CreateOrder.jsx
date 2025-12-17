@@ -7,7 +7,7 @@ const fieldMap = {
     receiver_name: 'Tên Người Nhận (*)',
     receiver_phone: 'Số Điện Thoại Nhận (*)',
     receiver_email: 'Email Để Nhận Mã Vận Đơn (*)',
-    weight: 'Khối Lượng (kg) (*)',
+    weight: 'Khối Lượng (gram) (*)',
     length: 'Chiều Dài (cm) (*)',
     width: 'Chiều Rộng (cm) (*)',
     height: 'Chiều Cao (cm) (*)',
@@ -39,7 +39,7 @@ export default function CreateOrderForm() {
         const handleNumericInput = (e) => {
             let val = e.target.value;
             if (isNumericField) {
-                 val = val.replace(/[^0-9.]/g, '');
+                 val = val.replace(/[^0-9]/g, '');
                  const parts = val.split('.');
                  if (parts.length > 2) {
                      val = parts[0] + '.' + parts[1];
@@ -206,6 +206,42 @@ export default function CreateOrderForm() {
 
                         {/* COD AMOUNT */}
                         {renderInput('cod_amount')}
+
+                        {/* NGƯỜI TRẢ PHÍ */}
+                        <div style={{ marginBottom: '20px' }}>
+                            <strong style={{ display: 'block', marginBottom: '8px' }}>
+                                Người Trả Phí Vận Chuyển (*)
+                            </strong>
+
+                            <label style={{ display: 'block', marginBottom: '6px', cursor: 'pointer' }}>
+                                <input
+                                    type="radio"
+                                    name="payer_type"
+                                    value="1"
+                                    checked={formData.payer_type === 1}
+                                    onChange={() =>
+                                        handleChange({ target: { name: 'payer_type', value: 1 } })
+                                    }
+                                    style={{ marginRight: '8px' }}
+                                />
+                                Người gửi trả
+                            </label>
+
+                            <label style={{ display: 'block', cursor: 'pointer' }}>
+                                <input
+                                    type="radio"
+                                    name="payer_type"
+                                    value="2"
+                                    checked={formData.payer_type === 2}
+                                    onChange={() =>
+                                        handleChange({ target: { name: 'payer_type', value: 2 } })
+                                    }
+                                    style={{ marginRight: '8px' }}
+                                />
+                                Người nhận trả
+                            </label>
+                        </div>
+
 
                         <div style={{ marginBottom: '15px' }}>
                             <label htmlFor="notes" style={labelStyle}>Ghi Chú (Notes)</label>
