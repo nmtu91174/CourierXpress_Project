@@ -2,7 +2,9 @@
 // backend/api/admin/get_reports_data.php
 // API endpoint để lấy dữ liệu reports từ database
 
-// CORS Headers
+// ==========================
+// CORS HEADERS
+// ==========================
 require_once __DIR__ . "/../../core/Cors.php";
 Cors::handlePreflight();
 Cors::setHeaders();
@@ -29,34 +31,34 @@ require_role(["admin"]);
 // ==========================
 // GET PARAMETERS
 // ==========================
-$period = $_GET["period"] ?? "7d"; // 7d, 30d, 12m
-$view = $_GET["view"] ?? "overall"; // overall, service, payment, workflow
+$period  = $_GET["period"]  ?? "7d";      // 7d, 30d, 12m
+$view    = $_GET["view"]    ?? "overall"; // overall, service, payment, workflow
 $service = $_GET["service"] ?? "all";
 $payment = $_GET["payment"] ?? "all";
-$status = $_GET["status"] ?? "all";
+$status  = $_GET["status"]  ?? "all";
 
 // ==========================
-// BUILD DATE RANGE
+// BUILD DATE RANGE (FIXED alias o.)
 // ==========================
 $dateCondition = "";
-$dateFormat = "";
+$dateFormat    = "";
 
 switch ($period) {
     case "7d":
-        $dateCondition = "DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-        $dateFormat = "%Y-%m-%d";
+        $dateCondition = "DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        $dateFormat    = "%Y-%m-%d";
         break;
     case "30d":
-        $dateCondition = "DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
-        $dateFormat = "%Y-%m-%d";
+        $dateCondition = "DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
+        $dateFormat    = "%Y-%m-%d";
         break;
     case "12m":
-        $dateCondition = "DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)";
-        $dateFormat = "%Y-%m";
+        $dateCondition = "DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)";
+        $dateFormat    = "%Y-%m";
         break;
     default:
-        $dateCondition = "DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-        $dateFormat = "%Y-%m-%d";
+        $dateCondition = "DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
+        $dateFormat    = "%Y-%m-%d";
 }
 
 // ==========================
@@ -64,28 +66,39 @@ switch ($period) {
 // ==========================
 $whereConditions = [$dateCondition];
 
+// Service filter
 if ($view === "service" && $service !== "all") {
-    $serviceMap = ["standard" => 1, "express" => 2, "sameday" => 3];
+    $serviceMap = [
+        "standard" => 1,
+        "express"  => 2,
+        "sameday"  => 3,
+    ];
     if (isset($serviceMap[$service])) {
         $whereConditions[] = "o.service_type = " . (int)$serviceMap[$service];
     }
 }
 
+// Payment filter (FIXED momo)
 if ($view === "payment" && $payment !== "all") {
-    $paymentMap = ["cash" => 1, "banking" => 2, "wallet" => 3];
+    $paymentMap = [
+        "cash"    => 1,
+        "banking" => 2,
+        "momo"    => 3,
+    ];
     if (isset($paymentMap[$payment])) {
         $whereConditions[] = "o.payment_method_id = " . (int)$paymentMap[$payment];
     }
 }
 
+// Workflow filter (FIXED status map)
 if ($view === "workflow" && $status !== "all") {
     $statusMap = [
-        "BOOKED" => 1,
-        "APPROVED" => 2,
-        "ASSIGNED" => 3,
-        "IN_PROGRESS" => 4,
-        "DELIVERED" => 5,
-        "FAILED" => 6,
+        "BOOKED"     => 1,
+        "APPROVED"   => 2,
+        "ASSIGNED"   => 3,
+        "PICKED_UP"  => 4,
+        "DELIVERED"  => 5,
+        "FAILED"     => 6,
     ];
     if (isset($statusMap[$status])) {
         $whereConditions[] = "o.status = " . (int)$statusMap[$status];
@@ -108,15 +121,15 @@ $kpiSql = "
 ";
 
 $kpiResult = $conn->query($kpiSql);
-$kpiData = $kpiResult->fetch_assoc();
+$kpiData   = $kpiResult->fetch_assoc();
 
-$totalOrders = (int)$kpiData["total_orders"];
-$delivered = (int)$kpiData["delivered"];
-$failed = (int)$kpiData["failed"];
+$totalOrders  = (int)$kpiData["total_orders"];
+$delivered    = (int)$kpiData["delivered"];
+$failed       = (int)$kpiData["failed"];
 $totalRevenue = (float)$kpiData["total_revenue"];
 
 $deliveredRate = $totalOrders > 0 ? round(($delivered / $totalOrders) * 100) : 0;
-$cancelRate = $totalOrders > 0 ? round(($failed / $totalOrders) * 100) : 0;
+$cancelRate    = $totalOrders > 0 ? round(($failed / $totalOrders) * 100) : 0;
 
 // ==========================
 // ORDERS BY STATUS OVER TIME
@@ -133,7 +146,7 @@ $statusTimeSql = "
 ";
 
 $statusTimeResult = $conn->query($statusTimeSql);
-$statusTimeData = [];
+$statusTimeData   = [];
 while ($row = $statusTimeResult->fetch_assoc()) {
     $statusTimeData[] = $row;
 }
@@ -153,7 +166,7 @@ $revenueTimeSql = "
 ";
 
 $revenueTimeResult = $conn->query($revenueTimeSql);
-$revenueTimeData = [];
+$revenueTimeData   = [];
 while ($row = $revenueTimeResult->fetch_assoc()) {
     $revenueTimeData[] = $row;
 }
@@ -173,7 +186,7 @@ $serviceDistSql = "
 ";
 
 $serviceDistResult = $conn->query($serviceDistSql);
-$serviceDistData = [];
+$serviceDistData   = [];
 while ($row = $serviceDistResult->fetch_assoc()) {
     $serviceDistData[] = $row;
 }
@@ -193,7 +206,7 @@ $paymentDistSql = "
 ";
 
 $paymentDistResult = $conn->query($paymentDistSql);
-$paymentDistData = [];
+$paymentDistData   = [];
 while ($row = $paymentDistResult->fetch_assoc()) {
     $paymentDistData[] = $row;
 }
@@ -214,36 +227,37 @@ $workflowSql = "
 ";
 
 $workflowResult = $conn->query($workflowSql);
-$workflowData = [];
+$workflowData   = [];
 while ($row = $workflowResult->fetch_assoc()) {
     $workflowData[] = $row;
 }
 
 // ==========================
-// AGING BACKLOG (WIP only - status 1,2,3,4)
+// AGING BACKLOG (WIP only)
 // ==========================
 $agingSql = "
     SELECT 
         o.status,
         s.description AS status_name,
         CASE
-            WHEN TIMESTAMPDIFF(HOUR, o.created_at, NOW()) < 2 THEN '<2h'
-            WHEN TIMESTAMPDIFF(HOUR, o.created_at, NOW()) < 6 THEN '2-6h'
+            WHEN TIMESTAMPDIFF(HOUR, o.created_at, NOW()) < 2  THEN '<2h'
+            WHEN TIMESTAMPDIFF(HOUR, o.created_at, NOW()) < 6  THEN '2-6h'
             WHEN TIMESTAMPDIFF(HOUR, o.created_at, NOW()) < 12 THEN '6-12h'
             WHEN TIMESTAMPDIFF(HOUR, o.created_at, NOW()) < 24 THEN '12-24h'
-            WHEN TIMESTAMPDIFF(DAY, o.created_at, NOW()) < 2 THEN '1-2d'
+            WHEN TIMESTAMPDIFF(DAY,  o.created_at, NOW()) < 2  THEN '1-2d'
             ELSE '>2d'
         END AS aging_bucket,
         COUNT(*) AS count
     FROM orders o
     LEFT JOIN statuses s ON o.status = s.id
-    WHERE o.status IN (1,2,3,4) AND ($dateCondition)
+    WHERE o.status IN (1,2,3,4)
+      AND DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
     GROUP BY o.status, s.description, aging_bucket
     ORDER BY o.status ASC, aging_bucket ASC
 ";
 
 $agingResult = $conn->query($agingSql);
-$agingData = [];
+$agingData   = [];
 while ($row = $agingResult->fetch_assoc()) {
     $agingData[] = $row;
 }
@@ -259,7 +273,9 @@ $agentSql = "
         SUM(CASE WHEN o.status IN (1,2,3,4) THEN 1 ELSE 0 END) AS wip,
         SUM(CASE WHEN o.status = 6 THEN 1 ELSE 0 END) AS failed
     FROM users u
-    LEFT JOIN orders o ON o.agent_id = u.id AND ($dateCondition)
+    LEFT JOIN orders o 
+      ON o.agent_id = u.id
+     AND DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
     WHERE u.role = 'agent'
     GROUP BY u.id, u.name
     HAVING (delivered + wip + failed) > 0
@@ -268,13 +284,13 @@ $agentSql = "
 ";
 
 $agentResult = $conn->query($agentSql);
-$agentData = [];
+$agentData   = [];
 while ($row = $agentResult->fetch_assoc()) {
     $agentData[] = $row;
 }
 
 // ==========================
-// SHIPPER LEAD TIME (Boxplot data)
+// SHIPPER LEAD TIME
 // ==========================
 $shipperSql = "
     SELECT 
@@ -285,10 +301,13 @@ $shipperSql = "
             MIN(CASE WHEN oh2.status_id = 5 THEN oh2.created_at END)
         ) AS lead_time_hours
     FROM users u
-    LEFT JOIN orders o ON o.shipper_id = u.id AND ($dateCondition)
+    LEFT JOIN orders o 
+      ON o.shipper_id = u.id
+     AND DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
     LEFT JOIN order_history oh1 ON oh1.order_id = o.id AND oh1.status_id = 3
     LEFT JOIN order_history oh2 ON oh2.order_id = o.id AND oh2.status_id = 5
-    WHERE u.role = 'shipper' AND o.status = 5
+    WHERE u.role = 'shipper'
+      AND o.status = 5
     GROUP BY u.id, u.name, o.id
     HAVING lead_time_hours IS NOT NULL
     ORDER BY u.name
@@ -296,7 +315,7 @@ $shipperSql = "
 ";
 
 $shipperResult = $conn->query($shipperSql);
-$shipperData = [];
+$shipperData   = [];
 while ($row = $shipperResult->fetch_assoc()) {
     $shipperData[] = $row;
 }
@@ -321,15 +340,18 @@ $failedRiskSql = "
 ";
 
 $failedRiskResult = $conn->query($failedRiskSql);
-$failedRiskData = [];
+$failedRiskData   = [];
 while ($row = $failedRiskResult->fetch_assoc()) {
-    $failedRate = $row['total_orders'] > 0 ? round(($row['failed_orders'] / $row['total_orders']) * 100, 1) : 0;
+    $failedRate = $row["total_orders"] > 0
+        ? round(($row["failed_orders"] / $row["total_orders"]) * 100, 1)
+        : 0;
+
     $failedRiskData[] = [
-        'service_id' => $row['service_type_id'],
-        'service_name' => $row['service_name'],
-        'payment_id' => $row['payment_method_id'],
-        'payment_name' => $row['payment_name'],
-        'failed_rate' => $failedRate,
+        "service_id"    => $row["service_type_id"],
+        "service_name"  => $row["service_name"],
+        "payment_id"    => $row["payment_method_id"],
+        "payment_name"  => $row["payment_name"],
+        "failed_rate"   => $failedRate,
     ];
 }
 
@@ -338,19 +360,18 @@ while ($row = $failedRiskResult->fetch_assoc()) {
 // ==========================
 Response::success("Reports data", [
     "kpi" => [
-        "revenueB" => round($totalRevenue / 1000000000, 2), // Convert to billions
-        "orders" => $totalOrders,
+        "revenueB"      => round($totalRevenue / 1000000000, 2),
+        "orders"        => $totalOrders,
         "deliveredRate" => $deliveredRate,
-        "cancelRate" => $cancelRate,
+        "cancelRate"    => $cancelRate,
     ],
-    "statusTimeData" => $statusTimeData,
+    "statusTimeData"  => $statusTimeData,
     "revenueTimeData" => $revenueTimeData,
-    "serviceDist" => $serviceDistData,
-    "paymentDist" => $paymentDistData,
-    "workflowData" => $workflowData,
-    "agingData" => $agingData,
-    "agentData" => $agentData,
-    "shipperData" => $shipperData,
-    "failedRiskData" => $failedRiskData,
+    "serviceDist"     => $serviceDistData,
+    "paymentDist"     => $paymentDistData,
+    "workflowData"    => $workflowData,
+    "agingData"       => $agingData,
+    "agentData"       => $agentData,
+    "shipperData"     => $shipperData,
+    "failedRiskData"  => $failedRiskData,
 ]);
-

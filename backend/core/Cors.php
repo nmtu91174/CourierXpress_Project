@@ -3,55 +3,82 @@
  * Cors.php
  * ------------------------------------
  * Helper để set CORS headers đúng cách
- * Hỗ trợ credentials mode
+ * Hỗ trợ credentials mode (cookie/session)
+ *
+ * RULE:
+ * - Khi dùng credentials => Access-Control-Allow-Origin KHÔNG ĐƯỢC là '*'
+ * - Chỉ cho phép Origin nằm trong whitelist
+ * - OPTIONS phải exit sớm
  */
 
 class Cors
 {
     /**
-     * Set CORS headers với support credentials
-     * QUY TẮC VÀNG: Khi dùng credentials, PHẢI set origin cụ thể, KHÔNG được dùng *
+     * Danh sách Origin được phép (DEV)
+     * (Team bắt buộc thống nhất dùng localhost hoặc 127.0.0.1 để tránh lệch cookie)
      */
-    public static function setHeaders()
+    private static function allowedOrigins()
     {
-        $allowedOrigins = [
+        return [
             'http://localhost:5173',
             'http://localhost:3000',
             'http://127.0.0.1:5173',
-            'http://127.0.0.1:3000'
+            'http://127.0.0.1:3000',
         ];
+    }
 
-        $origin = $_SERVER['HTTP_ORIGIN'] ?? null;
-        
-        // ⭐ QUAN TRỌNG: Luôn set origin cụ thể khi có trong whitelist
-        // Không được fallback về * vì sẽ conflict với credentials
-        if ($origin && in_array($origin, $allowedOrigins)) {
-            header("Access-Control-Allow-Origin: $origin");
+    /**
+     * Set CORS headers (credentials-safe)
+     */
+    public static function setHeaders()
+    {
+        $allowedOrigins = self::allowedOrigins();
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+        // ✅ IMPORTANT: prevent caches mixing responses for different origins
+        header("Vary: Origin");
+
+        if ($origin && in_array($origin, $allowedOrigins, true)) {
+            header("Access-Control-Allow-Origin: {$origin}");
             header("Access-Control-Allow-Credentials: true");
         } else {
-            // Nếu origin không có trong whitelist, vẫn set origin cụ thể (không dùng *)
-            // Hoặc có thể set origin đầu tiên trong whitelist làm default
-            $defaultOrigin = $allowedOrigins[0]; // http://localhost:5173
-            header("Access-Control-Allow-Origin: $defaultOrigin");
-            header("Access-Control-Allow-Credentials: true");
+            /**
+             * ✅ SAFE MODE:
+             * - Không set Allow-Origin nếu origin không nằm whitelist
+             * - Tránh “defaultOrigin” vì có thể vô tình mở dữ liệu cho origin lạ
+             *
+             * (Nếu request là same-origin / tool nội bộ thì không cần CORS)
+             */
         }
 
-        header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+        // Methods
+        header("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS");
+
+        // Headers: ưu tiên echo lại đúng request headers nếu có (preflight)
+        $reqHeaders = $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS'] ?? '';
+        if ($reqHeaders) {
+            header("Access-Control-Allow-Headers: {$reqHeaders}");
+        } else {
+            header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+        }
+
+        // Optional: cache preflight (giảm lag)
+        header("Access-Control-Max-Age: 600");
+
+        // Content-Type (chỉ set khi response JSON; nếu có endpoint trả file thì endpoint đó tự set)
         header("Content-Type: application/json; charset=utf-8");
     }
 
     /**
-     * Handle preflight OPTIONS request
-     * QUAN TRỌNG: Phải exit() ngay để không chạy vào middleware
+     * Handle OPTIONS preflight
+     * MUST exit before middleware
      */
     public static function handlePreflight()
     {
-        if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
+        if (($_SERVER["REQUEST_METHOD"] ?? '') === "OPTIONS") {
             self::setHeaders();
             http_response_code(200);
-            exit(); // BẮT BUỘC exit để không chạy vào middleware
+            exit();
         }
     }
 }
-

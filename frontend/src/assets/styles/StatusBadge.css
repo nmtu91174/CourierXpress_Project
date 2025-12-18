@@ -16,6 +16,8 @@
   backdrop-filter: blur(6px);
   transition: all .25s ease;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  white-space: nowrap;
+  min-width: fit-content;
 }
 
 /* Hover nâng cấp (premium subtle effect) */
@@ -35,9 +37,9 @@
   background: linear-gradient(135deg, #6610f2, #7f39fb);
 }
 
-/* PURPLE — Assigned */
+/* TEAL — Assigned */
 .sb-purple {
-  background: linear-gradient(135deg, #6f42c1, #8a5ce6);
+  background: linear-gradient(135deg, #20c997, #3dd5b3);
 }
 
 /* YELLOW — Pickup Pending */

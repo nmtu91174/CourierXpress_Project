@@ -182,11 +182,6 @@ const Register = () => {
                         <div className="text-center mb-5">
                             <h2 className="fw-bold text-dark">Create Account</h2>
                             <p className="text-muted">Fill in the information below</p>
-                            {role && role !== "customer" && (
-                                <p className="text-info small mt-2">
-                                    Đang đăng ký với vai trò: <strong>{role}</strong>
-                                </p>
-                            )}
                         </div>
 
                         {message && (

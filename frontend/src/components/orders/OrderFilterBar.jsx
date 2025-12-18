@@ -238,6 +238,7 @@ export default function OrderFilterBar({
               className="btn-lux-outline d-flex align-items-center justify-content-center gap-1"
               onClick={onResetFilters}
               type="button"
+              style={{ marginTop: '5px' }}
             >
               <FaTimes /> Xóa bộ lọc
             </Button>

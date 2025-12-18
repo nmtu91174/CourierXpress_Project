@@ -125,15 +125,6 @@
    STATUS BADGE (đồng bộ OrderManagement)
 =================================== */
 
-.status-badge {
-  font-size: .75rem;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 999px;
-  display: inline-block;
-  letter-spacing: .25px;
-}
-
 /* STATUS BADGES */
 .status-badge {
     padding: 6px 12px;
@@ -141,6 +132,7 @@
     font-weight: 600;
     font-size: .78rem;
     display: inline-block;
+    letter-spacing: .25px;
 }
 
 .status-blue {
@@ -185,6 +177,31 @@
 /* Hover row effect */
 .lux-table tbody tr:hover {
   background: #f9fcff;
+}
+
+/* ===================================
+   CHART WRAPPER - Prevent button overlap
+=================================== */
+.chart-wrapper .card-lux {
+  position: relative;
+  overflow: visible;
+}
+
+.chart-wrapper .card-lux h6 {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.chart-wrapper .card-lux > div {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure ECharts container has proper spacing */
+.chart-wrapper .echarts-for-react {
+  position: relative !important;
+  z-index: 1 !important;
 }
 
 

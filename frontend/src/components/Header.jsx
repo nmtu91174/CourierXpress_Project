@@ -1,152 +1,205 @@
-// src/components/Header.jsx
-import React, { useState, useEffect } from 'react';
-import { Navbar, Container, Nav, Button, NavDropdown } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from "react";
+import { Navbar, Container, Nav, Button, NavDropdown } from "react-bootstrap";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FaShippingFast } from "react-icons/fa";
 
-// THAY ĐỔI: Chấp nhận props className
-const Header = ({ className }) => {
-    const navigate = useNavigate();
-    const [user, setUser] = useState(null);
+const Header = ({ className = "" }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    // Lấy user từ localStorage khi component mount
-    useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (storedUser) setUser(storedUser);
-    }, []);
+  const [user, setUser] = useState(null);
 
-    const handleLogout = async () => {
+  // ==========================
+  // LOAD USER (SAFE)
+  // ==========================
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("user");
+      const parsed = raw ? JSON.parse(raw) : null;
+      setUser(parsed);
+    } catch (e) {
+      console.error("Header: cannot parse user", e);
+      setUser(null);
+    }
+  }, []);
+
+  // ==========================
+  // NORMALIZE ROLE (VERY IMPORTANT)
+  // ==========================
+  const role = useMemo(
+    () => user?.role?.toLowerCase()?.trim(),
+    [user]
+  );
+
+  // ==========================
+  // LOGOUT
+  // ==========================
+  const handleLogout = async () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem("user") || "null");
+
+      if (userData?.id) {
         try {
-            // Gọi API logout mới (backend/api/auth/logout.php)
-            const userData = JSON.parse(localStorage.getItem("user") || "null");
-            
-            if (userData && userData.id) {
-                try {
-                    const res = await fetch("http://localhost:8888/api/auth/logout.php", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        credentials: "include", // ⭐ SỐNG CÒN: gửi cookie session
-                        body: JSON.stringify({
-                            user_id: userData.id,
-                            role: userData.role,
-                        }),
-                    });
-                    
-                    if (res.ok) {
-                        const data = await res.json();
-                        console.log("Logout success:", data.message);
-                    }
-                } catch (apiError) {
-                    console.error("Logout API error:", apiError);
-                    // Vẫn tiếp tục logout dù API lỗi
-                }
-            }
-        } catch (error) {
-            console.error("Logout error:", error);
-            // Vẫn tiếp tục logout dù có lỗi
-        } finally {
-            // Xóa localStorage và redirect
-            localStorage.removeItem("user");
-            setUser(null);
-            navigate("/"); // Quay về trang chủ sau khi logout
+          await fetch("http://localhost:8888/api/auth/logout.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              user_id: userData.id,
+              role: userData.role,
+            }),
+          });
+        } catch (apiError) {
+          console.error("Logout API error:", apiError);
         }
-    };
+      }
+    } finally {
+      localStorage.removeItem("user");
+      setUser(null);
+      navigate("/login", { replace: true });
+    }
+  };
 
-    return (
-        // THAY ĐỔI: Loại bỏ sticky-top và dùng className từ props
-        <Navbar bg="white" expand="lg" className={`shadow-sm ${className}`}>
-            <Container>
-                <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
-                    <FaShippingFast size={50} style={{ transform: 'scaleX(-1)' }} className="me-2 text-danger" />
-                    <div className="d-flex flex-column">
-                        <span className="fw-bold text-spx fs-3 lh-1">CourierXpress</span>
-                        <span className="fw-bold fs-10 text-dark lh-1" style={{ letterSpacing: '1px' }}>Logistics</span>
-                    </div>
-                </Navbar.Brand>
+  return (
+    <Navbar bg="white" expand="lg" className={`shadow-sm ${className}`}>
+      <Container>
+        {/* BRAND */}
+        <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
+          <FaShippingFast
+            size={46}
+            style={{ transform: "scaleX(-1)" }}
+            className="me-2 text-danger"
+          />
+          <div className="d-flex flex-column">
+            <span className="fw-bold fs-3 lh-1">CourierXpress</span>
+            <span
+              className="fw-bold fs-10 text-dark lh-1"
+              style={{ letterSpacing: "1px" }}
+            >
+              Logistics
+            </span>
+          </div>
+        </Navbar.Brand>
 
-                <Navbar.Toggle aria-controls="basic-navbar-nav" />
-                <Navbar.Collapse id="basic-navbar-nav">
-                    <Nav className="ms-auto align-items-center">
+        <Navbar.Toggle />
+        <Navbar.Collapse>
+          <Nav className="ms-auto align-items-center">
 
-                        {/* Home chỉ hiển thị cho customer hoặc khi chưa login */}
-                        {(!user || user.role === 'customer') && (
-                            <Nav.Link as={Link} to="/" className="fw-bold fs-10 text-dark">Home</Nav.Link>
-                        )}
+            {/* HOME – chỉ customer hoặc chưa login */}
+            {(!user || role === "customer") && (
+              <Nav.Link as={Link} to="/" className="fw-bold fs-10 text-dark">
+                Home
+              </Nav.Link>
+            )}
 
-                        {/* Tracking luôn hiển thị */}
-                        <NavDropdown title="Tracking" id="services-nav-dropdown" className="fw-bold fs-10 text-dark">
-                            <NavDropdown.Item href="/tracking">Tracking</NavDropdown.Item>
-                            <NavDropdown.Divider />
-                            <NavDropdown.Item href="/createorder">Make An Order</NavDropdown.Item>
-                        </NavDropdown>
+            {/* TRACKING / ORDERS – SPA SAFE */}
+            <NavDropdown
+              title={user ? "Orders" : "Tracking"}
+              id="tracking-nav"
+              className="fw-bold fs-10 text-dark"
+            >
+              <NavDropdown.Item
+                as={Link}
+                to={user ? "/orders" : "/tracking"}
+              >
+                {user ? "Orders" : "Tracking"}
+              </NavDropdown.Item>
 
-                        {/* Menu Shipper chỉ hiển thị khi role = 'shipper' */}
-                        {user?.role === 'shipper' && (
-                            <NavDropdown title="Shipper" id="shipper-nav-dropdown" className="fw-bold fs-10 text-dark">
-                                <NavDropdown.Item as={Link} to="/shipper/home" className="fw-semibold">Shipper Dashboard</NavDropdown.Item>
-                                <NavDropdown.Divider />
-                                <NavDropdown.Item as={Link} to="/shipper/about">About Us</NavDropdown.Item>
-                                <NavDropdown.Item as={Link} to="/shipper/contact">Contact</NavDropdown.Item>
-                            </NavDropdown>
-                        )}
+              <NavDropdown.Divider />
 
-                        {/* Services luôn hiển thị */}
-                        <NavDropdown title="Services" id="services-nav-dropdown" className="fw-bold fs-10 text-dark">
-                            <NavDropdown.Item href="#action/3.1">Action</NavDropdown.Item>
-                            <NavDropdown.Item href="#action/3.2">Another action</NavDropdown.Item>
-                            <NavDropdown.Item href="#action/3.3">Something</NavDropdown.Item>
-                            <NavDropdown.Divider />
-                            <NavDropdown.Item href="#action/3.4">Separated link</NavDropdown.Item>
-                        </NavDropdown>
+              <NavDropdown.Item as={Link} to="/createorder">
+                Make An Order
+              </NavDropdown.Item>
+            </NavDropdown>
 
-                        {/* Become a Partner chỉ customer hoặc chưa login */}
-                        {(!user || user.role === 'customer') && (
-                            <NavDropdown title="Become a Partner" id="partner-nav-dropdown" className="fw-bold fs-10 text-dark">
-                                <NavDropdown.Item href="#action/3.1">Action</NavDropdown.Item>
-                                <NavDropdown.Item href="#action/3.2">Another action</NavDropdown.Item>
-                                <NavDropdown.Item href="#action/3.3">Something</NavDropdown.Item>
-                                <NavDropdown.Divider />
-                                <NavDropdown.Item href="#action/3.4">Separated link</NavDropdown.Item>
-                            </NavDropdown>
-                        )}
 
-                        {/* Help Center luôn hiển thị */}
-                        <NavDropdown title="Help Center" id="help-nav-dropdown" className="fw-bold fs-10 text-dark">
-                            <NavDropdown.Item href="#action/3.1">Action</NavDropdown.Item>
-                            <NavDropdown.Item href="#action/3.2">Another action</NavDropdown.Item>
-                            <NavDropdown.Item href="#action/3.3">Something</NavDropdown.Item>
-                            <NavDropdown.Divider />
-                            <NavDropdown.Item href="#action/3.4">Separated link</NavDropdown.Item>
-                        </NavDropdown>
+            {/* SHIPPER MENU */}
+            {role === "shipper" && (
+              <NavDropdown
+                title="Shipper"
+                id="shipper-nav"
+                className="fw-bold fs-10 text-dark"
+              >
+                <NavDropdown.Item as={Link} to="/shipper/home">
+                  Shipper Dashboard
+                </NavDropdown.Item>
+                <NavDropdown.Divider />
+                <NavDropdown.Item as={Link} to="/shipper/about">
+                  About Us
+                </NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/shipper/contact">
+                  Contact
+                </NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/shipper/on-the-way">
+                 Delivery In Progress
+                </NavDropdown.Item>
+                <NavDropdown.Item as={Link} to="/shipper/order-history">
+                  OrderHistory
+                </NavDropdown.Item>
+              </NavDropdown>
+            )}
 
-                        {/* LOGIN / USER INFO */}
-                        {user ? (
-                            <div className="d-flex align-items-center ms-3">
-                                <span className="me-2 fw-bold text-dark">{user.name}</span>
-                                <Button
-                                    variant="outline-danger"
-                                    className="rounded-pill px-4 btn-spx-outline"
-                                    onClick={handleLogout}
-                                >
-                                    Logout
-                                </Button>
-                            </div>
-                        ) : (
-                            <Button
-                                as={Link}
-                                to="/login"
-                                variant="outline-danger"
-                                className="ms-3 rounded-pill px-4 btn-spx-outline"
-                            >
-                                Login
-                            </Button>
-                        )}
+            {/* SERVICES (STATIC – NO ROUTE) */}
+            <NavDropdown
+              title="Services"
+              id="services-nav"
+              className="fw-bold fs-10 text-dark"
+            >
+              <NavDropdown.Item>Action</NavDropdown.Item>
+              <NavDropdown.Item>Another action</NavDropdown.Item>
+              <NavDropdown.Item>Something</NavDropdown.Item>
+            </NavDropdown>
 
-                    </Nav>
-                </Navbar.Collapse>
-            </Container>
-        </Navbar>
-    );
+            {/* PARTNER – customer hoặc chưa login */}
+            {(!user || role === "customer") && (
+              <NavDropdown
+                title="Become a Partner"
+                id="partner-nav"
+                className="fw-bold fs-10 text-dark"
+              >
+                <NavDropdown.Item>Action</NavDropdown.Item>
+                <NavDropdown.Item>Another action</NavDropdown.Item>
+              </NavDropdown>
+            )}
+
+            {/* HELP */}
+            <NavDropdown
+              title="Help Center"
+              id="help-nav"
+              className="fw-bold fs-10 text-dark"
+            >
+              <NavDropdown.Item>Help</NavDropdown.Item>
+              <NavDropdown.Item>Support</NavDropdown.Item>
+            </NavDropdown>
+
+            {/* USER / LOGIN */}
+            {user ? (
+              <div className="d-flex align-items-center ms-3">
+                <span className="me-2 fw-bold text-dark">{user.name}</span>
+                <Button
+                  variant="outline-danger"
+                  className="rounded-pill px-4"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <Button
+                as={Link}
+                to="/login"
+                variant="outline-danger"
+                className="ms-3 rounded-pill px-4"
+              >
+                Login
+              </Button>
+            )}
+
+          </Nav>
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
+  );
 };
 
 export default Header;

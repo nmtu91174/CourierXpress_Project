@@ -1,112 +1,167 @@
-// src/pages/public/TrackingResult.jsx
-
-// 1. Nhập khẩu công cụ
-import React from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Container, Row, Col, Card, Badge } from 'react-bootstrap';
-// Import mấy cái icon đẹp đẹp (Mũi tên, Xe tải, Dấu tích)
-import { FaArrowLeft, FaTruck, FaCheckCircle, FaBox } from 'react-icons/fa';
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Container, Row, Col, Card, Badge, Spinner } from "react-bootstrap";
+import { FaTruck, FaCheckCircle, FaBox } from "react-icons/fa";
+import axios from "axios";
+import Swal from "sweetalert2";
+import styles from "../../assets/styles/TrackingResult.module.css"; 
 
 const TrackingResult = () => {
-    // Lấy mã vận đơn từ trên đường dẫn xuống
-    const { id } = useParams();
+  const { id } = useParams();
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    // 2. TẠO DỮ LIỆU GIẢ (MOCK DATA)
-    // Đây là một "Đối tượng" (Object) chứa toàn bộ thông tin của một đơn hàng
-    const mockData = {
-        trackingId: id,
-        status: "Đang vận chuyển", // Trạng thái hiện tại
-        sender: "Nguyễn Văn A - Hà Nội",
-        receiver: "Trần Thị B - TP.HCM",
-        // Đây là một "Danh sách" (Array) chứa các mốc thời gian
-        timeline: [
-            { time: "08:00 05/10/2023", event: "Đã giao hàng thành công", completed: false }, // Sự kiện tương lai (chưa xong)
-            { time: "14:30 04/10/2023", event: "Đang vận chuyển đến kho Quận 1", completed: true }, // Đã xong (màu xanh)
-            { time: "09:00 03/10/2023", event: "Đã lấy hàng từ người gửi", completed: true },
-            { time: "08:00 03/10/2023", event: "Đơn hàng đã được tạo", completed: true },
-        ]
+  useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const res = await axios.get(`http://localhost:8888/getOrder.php?order_code=${id}`);
+        if (res.data.status === "success") {
+          setOrder(res.data.order);
+        } else {
+          Swal.fire("Lỗi", res.data.message, "error");
+        }
+      } catch (error) {
+        console.error(error);
+        Swal.fire("Lỗi", "Không thể kết nối server", "error");
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchOrder();
+  }, [id]);
 
-    return (
-        <Container className="py-5">
-            {/* Nút quay lại trang chủ cho đỡ lạc đường */}
-            <Link to="/" className="text-decoration-none mb-4 d-inline-block">
-                <FaArrowLeft className="me-2" /> Quay lại trang chủ
-            </Link>
+  if (loading) return <div className="text-center py-5"><Spinner animation="border" /></div>;
+  if (!order) return null;
 
-            <h2 className="fw-bold mb-4">
-                Mã vận đơn: <span className="text-primary">{id}</span>
-            </h2>
+  const formatCurrency = (value) => (value != null ? value.toLocaleString("vi-VN") : "0");
 
-            <Row>
-                {/* CỘT TRÁI: THÔNG TIN CHUNG (Trên Mobile chiếm hết 12 cột, trên PC chiếm 4 cột) */}
-                <Col xs={12} md={4} className="mb-4">
-                    <Card className="shadow-sm border-0 h-100">
-                        <Card.Header className="bg-primary text-white fw-bold">
-                            <FaBox className="me-2" /> Thông tin kiện hàng
-                        </Card.Header>
-                        <Card.Body>
-                            <p><strong>Người gửi:</strong><br /> {mockData.sender}</p>
-                            <hr />
-                            <p><strong>Người nhận:</strong><br /> {mockData.receiver}</p>
-                            <hr />
-                            {/* Cái nhãn (Badge) màu vàng để hiện trạng thái cho nổi bật */}
-                            <p className="mb-0">
-                                <strong>Trạng thái: </strong>
-                                <Badge bg="warning" text="dark" className="ms-2">
-                                    {mockData.status}
-                                </Badge>
-                            </p>
-                        </Card.Body>
-                    </Card>
+  const formatPayerType = (type) => {
+    if (Number(type) === 1) return "Người gửi trả";
+    if (Number(type) === 2) return "Người nhận trả";
+    return "-";
+  };
+
+
+  return (
+    <Container className={`py-5 ${styles.container}`}>
+      <h2 className={`fw-bold mb-4 ${styles.heading}`}>
+        Mã vận đơn: <span className={styles.highlight}>{order.order_code}</span>
+      </h2>
+
+      <Row>
+        {/* Thông tin người gửi/nhận */}
+        <Col xs={12} md={4} className="mb-4">
+          <Card className={`shadow-sm border-0 h-100 ${styles.card}`}>
+            <Card.Header className={`${styles.cardHeader}`}>
+              <FaBox className="me-2" /> Thông tin kiện hàng
+            </Card.Header>
+            <Card.Body>
+              <p><strong>Người gửi:</strong><br /> {order.sender}</p>
+              <hr />
+              <p><strong>Người nhận:</strong><br /> {order.receiver}</p>
+              <hr />
+              <p><strong>Trạng thái: </strong>
+                <Badge bg="warning" className={styles.badge}>{order.statusDesc}</Badge>
+              </p>
+              {order.notes && <>
+                <hr />
+                <p><strong>Ghi chú:</strong> {order.notes}</p>
+              </>}
+
+              {/* Hình ảnh */}
+              {order.images?.length > 0 && (
+                <>
+                  <hr />
+                  <p><strong>Hình ảnh sản phẩm:</strong></p>
+                  <Row className="mb-3">
+                    {order.images.map((img, idx) => (
+                      <Col key={idx} xs={6} md={6} className="mb-2">
+                        <div className={styles.imgWrapper}>
+                          <img src={img.image_url} alt="order" className={styles.img} />
+                        </div>
+                      </Col>
+                    ))}
+                  </Row>
+                </>
+              )}
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Timeline + Chi tiết */}
+        <Col xs={12} md={8}>
+          {/* Timeline */}
+          <Card className={`shadow-sm border-0 mb-4 ${styles.card}`}>
+            <Card.Body>
+              <h5 className={`fw-bold mb-4 ${styles.subHeading}`}>Hành trình chi tiết</h5>
+              <div className={styles.timelineHorizontal}>
+                {order.statuses
+                    .filter(status => Number(status.id) <= 5)
+                    .map((status, index) => {
+                    const completed = Number(status.id) <= Number(order.statusId);
+                    const timelineItem = order.timeline.find(t => Number(t.statusId) === Number(status.id));
+                    let IconComponent;
+                    switch(Number(status.id)) {
+                        case 1: IconComponent = FaBox; break;
+                        case 2: IconComponent = FaCheckCircle; break;
+                        case 3: IconComponent = FaTruck; break;
+                        case 4: IconComponent = FaTruck; break;
+                        case 5: IconComponent = FaCheckCircle; break; 
+                        default: IconComponent = FaBox;
+                    }
+                    return (
+                        <div key={status.id} className={`${styles.timelineStep} ${completed ? styles.completed : styles.pending}`}>
+                        <div className={styles.circle}><IconComponent /></div>
+                        <span className={styles.timelineLabel}>{status.label}</span>
+                        <small className={styles.timelineTime}>{timelineItem?.time ?? '-'}</small>
+                        </div>
+                    );
+                    })
+                }
+            </div>
+            </Card.Body>
+          </Card>
+
+          {/* Chi tiết đơn hàng */}
+          <Card className={`shadow-sm border-0 ${styles.card}`}>
+            <Card.Body>
+              <h5 className={`fw-bold mb-4 ${styles.subHeading}`}>Chi tiết đơn hàng</h5>
+
+              {/* Loại dịch vụ, trọng lượng, kích thước */}
+              <Row className="mb-3">
+                <Col md={4}><strong>Loại dịch vụ:</strong> {order.serviceTypeName ?? '-'}</Col>
+                <Col md={4}><strong>Trọng lượng:</strong> {order.weight ?? '-'} g</Col>
+                <Col md={4}><strong>Kích thước:</strong> {order.length ?? '-'} x {order.width ?? '-'} x {order.height ?? '-'} cm</Col>
+              </Row>
+
+              {/* Các loại phí */}
+              <h6 className="fw-bold">Các loại phí</h6>
+              <ul className="list-group mb-3">
+                {order.fees?.length > 0 ? order.fees.map((fee, idx) => (
+                  <li key={idx} className="list-group-item d-flex justify-content-between align-items-center">
+                    {fee.name}
+                    <span>{formatCurrency(fee.amount)} đ</span>
+                  </li>
+                )) : <li className="list-group-item">Không có phụ phí</li>}
+              </ul>
+
+              {/* Tổng tiền, COD */}
+              <Row>
+                <Col md={6}><strong>Tổng tiền:</strong> {formatCurrency(order.total_amount)} đ</Col>
+                <Col md={6}><strong>COD:</strong> {formatCurrency(order.cod_amount)} đ</Col>
+              </Row>
+
+              <Row className="mt-2">
+                <Col md={6}>
+                  <strong>Người trả phí:</strong> {formatPayerType(order.payer_type)}
                 </Col>
-
-                {/* CỘT PHẢI: TIMELINE HÀNH TRÌNH (Phần khó nhất đây ạ) */}
-                <Col xs={12} md={8}>
-                    <Card className="shadow-sm border-0">
-                        <Card.Body>
-                            <h5 className="fw-bold mb-4">Hành trình chi tiết</h5>
-
-                            {/* KỸ THUẬT VÒNG LẶP (MAP) 
-                                Chú tưởng tượng mockData.timeline là một danh sách 4 dòng.
-                                Hàm map() sẽ chạy qua từng dòng một (gọi là item) và biến nó thành giao diện HTML.
-                            */}
-                            <div className="timeline-container">
-                                {mockData.timeline.map((item, index) => (
-                                    <div key={index} className="d-flex mb-4">
-
-                                        {/* 1. Cột Icon bên trái */}
-                                        <div className="me-3 d-flex flex-column align-items-center">
-                                            {/* Logic: Nếu completed=true (đã xong) thì màu xanh (bg-success), ngược lại màu xám (bg-light) */}
-                                            <div className={`rounded-circle p-2 ${item.completed ? 'bg-success text-white' : 'bg-light text-muted'}`}>
-                                                {/* Nếu là dòng đầu tiên (index 0) thì hiện dấu tích, còn lại hiện xe tải */}
-                                                {index === 0 ? <FaCheckCircle /> : <FaTruck />}
-                                            </div>
-                                            {/* Đường kẻ nối (chỉ hiện nếu không phải dòng cuối cùng) */}
-                                            {index !== mockData.timeline.length - 1 && (
-                                                <div className="flex-grow-1 bg-light" style={{ width: '2px', minHeight: '30px' }}></div>
-                                            )}
-                                        </div>
-
-                                        {/* 2. Cột Nội dung bên phải */}
-                                        <div>
-                                            <small className="text-muted">{item.time}</small>
-                                            {/* Nếu đã xong thì chữ đậm (fw-bold), chưa xong thì chữ mờ */}
-                                            <p className={`mb-0 ${item.completed ? 'fw-bold text-dark' : 'text-muted'}`}>
-                                                {item.event}
-                                            </p>
-                                        </div>
-
-                                    </div>
-                                ))}
-                            </div>
-
-                        </Card.Body>
-                    </Card>
-                </Col>
-            </Row>
-        </Container>
-    );
+              </Row>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
+  );
 };
 
 export default TrackingResult;

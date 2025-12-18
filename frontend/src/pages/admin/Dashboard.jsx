@@ -606,13 +606,27 @@ useEffect(() => {
 
   const optionOrderStatusPie = {
     tooltip: { trigger: "item" },
-    legend: { bottom: 0 },
+    legend: { 
+      bottom: 10,
+      left: "center",
+      itemGap: 10,
+      textStyle: {
+        fontSize: 12
+      }
+    },
+    grid: {
+      top: 20,
+      bottom: 80,
+      left: 20,
+      right: 20,
+    },
     series: [
       {
         name: "Trạng thái",
         type: "pie",
         radius: ["40%", "70%"],
-        avoidLabelOverlap: false,
+        center: ["50%", "45%"],
+        avoidLabelOverlap: true,
         data: [
           { value: statusCounts.booked, name: "Booked" },
           { value: statusCounts.approved, name: "Approved" },
@@ -627,6 +641,16 @@ useEffect(() => {
           borderColor: "#fff",
           borderWidth: 2,
         },
+        label: {
+          show: true,
+          formatter: "{b}: {c}",
+          fontSize: 11
+        },
+        labelLine: {
+          show: true,
+          length: 15,
+          length2: 8
+        }
       },
     ],
   };
@@ -662,8 +686,26 @@ useEffect(() => {
 
   const optionOrders7Days = {
     tooltip: { trigger: "axis" },
-    xAxis: { type: "category", data: last7Days.labels },
-    yAxis: { type: "value" },
+    grid: {
+      top: 20,
+      bottom: 40,
+      left: 50,
+      right: 30,
+      containLabel: true
+    },
+    xAxis: { 
+      type: "category", 
+      data: last7Days.labels,
+      axisLabel: {
+        fontSize: 11
+      }
+    },
+    yAxis: { 
+      type: "value",
+      axisLabel: {
+        fontSize: 11
+      }
+    },
     series: [
       {
         name: "Đơn theo ngày",
@@ -797,12 +839,12 @@ useEffect(() => {
             {/* ================= CHARTS ================= */}
       <Row className="g-4 mb-4">
         <Col md={6} className="chart-wrapper">
-          <Card className="card-lux p-3">
+          <Card className="card-lux p-3" style={{ minHeight: '450px' }}>
             <h6 className="fw-bold mb-3">Tỷ lệ trạng thái đơn hàng</h6>
-            <div style={{ height: 288 }}>
+            <div style={{ height: 380, marginTop: '10px' }}>
               <ReactECharts
                 option={optionOrderStatusPie}
-                style={{ height: "100%" }}
+                style={{ height: "100%", width: "100%" }}
                 echarts={echarts}
               />
             </div>
@@ -810,12 +852,12 @@ useEffect(() => {
         </Col>
 
         <Col md={6} className="chart-wrapper">
-          <Card className="card-lux p-3">
+          <Card className="card-lux p-3" style={{ minHeight: '450px' }}>
             <h6 className="fw-bold mb-3">7 ngày gần nhất</h6>
-            <div style={{ height: 288 }}>
+            <div style={{ height: 380, marginTop: '10px' }}>
               <ReactECharts
                 option={optionOrders7Days}
-                style={{ height: "100%" }}
+                style={{ height: "100%", width: "100%" }}
                 echarts={echarts}
               />
             </div>

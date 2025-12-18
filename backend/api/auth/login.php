@@ -125,6 +125,11 @@ $_SESSION["user"] = [
     "status" => $user["status"],
 ];
 
+// ⭐ QUAN TRỌNG: Đảm bảo session được lưu
+// PHP tự động lưu session khi script kết thúc, nhưng có thể lưu sớm
+// để đảm bảo cookie được gửi trong response header
+session_write_close();
+
 // =====================================================
 // RESPONSE
 // =====================================================

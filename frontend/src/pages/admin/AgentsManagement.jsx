@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Card, Table, Button, Row, Col, Form, Modal, Badge
+  Card, Table, Button, Row, Col, Form, Badge
 } from "react-bootstrap";
 import {
   FaSearch, FaUserTie, FaPhone, FaChartPie, FaStore,
@@ -99,14 +99,10 @@ export default function AgentsManagement() {
     fetchAgents();
   }, [filterStatus, filterWorkload, filterApproval, search]);
 
-  // GSAP Animation - Wait for data to load
+  // GSAP Animation - Only run once on mount (like OrderManagement)
   useEffect(() => {
-    // Only animate after agents and stats are loaded
-    if (agents.length > 0 || kpiStats.total_agents > 0) {
-      const cleanup = initPageAnimations({ kpiSelector: ".kpi-item" });
-      return cleanup;
-    }
-  }, [agents, kpiStats]);
+    return initPageAnimations({ kpiSelector: ".kpi-item" });
+  }, []);
 
   // Toggle agent status
   const handleToggleStatus = async (agentId, currentStatus, agentName) => {
@@ -504,14 +500,28 @@ export default function AgentsManagement() {
         </div>
       </Card>
 
-      {/* MODAL CREATE AGENT */}
-      <Modal show={showCreateModal} onHide={() => { setShowCreateModal(false); resetCreateAgentForm(); }} size="lg" className="modal-luxury agent-modal-responsive" centered>
-        <Modal.Header closeButton className="luxury-modal-header" style={{ background: "linear-gradient(135deg, #007bff, #35a0ff)", borderBottom: "none" }}>
-          <Modal.Title className="text-white d-flex align-items-center">
-            <FaPlus className="me-2" /> Thêm Đại Lý Mới
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="luxury-modal-body p-4">
+      {/* MODAL CREATE AGENT - DQN LUXURY */}
+      {showCreateModal && (
+        <div className="dqn-modal-overlay">
+          <div className="dqn-modal">
+            {/* ================= HEADER ================= */}
+            <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #007bff, #35a0ff)" }}>
+              <div className="dqn-modal-title">
+                <FaPlus /> Thêm Đại Lý Mới
+              </div>
+              <button
+                className="dqn-modal-close"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetCreateAgentForm();
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* ================= BODY (SCROLL) ================= */}
+            <div className="dqn-modal-body luxury-create-body">
           <Form>
             <div className="luxury-section-header mb-3">
               <h6 className="fw-bold d-flex align-items-center text-primary mb-0">
@@ -633,25 +643,51 @@ export default function AgentsManagement() {
               </Col>
             </Row>
           </Form>
-        </Modal.Body>
-        <Modal.Footer className="luxury-modal-footer">
-          <Button variant="secondary" onClick={() => { setShowCreateModal(false); resetCreateAgentForm(); }} className="btn-lux-outline-secondary">
-            Hủy
-          </Button>
-          <Button variant="primary" onClick={handleCreateAgentSubmit} className="btn-lux-primary-blue">
-            <FaPlus className="me-2" /> Tạo Đại Lý
-          </Button>
-        </Modal.Footer>
-      </Modal>
+            </div>
 
-      {/* MODAL VIEW AGENT */}
-      <Modal show={showViewModal} onHide={() => setShowViewModal(false)} size="lg" centered className="agent-modal-responsive">
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <FaUserTie className="me-2" /> Chi tiết Agent
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="luxury-modal-body">
+            {/* ================= FOOTER ================= */}
+            <div className="dqn-modal-footer">
+              <Button
+                variant="secondary"
+                className="btn-lux-outline-secondary"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetCreateAgentForm();
+                }}
+              >
+                Hủy
+              </Button>
+              <Button
+                variant="primary"
+                className="btn-lux-primary-blue"
+                onClick={handleCreateAgentSubmit}
+              >
+                <FaPlus className="me-2" /> Tạo Đại Lý
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL VIEW AGENT - DQN LUXURY */}
+      {showViewModal && (
+        <div className="dqn-modal-overlay">
+          <div className="dqn-modal">
+            {/* ================= HEADER ================= */}
+            <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #43a047, #8bc34a)" }}>
+              <div className="dqn-modal-title">
+                <FaUserTie /> Chi tiết Agent
+              </div>
+              <button
+                className="dqn-modal-close"
+                onClick={() => setShowViewModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* ================= BODY (SCROLL) ================= */}
+            <div className="dqn-modal-body">
           {selectedAgent && (
             <div>
               <Row className="mb-3">
@@ -761,13 +797,21 @@ export default function AgentsManagement() {
               </Row>
             </div>
           )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowViewModal(false)}>
-            Đóng
-          </Button>
-        </Modal.Footer>
-      </Modal>
+            </div>
+
+            {/* ================= FOOTER ================= */}
+            <div className="dqn-modal-footer">
+              <Button
+                variant="secondary"
+                className="btn-lux-outline-secondary"
+                onClick={() => setShowViewModal(false)}
+              >
+                Đóng
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

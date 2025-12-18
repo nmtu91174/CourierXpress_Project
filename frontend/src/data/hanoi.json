@@ -1,0 +1,187 @@
+{
+  "Ba Đình": [
+    "Phúc Xá", "Trúc Bạch", "Vĩnh Phúc", "Cống Vị", "Liễu Giai",
+    "Ngọc Khánh", "Kim Mã", "Giảng Võ", "Thành Công", "Ngọc Hà",
+    "Điện Biên", "Đội Cấn", "Quán Thánh", "Nguyễn Trung Trực"
+  ],
+  "Hoàn Kiếm": [
+    "Chương Dương", "Cửa Đông", "Cửa Nam", "Đồng Xuân", 
+    "Hàng Bạc", "Hàng Bài", "Hàng Bồ", "Hàng Bông", "Hàng Buồm",
+    "Hàng Đào", "Hàng Gai", "Hàng Mã", "Hàng Trống", "Lý Thái Tổ",
+    "Phan Chu Trinh", "Phúc Tân", "Trần Hưng Đạo", "Tràng Tiền"
+  ],
+  "Đống Đa": [
+    "Cát Linh", "Giảng Võ", "Hàng Bột", "Khâm Thiên",
+    "Khương Thượng", "Kim Liên", "Láng Hạ", "Láng Thượng",
+    "Nam Đồng", "Ngã Tư Sở", "Ô Chợ Dừa", "Phương Liên",
+    "Phương Mai", "Quang Trung", "Quốc Tử Giám",
+    "Thịnh Quang", "Thổ Quan", "Trung Liệt",
+    "Trung Phụng", "Trung Tự", "Văn Chương", "Văn Miếu"
+  ],
+  "Hai Bà Trưng": [
+    "Bạch Đằng", "Bạch Mai", "Bách Khoa", "Cầu Dền", "Đống Mác",
+    "Đồng Nhân", "Đồng Tâm", "Lê Đại Hành", "Minh Khai",
+    "Ngô Thì Nhậm", "Nguyễn Du", "Phạm Đình Hổ",
+    "Phố Huế", "Quỳnh Lôi", "Quỳnh Mai", "Thanh Lương",
+    "Thanh Nhàn", "Trương Định", "Vĩnh Tuy", "Bùi Thị Xuân"
+  ],
+  "Thanh Xuân": [
+    "Hạ Đình", "Khương Đình", "Khương Mai", "Khương Trung",
+    "Kim Giang", "Nhân Chính", "Phương Liệt", "Thanh Xuân Bắc",
+    "Thanh Xuân Nam", "Thanh Xuân Trung", "Thượng Đình"
+  ],
+  "Cầu Giấy": [
+    "Dịch Vọng", "Dịch Vọng Hậu", "Mai Dịch", "Nghĩa Đô",
+    "Nghĩa Tân", "Quan Hoa", "Trung Hoà", "Yên Hòa"
+  ],
+  "Hoàng Mai": [
+    "Đại Kim", "Định Công", "Giáp Bát", "Hoàng Liệt", "Hoàng Văn Thụ",
+    "Lĩnh Nam", "Mai Động", "Tân Mai", "Thanh Trì", 
+    "Thịnh Liệt", "Trần Phú", "Tương Mai", "Vĩnh Hưng", "Yên Sở"
+  ],
+  "Long Biên": [
+    "Bồ Đề", "Cự Khối", "Đức Giang", "Gia Thụy", "Giang Biên",
+    "Long Biên", "Ngọc Lâm", "Ngọc Thụy", "Phúc Đồng",
+    "Phúc Lợi", "Sài Đồng", "Thạch Bàn", "Thượng Thanh", "Việt Hưng"
+  ],
+  "Nam Từ Liêm": [
+    "Cầu Diễn", "Đại Mỗ", "Mễ Trì", "Mễ Trì Hạ", "Mỹ Đình 1",
+    "Mỹ Đình 2", "Phú Đô", "Phương Canh", "Tây Mỗ", "Trung Văn"
+  ],
+  "Bắc Từ Liêm": [
+    "Cổ Nhuế 1", "Cổ Nhuế 2", "Đông Ngạc", "Đức Thắng",
+    "Liên Mạc", "Minh Khai", "Phú Diễn", "Phúc Diễn",
+    "Tây Tựu", "Thượng Cát", "Thụy Phương", "Xuân Đỉnh", "Xuân Tảo"
+  ],
+  "Hà Đông": [
+    "Biên Giang", "Đồng Mai", "Dương Nội", "Hà Cầu", "Kiến Hưng",
+    "La Khê", "Mỗ Lao", "Nguyễn Trãi", "Phú La", "Phú Lãm",
+    "Phúc La", "Quang Trung", "Vạn Phúc", "Văn Khê", "Văn Quán", "Yết Kiêu",
+    "Yên Nghĩa"
+  ],
+  "Tây Hồ": [
+    "Bưởi", "Nhật Tân", "Phú Thượng", "Quảng An",
+    "Thụy Khuê", "Tứ Liên", "Xuân La", "Yên Phụ"
+  ],
+  "Thanh Trì (Đề xuất Quận)": [
+    "Thị trấn Văn Điển", "Tân Triều", "Tả Thanh Oai", "Hữu Hoà", "Ngũ Hiệp",
+    "Ngọc Hồi", "Vĩnh Quỳnh", "Tam Hiệp", "Liên Ninh",
+    "Đông Mỹ", "Duyên Hà", "Yên Mỹ", "Tứ Hiệp", "Thanh Liệt", "Vạn Phúc"
+  ],
+  "Gia Lâm (Đề xuất Quận)": [
+    "Thị trấn Trâu Quỳ", "Bát Tràng", "Cổ Bi", "Đa Tốn", "Đặng Xá", "Đông Dư",
+    "Dương Xá", "Dương Quang", "Dương Hà", "Kim Lan",
+    "Kim Sơn", "Lệ Chi", "Ninh Hiệp", "Phù Đổng",
+    "Văn Đức", "Yên Thường", "Yên Viên", "Đình Xuyên"
+  ],
+  "Hoài Đức (Đề xuất Quận)": [
+    "Thị trấn Trạm Trôi", "An Khánh", "An Thượng", "Dương Liễu", "Đắc Sở",
+    "Đông La", "Di Trạch", "La Phù", "Lại Yên", "Minh Khai",
+    "Sơn Đồng", "Song Phương", "Tiền Yên", "Vân Canh",
+    "Vân Côn", "Yên Sở", "Cát Quế", "Đức Giang", "Kim Chung"
+  ],
+  "Thị xã Sơn Tây": [
+    "Lê Lợi", "Ngô Quyền", "Phú Thịnh", "Quang Trung", "Sơn Lộc",
+    "Trung Hưng", "Viên Sơn", "Xuân Khanh", "Đường Lâm", "Kim Sơn", 
+    "Thanh Mỹ", "Cổ Đông", "Sơn Đông", "Trung Sơn Trầm"
+  ],
+  "Đan Phượng": [
+    "Thị trấn Phùng", "Đan Phượng", "Đồng Tháp", "Hạ Mỗ", "Hồng Hà", "Liên Hà",
+    "Liên Hồng", "Liên Trung", "Phương Đình",
+    "Song Phượng", "Tân Hội", "Tân Lập", "Thọ An",
+    "Thọ Xuân", "Thượng Mỗ", "Trung Châu"
+  ],
+  "Đông Anh": [
+    "Thị trấn Đông Anh", "Bắc Hồng", "Cổ Loa", "Dục Tú", "Đại Mạch", "Đông Hội",
+    "Hải Bối", "Kim Chung", "Kim Nỗ", "Liên Hà",
+    "Mai Lâm", "Nam Hồng", "Nguyên Khê", "Tàm Xá", "Thụy Lâm",
+    "Tiên Dương", "Uy Nỗ", "Vĩnh Ngọc", "Việt Hùng", "Võng La", 
+    "Xuân Canh", "Vân Nội", "Tiên Hội", "Xuân Nộn" 
+  ],
+  "Mê Linh": [
+    "Thị trấn Chi Đông", "Thị trấn Quang Minh", "Đại Thịnh", "Hoàng Kim", "Kim Hoa", "Liên Mạc",
+    "Mê Linh", "Tam Đồng", "Thạch Đà", "Thanh Lâm",
+    "Tiến Thắng", "Tiến Thịnh", "Tráng Việt", "Tự Lập", "Văn Khê", "Vạn Yên", "Tiền Phong", "Tự Lập"
+  ],
+  "Phúc Thọ": [
+    "Thị trấn Phúc Thọ", "Vân Hà", "Vân Phúc", "Vân Nam", "Phúc Hòa", "Hiệp Thuận",
+    "Liên Hiệp", "Tam Hiệp", "Thọ Lộc", "Phụng Thượng",
+    "Phụng Châu", "Sen Chiểu", "Thanh Đa", "Trạch Mỹ Lộc",
+    "Xuân Đình", "Long Xuyên", "Võng Xuyên"
+  ],
+  "Quốc Oai": [
+    "Thị trấn Quốc Oai", "Cấn Hữu", "Cộng Hoà", "Đại Thành", "Đồng Quang", "Đông Yên",
+    "Hoà Thạch", "Liệp Tuyết", "Ngọc Mỹ", "Ngọc Liệp",
+    "Phú Cát", "Phú Mãn", "Phượng Cách", "Sài Sơn", "Tân Hòa",
+    "Tân Phú", "Thạch Thán", "Yên Sơn", "Đắc Sở", "Tuyết Nghĩa", "Nghĩa Hương"
+  ],
+  "Sóc Sơn": [
+    "Thị trấn Sóc Sơn", "Bắc Sơn", "Dân Hòa", "Đông Xuân", "Hiền Ninh", "Hồng Kỳ",
+    "Kim Lũ", "Mai Đình", "Minh Phú", "Minh Trí", "Nam Sơn",
+    "Phù Linh", "Phù Lỗ", "Quang Tiến", "Tân Dân", "Tân Minh",
+    "Thanh Xuân", "Tiên Dược", "Trung Giã", "Việt Long",
+    "Xuân Giang", "Xuân Thu", "Đức Hoà", "Tiến Xuân", "Hải Bối"
+  ],
+  "Thường Tín": [
+    "Thị trấn Thường Tín", "Chương Dương", "Dũng Tiến", "Duyên Thái", "Hòa Bình",
+    "Hiền Giang", "Hồng Vân", "Khánh Hà", "Lê Lợi",
+    "Liên Phương", "Minh Cường", "Nghiêm Xuyên", "Ngọc Hòa",
+    "Nhị Khê", "Ninh Sở", "Quất Động", "Thắng Lợi",
+    "Thống Nhất", "Thư Phú", "Tiền Phong", "Tô Hiệu",
+    "Tự Nhiên", "Vạn Điểm", "Vân Tảo", "Văn Bình",
+    "Văn Phú", "Yên Mỹ", "Hà Hồi", "Văn Tự"
+  ],
+  "Thanh Oai": [
+    "Thị trấn Kim Bài", "Bích Hòa", "Bình Minh", "Cao Dương", "Cao Viên", "Cự Khê",
+    "Dân Hòa", "Đỗ Động", "Hồng Dương", "Kim An", 
+    "Kim Thư", "Liên Châu", "Mỹ Hưng", "Phương Trung",
+    "Tam Hưng", "Tân Ước", "Thanh Cao", "Thanh Mai",
+    "Thanh Thùy", "Xuân Dương", "Kim An"
+  ],
+  "Ứng Hòa": [
+    "Thị trấn Vân Đình", "Đại Hùng", "Đông Lỗ", "Đồng Tân", "Đồng Tiến", "Hòa Lâm",
+    "Hòa Xá", "Hoa Sơn", "Hồng Quang", "Kim Đường",
+    "Liên Bạt", "Lưu Hoàng", "Minh Đức", "Phương Tú",
+    "Quảng Phú Cầu", "Sơn Công", "Tảo Dương Văn", "Trầm Lộng",
+    "Trường Thịnh", "Trung Tú", "Vạn Thái", "Viên An",
+    "Viên Nội", "Phù Lưu", "Hồng Dương"
+  ],
+  "Mỹ Đức": [
+    "Thị trấn Đại Nghĩa", "An Mỹ", "An Phú", "Bột Xuyên", "Đại Hưng", "Đốc Tín",
+    "Hồng Sơn", "Hợp Thanh", "Hùng Tiến", "Lê Thanh",
+    "Mỹ Thành", "Phù Lưu Tế", "Phùng Xá", "Phúc Lâm",
+    "Thượng Lâm", "Tuy Lai", "Vạn Kim", "Xuy Xá", "Hợp Đồng", "Thủ Lễ"
+  ],
+  "Ba Vì": [
+    "Thị trấn Tây Đằng", "Ba Trại", "Ba Vì", "Cẩm Lĩnh", "Cam Thượng", "Châu Sơn",
+    "Chu Minh", "Cổ Đô", "Đông Quang", "Đồng Thái", "Khánh Thượng",
+    "Minh Châu", "Minh Quang", "Phong Vân", "Phú Châu",
+    "Phú Cường", "Phú Đông", "Phú Phương", "Sơn Đà",
+    "Tản Hồng", "Tản Lĩnh", "Thái Hòa", "Thuần Mỹ", "Thụy An",
+    "Tiên Phong", "Vạn Thắng", "Vật Lại", "Yên Bài", "Vân Hòa", "Tòng Bạt"
+  ],
+  "Chương Mỹ": [
+    "Thị trấn Chúc Sơn", "Thị trấn Xuân Mai", "Đại Yên", "Đồng Lạc", "Đồng Phú", "Đông Phương Yên",
+    "Đông Sơn", "Hòa Chính", "Hoàng Diệu", "Hoàng Văn Thụ",
+    "Hợp Đồng", "Hợp Tiến", "Lam Điền", "Mỹ Lương",
+    "Nam Phương Tiến", "Ngọc Hòa", "Phú Nam An", "Phú Nghĩa",
+    "Phụng Châu", "Quảng Bị", "Tân Tiến", "Thanh Bình",
+    "Thụy Hương", "Thủy Xuân Tiên", "Tiên Phương", "Tốt Động",
+    "Trần Phú", "Trung Hòa", "Trường Yên", "Hữu Văn", "Thượng Vực", "Chính Mỹ"
+  ],
+  "Thạch Thất": [
+    "Thị trấn Liên Quan", "Bình Phú", "Bình Yên", "Cẩm Yên", "Cần Kiệm", "Canh Nậu",
+    "Chàng Sơn", "Di Nậu", "Dị Nậu", "Đại Đồng", "Đồng Trúc",
+    "Hạ Bằng", "Hương Ngải", "Kim Quan", "Lại Thượng",
+    "Phú Kim", "Phùng Xá", "Tân Xã",
+    "Thạch Hòa", "Thạch Xá", "Tiến Xuân", "Yên Bình", "Yên Trung", "Hữu Bằng"
+  ],
+  "Phú Xuyên": [
+    "Thị trấn Phú Xuyên", "Thị trấn Đại Xuyên", "Bạch Hạ", "Châu Can", "Chuyên Mỹ", "Đại Thắng",
+    "Đại Xuyên", "Hoàng Long", "Hồng Minh", "Khải Phú", "Minh Tân",
+    "Nam Phong", "Nam Triều", "Phú Túc", "Phú Yên",
+    "Phúc Tiến", "Phượng Dực", "Quang Lãng", "Quang Trung",
+    "Sơn Hà", "Tân Dân", "Tri Thủy", "Tri Trung",
+    "Văn Hoàng", "Văn Nhân", "Vân Từ", "Hồng Thái"
+  ]
+}

@@ -14,6 +14,11 @@ import OrderDetailPanel from "../../components/orders/OrderDetailPanel";
 import StatusBadge from "../../components/common/StatusBadge";
 import { getStatusesInGroup } from "../../constants/orderStatusGroups";
 import { initPageAnimations } from "../../utils/gsapAnimations";
+import hanoiData from "../../data/hanoi.json";
+
+const WEIGHT_THRESHOLD = 1.0;
+const DISTANCE_THRESHOLD = 0.0;
+const SERVICE_SURCHARGE_FEE_ID = 6;
 
 export default function OrderManagement() {
   const API_BASE = "http://localhost:8888/api/admin";
@@ -23,6 +28,12 @@ export default function OrderManagement() {
   const [agents, setAgents] = useState([]);
   const [shippers, setShippers] = useState([]);
   const [userRole, setUserRole] = useState("admin");
+  
+  // Additional data for order creation
+  const [categories, setCategories] = useState([]);
+  const [serviceTypes, setServiceTypes] = useState([]);
+  const [fees, setFees] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -51,10 +62,15 @@ export default function OrderManagement() {
 
   // Form data
   const [createData, setCreateData] = useState({
-    sender_name: "", sender_phone: "", sender_address: "",
-    receiver_name: "", receiver_phone: "", receiver_address: "",
-    item_name: "", weight: "", distance_km: "", payment_method_id: "1"
+    sender_name: "", sender_phone: "", 
+    fromStreet: "", fromWard: "", fromDistrict: "",
+    receiver_name: "", receiver_phone: "", receiver_email: "",
+    toStreet: "", toWard: "", toDistrict: "",
+    item_name: "", category_id: "", weight: 1, length: 10, width: 10, height: 10,
+    service_type: 1, cod_amount: 0, payment_method_id: 1,
+    distance_km: "", note: ""
   });
+  const [distanceKm, setDistanceKm] = useState(null);
   const [productImages, setProductImages] = useState([]);
   const [editData, setEditData] = useState({ order_id: "", receiver_address: "", status: 1 });
   const [assignData, setAssignData] = useState({ order_id: "", shipper_id: "", note: "" });
@@ -135,6 +151,54 @@ export default function OrderManagement() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch("http://localhost:8888/get_item_categories.php");
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data || []);
+      }
+    } catch (error) {
+      console.error("Lỗi tải categories:", error);
+    }
+  };
+
+  const fetchServiceTypes = async () => {
+    try {
+      const res = await fetch("http://localhost:8888/get_service_types.php");
+      if (res.ok) {
+        const data = await res.json();
+        setServiceTypes(data || []);
+      }
+    } catch (error) {
+      console.error("Lỗi tải service types:", error);
+    }
+  };
+
+  const fetchFees = async () => {
+    try {
+      const res = await fetch("http://localhost:8888/get_fees.php");
+      if (res.ok) {
+        const data = await res.json();
+        setFees(data || []);
+      }
+    } catch (error) {
+      console.error("Lỗi tải fees:", error);
+    }
+  };
+
+  const fetchPaymentMethods = async () => {
+    try {
+      const res = await fetch("http://localhost:8888/get_payment_methods.php");
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentMethods(data || []);
+      }
+    } catch (error) {
+      console.error("Lỗi tải payment methods:", error);
+    }
+  };
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     setUserRole(user.role || "admin");
@@ -142,6 +206,10 @@ export default function OrderManagement() {
     fetchAgents();
     fetchShippers();
     fetchKPIStats();
+    fetchCategories();
+    fetchServiceTypes();
+    fetchFees();
+    fetchPaymentMethods();
   }, []);
 
   // GSAP Animation
@@ -231,8 +299,114 @@ export default function OrderManagement() {
     setFilteredOrders(filtered);
   }, [orders, filterStatus, filterStatusGroup, filterBranch, filterShipper, filterPayment, filterPaymentStatus, filterCOD, filterNoAgent, filterNoShipper, filterAssignedNotPicked, filterDateFrom, filterDateTo, searchText]);
 
+  // Calculate fees function (from OrderNoAccount.js)
+  const calculateFees = useMemo(() => {
+    const data = createData;
+    const distance = distanceKm || data.distance_km || 0;
+    let total_shipping_fee = 0;
+    const fees_detail = [];
+    const weight = parseFloat(data.weight) || 0;
+    const cod_amount = parseFloat(data.cod_amount) || 0;
+    const service_type = parseInt(data.service_type) || 1;
+
+    // Get fee types
+    const baseFee = fees.find(f => f.type === 'base');
+    const distanceFee = fees.find(f => f.code === 'distance_fee');
+    const weightFee = fees.find(f => f.type === 'weight');
+    const insuranceFee = fees.find(f => f.type === 'insurance');
+    const FEE_PER_EXTRA_KM = distanceFee ? parseFloat(distanceFee.amount) : 0;
+    const WEIGHT_FEE_PER_KG = weightFee ? parseFloat(weightFee.amount) : 0;
+    const INSURANCE_FEE_AMOUNT = insuranceFee ? parseFloat(insuranceFee.amount) : 0;
+
+    // 1. Base fee
+    if (baseFee) {
+      const currentBaseFee = parseFloat(baseFee.amount);
+      total_shipping_fee += currentBaseFee;
+      fees_detail.push({ id: baseFee.id, code: baseFee.code, name: baseFee.name, amount: currentBaseFee });
+    }
+
+    // 2. Weight fee
+    if (weightFee && weight > WEIGHT_THRESHOLD) {
+      const extraKg = Math.ceil(weight - WEIGHT_THRESHOLD);
+      const extraWeightFee = extraKg * WEIGHT_FEE_PER_KG;
+      if (extraWeightFee > 0) {
+        total_shipping_fee += extraWeightFee;
+        fees_detail.push({ id: weightFee.id, code: weightFee.code, name: weightFee.name, amount: extraWeightFee });
+      }
+    }
+
+    // 3. Insurance fee
+    if (insuranceFee && cod_amount > 500000) {
+      if (INSURANCE_FEE_AMOUNT > 0) {
+        total_shipping_fee += INSURANCE_FEE_AMOUNT;
+        fees_detail.push({ id: insuranceFee.id, code: insuranceFee.code, name: insuranceFee.name, amount: INSURANCE_FEE_AMOUNT });
+      }
+    }
+
+    // 4. Distance fee
+    if (distance && distanceFee) {
+      const km = parseFloat(distance);
+      if (km > DISTANCE_THRESHOLD) {
+        const extraKm = Math.ceil(km - DISTANCE_THRESHOLD);
+        const extraDistanceFee = extraKm * FEE_PER_EXTRA_KM;
+        if (extraDistanceFee > 0) {
+          total_shipping_fee += extraDistanceFee;
+          fees_detail.push({ id: distanceFee.id, code: distanceFee.code, name: `Phụ phí Khoảng cách (${extraKm}km phụ trội)`, amount: extraDistanceFee });
+        }
+      }
+    }
+
+    // 5. Service fee
+    const selectedService = serviceTypes.find(s => s.id === service_type);
+    if (selectedService) {
+      const serviceFee = parseFloat(selectedService.fee) || 0;
+      if (serviceFee > 0) {
+        total_shipping_fee += serviceFee;
+        fees_detail.push({ id: SERVICE_SURCHARGE_FEE_ID, code: 'service_surcharge', name: `Phụ phí Dịch vụ (${selectedService.name})`, amount: serviceFee });
+      }
+    }
+
+    const total_amount_with_cod = total_shipping_fee + cod_amount;
+
+    // COD fee (not added to shipping fee)
+    const codFee = fees.find(f => f.type === 'cod');
+    if (codFee && cod_amount > 0) {
+      fees_detail.push({ id: codFee.id, code: codFee.code, name: codFee.name, amount: cod_amount });
+    }
+
+    return { fees_detail, total_shipping_fee, total_amount_with_cod, cod_amount };
+  }, [createData, distanceKm, fees, serviceTypes]);
+
   // Handlers
-  const handleCreateChange = (e) => setCreateData({ ...createData, [e.target.name]: e.target.value });
+  const handleCreateChange = (e) => {
+    const { name, value } = e.target;
+    setCreateData(prev => ({
+      ...prev,
+      [name]: (['weight', 'length', 'width', 'height', 'cod_amount', 'service_type', 'payment_method_id', 'category_id'].includes(name))
+        ? (name === 'service_type' || name === 'payment_method_id' || name === 'category_id' ? parseInt(value) || 0 : parseFloat(value) || 0)
+        : value
+    }));
+  };
+
+  const handleDistrictChange = (e, type) => {
+    const { value } = e.target;
+    setDistanceKm(null);
+    if (type === 'from') {
+      setCreateData(prev => ({ ...prev, fromDistrict: value, fromWard: '' }));
+    } else {
+      setCreateData(prev => ({ ...prev, toDistrict: value, toWard: '' }));
+    }
+  };
+
+  const handleWardChange = (e, type) => {
+    const { value } = e.target;
+    setDistanceKm(null);
+    if (type === 'from') {
+      setCreateData(prev => ({ ...prev, fromWard: value }));
+    } else {
+      setCreateData(prev => ({ ...prev, toWard: value }));
+    }
+  };
   
   const handleImageChange = (e) => {
     const input = e.target;
@@ -322,12 +496,76 @@ export default function OrderManagement() {
   const removeImage = (index) => setProductImages(productImages.filter((_, i) => i !== index));
   
   const handleCreateSubmit = async () => {
-    if (!createData.sender_name || !createData.receiver_name) {
-      return Swal.fire("Lỗi", "Vui lòng nhập đầy đủ thông tin", "error");
+    // Validation - Kiểm tra tất cả trường bắt buộc
+    const missingFields = [];
+    
+    if (!createData.sender_name || createData.sender_name.trim() === "") missingFields.push("Tên người gửi");
+    if (!createData.sender_phone || createData.sender_phone.trim() === "") missingFields.push("Số điện thoại người gửi");
+    if (!createData.fromStreet || createData.fromStreet.trim() === "") missingFields.push("Số nhà, Tên đường (người gửi)");
+    if (!createData.fromDistrict || createData.fromDistrict.trim() === "") missingFields.push("Quận/Huyện (người gửi)");
+    
+    if (!createData.receiver_name || createData.receiver_name.trim() === "") missingFields.push("Tên người nhận");
+    if (!createData.receiver_phone || createData.receiver_phone.trim() === "") missingFields.push("Số điện thoại người nhận");
+    if (!createData.toStreet || createData.toStreet.trim() === "") missingFields.push("Số nhà, Tên đường (người nhận)");
+    if (!createData.toDistrict || createData.toDistrict.trim() === "") missingFields.push("Quận/Huyện (người nhận)");
+    
+    if (!createData.category_id || createData.category_id === "" || createData.category_id === 0) missingFields.push("Loại hàng hóa");
+    if (!createData.weight || createData.weight === 0 || createData.weight === "") missingFields.push("Trọng lượng");
+    if (!createData.length || createData.length === 0 || createData.length === "") missingFields.push("Chiều dài");
+    if (!createData.width || createData.width === 0 || createData.width === "") missingFields.push("Chiều rộng");
+    if (!createData.height || createData.height === 0 || createData.height === "") missingFields.push("Chiều cao");
+    
+    if (missingFields.length > 0) {
+      return Swal.fire({
+        icon: "error",
+        title: "Thiếu thông tin bắt buộc",
+        html: `Vui lòng nhập đầy đủ các trường sau:<br><strong>${missingFields.join(", ")}</strong>`,
+      });
     }
+
     try {
       const formData = new FormData();
-      Object.keys(createData).forEach(key => formData.append(key, createData[key]));
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      
+      formData.append("customer_id", user.id || 6);
+      
+      // Address fields
+      formData.append('sender_address', `${createData.fromStreet}, ${createData.fromWard || ''}, ${createData.fromDistrict}, Hà Nội`);
+      formData.append('receiver_address', `${createData.toStreet}, ${createData.toWard || ''}, ${createData.toDistrict}, Hà Nội`);
+      
+      // Basic fields
+      formData.append('sender_name', createData.sender_name);
+      formData.append('sender_phone', createData.sender_phone);
+      formData.append('receiver_name', createData.receiver_name);
+      formData.append('receiver_phone', createData.receiver_phone);
+      formData.append('receiver_email', createData.receiver_email || '');
+      formData.append('item_name', createData.item_name || '');
+      formData.append('category_id', createData.category_id);
+      formData.append('weight', createData.weight);
+      formData.append('length', createData.length);
+      formData.append('width', createData.width);
+      formData.append('height', createData.height);
+      formData.append('service_type_id', createData.service_type);
+      formData.append('payment_method_id', createData.payment_method_id);
+      formData.append('cod_amount', createData.cod_amount || 0);
+      formData.append('note', createData.note || '');
+      
+      // Distance and fees - Backend yêu cầu distance_km không được empty
+      const finalDistance = distanceKm || createData.distance_km || "";
+      // Đảm bảo distance_km luôn có giá trị (ít nhất là "0" nếu không nhập)
+      formData.append('distance_km', finalDistance !== "" && finalDistance !== null ? finalDistance.toString() : "0");
+      formData.append('total_shipping_fee', calculateFees.total_shipping_fee.toString());
+      formData.append('total_amount_with_cod', calculateFees.total_amount_with_cod.toString());
+
+      // Fee details
+      calculateFees.fees_detail.forEach(f => {
+        if (f.id !== null && f.amount > 0 && f.code !== 'cod') {
+          formData.append('fee_ids[]', f.id.toString());
+          formData.append('fee_amounts[]', f.amount.toString());
+        }
+      });
+
+      // Images
       productImages.forEach(file => formData.append(`images[]`, file));
 
       const res = await fetch(`${API_BASE}/create_order.php`, {
@@ -350,9 +588,9 @@ export default function OrderManagement() {
       if (data.status === "success") {
         Swal.fire("Thành công", `Đã tạo đơn: ${data.data?.order_code || "thành công"}`, "success");
         setShowCreateModal(false);
-        setCreateData({ sender_name: "", sender_phone: "", sender_address: "", receiver_name: "", receiver_phone: "", receiver_address: "", item_name: "", weight: "", distance_km: "", payment_method_id: "1" });
-        setProductImages([]);
+        resetCreateModal();
         fetchOrders();
+        fetchKPIStats();
       } else {
         Swal.fire("Lỗi", data.message || "Không thể tạo đơn", "error");
       }
@@ -545,8 +783,17 @@ export default function OrderManagement() {
   };
 
   const resetCreateModal = () => {
-    setCreateData({ sender_name: "", sender_phone: "", sender_address: "", receiver_name: "", receiver_phone: "", receiver_address: "", item_name: "", weight: "", distance_km: "", payment_method_id: "1" });
+    setCreateData({
+      sender_name: "", sender_phone: "",
+      fromStreet: "", fromWard: "", fromDistrict: "",
+      receiver_name: "", receiver_phone: "", receiver_email: "",
+      toStreet: "", toWard: "", toDistrict: "",
+      item_name: "", category_id: "", weight: 1, length: 10, width: 10, height: 10,
+      service_type: 1, cod_amount: 0, payment_method_id: 1,
+      distance_km: "", note: ""
+    });
     setProductImages([]);
+    setDistanceKm(null);
   };
 
   // Order info component (reusable)
@@ -636,214 +883,770 @@ export default function OrderManagement() {
         onAssign={openAssignModal}
       />
 
-      {/* MODAL CREATE */}
-      <Modal show={showCreateModal} onHide={() => { setShowCreateModal(false); resetCreateModal(); }} size="lg" className="modal-luxury" centered>
-        <Modal.Header closeButton className="luxury-modal-header" style={{ background: "linear-gradient(135deg, #007bff, #35a0ff)", borderBottom: "none" }}>
-          <Modal.Title className="text-white d-flex align-items-center"><FaPlus className="me-2" /> Tạo Vận Đơn Mới</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="luxury-create-body p-4">
-          <Form>
-            <Row className="mb-4">
-              <Col md={6}>
-                <div className="luxury-section-header mb-3">
-                  <h6 className="fw-bold d-flex align-items-center text-primary mb-0"><FaUser className="me-2" /> Người Gửi</h6>
-                </div>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small text-muted d-flex align-items-center"><FaUser className="me-1" style={{ fontSize: "0.75rem" }} /> Tên người gửi</Form.Label>
-                  <Form.Control name="sender_name" placeholder="Nhập tên người gửi" className="luxury-input" value={createData.sender_name} onChange={handleCreateChange} />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small text-muted d-flex align-items-center"><FaPhone className="me-1" style={{ fontSize: "0.75rem" }} /> Số điện thoại</Form.Label>
-                  <Form.Control name="sender_phone" placeholder="Nhập số điện thoại" className="luxury-input" value={createData.sender_phone} onChange={handleCreateChange} />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small text-muted d-flex align-items-center"><FaMapMarkerAlt className="me-1" style={{ fontSize: "0.75rem" }} /> Địa chỉ</Form.Label>
-                  <Form.Control name="sender_address" placeholder="Nhập địa chỉ người gửi" className="luxury-input" value={createData.sender_address} onChange={handleCreateChange} />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <div className="luxury-section-header mb-3">
-                  <h6 className="fw-bold d-flex align-items-center text-success mb-0"><FaUser className="me-2" /> Người Nhận</h6>
-                </div>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small text-muted d-flex align-items-center"><FaUser className="me-1" style={{ fontSize: "0.75rem" }} /> Tên người nhận</Form.Label>
-                  <Form.Control name="receiver_name" placeholder="Nhập tên người nhận" className="luxury-input" value={createData.receiver_name} onChange={handleCreateChange} />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small text-muted d-flex align-items-center"><FaPhone className="me-1" style={{ fontSize: "0.75rem" }} /> Số điện thoại</Form.Label>
-                  <Form.Control name="receiver_phone" placeholder="Nhập số điện thoại" className="luxury-input" value={createData.receiver_phone} onChange={handleCreateChange} />
-                </Form.Group>
-                <Form.Group className="mb-3">
-                  <Form.Label className="small text-muted d-flex align-items-center"><FaMapMarkerAlt className="me-1" style={{ fontSize: "0.75rem" }} /> Địa chỉ</Form.Label>
-                  <Form.Control name="receiver_address" placeholder="Nhập địa chỉ người nhận" className="luxury-input" value={createData.receiver_address} onChange={handleCreateChange} />
-                </Form.Group>
-              </Col>
-            </Row>
-            <div className="luxury-section-header mb-3">
-              <h6 className="fw-bold d-flex align-items-center mb-0"><FaBox className="me-2 text-primary" /> Thông tin Hàng hóa</h6>
-            </div>
-            <Row className="mb-4">
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label className="small text-muted d-flex align-items-center"><FaTag className="me-1" style={{ fontSize: "0.75rem" }} /> Tên hàng hóa</Form.Label>
-                  <Form.Control name="item_name" placeholder="Nhập tên hàng hóa" className="luxury-input" value={createData.item_name} onChange={handleCreateChange} />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label className="small text-muted d-flex align-items-center"><FaWeight className="me-1" style={{ fontSize: "0.75rem" }} /> Trọng lượng (kg)</Form.Label>
-                  <Form.Control type="number" name="weight" placeholder="0.0" step="0.1" min="0" className="luxury-input" value={createData.weight} onChange={handleCreateChange} />
-                </Form.Group>
-              </Col>
-              <Col md={4}>
-                <Form.Group>
-                  <Form.Label className="small text-muted d-flex align-items-center"><FaRoute className="me-1" style={{ fontSize: "0.75rem" }} /> Khoảng cách (km)</Form.Label>
-                  <Form.Control type="number" name="distance_km" placeholder="0.0" step="0.1" min="0" className="luxury-input" value={createData.distance_km} onChange={handleCreateChange} />
-                </Form.Group>
-              </Col>
-            </Row>
-            <Row className="mb-4">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label className="small text-muted d-flex align-items-center"><FaCreditCard className="me-1" style={{ fontSize: "0.75rem" }} /> Phương thức thanh toán</Form.Label>
-                  <Form.Select name="payment_method_id" onChange={handleCreateChange} value={createData.payment_method_id} className="luxury-select">
-                  <option value="1">Tiền mặt</option>
-                  <option value="2">Chuyển khoản</option>
-                  <option value="3">Ví MoMo</option>
+{showCreateModal && (
+  <div className="dqn-modal-overlay">
+
+    <div className="dqn-modal">
+
+      {/* ================= HEADER ================= */}
+      <div className="dqn-modal-header">
+        <div className="dqn-modal-title">
+          <FaPlus /> Tạo Vận Đơn Mới
+        </div>
+
+        <button
+          className="dqn-modal-close"
+          onClick={() => {
+            setShowCreateModal(false);
+            resetCreateModal();
+          }}
+        >
+          ×
+        </button>
+      </div>
+
+      {/* ================= BODY (SCROLL) ================= */}
+      <div className="dqn-modal-body luxury-create-body">
+        <Form>
+      <Row className="mb-3">
+        <Col md={6}>
+          <div className="luxury-section-header mb-2">
+            <h6 className="fw-bold d-flex align-items-center text-primary mb-0">
+              <FaUser className="me-2" /> Người Gửi
+            </h6>
+          </div>
+
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Tên người gửi (*)</Form.Label>
+            <Form.Control
+              name="sender_name"
+              placeholder="Nhập tên người gửi"
+              className="luxury-input"
+              value={createData.sender_name}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Số điện thoại (*)</Form.Label>
+            <Form.Control
+              name="sender_phone"
+              placeholder="Nhập số điện thoại"
+              className="luxury-input"
+              value={createData.sender_phone}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Số nhà, Tên đường (*)</Form.Label>
+            <Form.Control
+              name="fromStreet"
+              placeholder="Số nhà, Tên đường"
+              className="luxury-input"
+              value={createData.fromStreet}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+
+          <Row className="mb-2">
+            <Col md={6}>
+              <Form.Group>
+                <Form.Label className="small text-muted">Quận/Huyện (*)</Form.Label>
+                <Form.Select
+                  name="fromDistrict"
+                  value={createData.fromDistrict}
+                  onChange={(e) => handleDistrictChange(e, "from")}
+                  className="luxury-select"
+                >
+                  <option value="">-- Chọn Quận/Huyện --</option>
+                  {Object.keys(hanoiData).map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
                 </Form.Select>
-                </Form.Group>
-              </Col>
-            </Row>
-            <div className="luxury-section-header mb-3">
-              <h6 className="fw-bold d-flex align-items-center mb-0">
-                <FaImage className="me-2 text-primary" /> Ảnh sản phẩm 
-                <span className="text-muted small fw-normal ms-2">
-                  ({productImages.length}/5 ảnh)
-                </span>
-              </h6>
+              </Form.Group>
+            </Col>
+
+            <Col md={6}>
+              <Form.Group>
+                <Form.Label className="small text-muted">Phường/Xã</Form.Label>
+                <Form.Select
+                  name="fromWard"
+                  value={createData.fromWard}
+                  onChange={(e) => handleWardChange(e, "from")}
+                  disabled={!createData.fromDistrict}
+                  className="luxury-select"
+                >
+                  <option value="">-- Chọn Phường/Xã --</option>
+                  {createData.fromDistrict &&
+                    hanoiData[createData.fromDistrict]?.map((w) => (
+                      <option key={w} value={w}>{w}</option>
+                    ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+          </Row>
+        </Col>
+
+        <Col md={6}>
+          <div className="luxury-section-header mb-2">
+            <h6 className="fw-bold d-flex align-items-center text-success mb-0">
+              <FaUser className="me-2" /> Người Nhận
+            </h6>
+          </div>
+
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Tên người nhận (*)</Form.Label>
+            <Form.Control
+              name="receiver_name"
+              placeholder="Nhập tên người nhận"
+              className="luxury-input"
+              value={createData.receiver_name}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Số điện thoại (*)</Form.Label>
+            <Form.Control
+              name="receiver_phone"
+              placeholder="Nhập số điện thoại"
+              className="luxury-input"
+              value={createData.receiver_phone}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Email</Form.Label>
+            <Form.Control
+              type="email"
+              name="receiver_email"
+              placeholder="Email người nhận"
+              className="luxury-input"
+              value={createData.receiver_email}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Số nhà, Tên đường (*)</Form.Label>
+            <Form.Control
+              name="toStreet"
+              placeholder="Số nhà, Tên đường"
+              className="luxury-input"
+              value={createData.toStreet}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+
+          <Row className="mb-2">
+            <Col md={6}>
+              <Form.Group>
+                <Form.Label className="small text-muted">Quận/Huyện (*)</Form.Label>
+                <Form.Select
+                  name="toDistrict"
+                  value={createData.toDistrict}
+                  onChange={(e) => handleDistrictChange(e, "to")}
+                  className="luxury-select"
+                >
+                  <option value="">-- Chọn Quận/Huyện --</option>
+                  {Object.keys(hanoiData).map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+
+            <Col md={6}>
+              <Form.Group>
+                <Form.Label className="small text-muted">Phường/Xã</Form.Label>
+                <Form.Select
+                  name="toWard"
+                  value={createData.toWard}
+                  onChange={(e) => handleWardChange(e, "to")}
+                  disabled={!createData.toDistrict}
+                  className="luxury-select"
+                >
+                  <option value="">-- Chọn Phường/Xã --</option>
+                  {createData.toDistrict &&
+                    hanoiData[createData.toDistrict]?.map((w) => (
+                      <option key={w} value={w}>{w}</option>
+                    ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+
+      <div className="luxury-section-header mb-2">
+        <h6 className="fw-bold d-flex align-items-center mb-0">
+          <FaBox className="me-2 text-primary" /> Thông tin Hàng hóa
+        </h6>
+      </div>
+
+      <Row className="mb-3">
+        <Col md={12}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Tên hàng hóa</Form.Label>
+            <Form.Control
+              name="item_name"
+              placeholder="Nhập tên hàng hóa (ví dụ: Quần áo, Điện thoại, Sách...)"
+              className="luxury-input"
+              value={createData.item_name}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+        </Col>
+      </Row>
+
+      <Row className="mb-3">
+        <Col md={4}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Loại hàng hóa (*)</Form.Label>
+            <Form.Select
+              name="category_id"
+              value={createData.category_id}
+              onChange={handleCreateChange}
+              className="luxury-select"
+            >
+              <option value="">-- Chọn loại hàng hóa --</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Col>
+
+        <Col md={4}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Trọng lượng (kg) (*)</Form.Label>
+            <Form.Control
+              type="number"
+              name="weight"
+              step="0.1"
+              min="0.1"
+              className="luxury-input"
+              value={createData.weight}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+        </Col>
+
+        <Col md={4}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Khoảng cách (km)</Form.Label>
+            <Form.Control
+              type="number"
+              name="distance_km"
+              step="0.1"
+              min="0"
+              className="luxury-input"
+              value={distanceKm !== null && distanceKm !== "" ? distanceKm : (createData.distance_km || "")}
+              onChange={(e) => {
+                const val = e.target.value;
+                setDistanceKm(val === "" ? null : val);
+              }}
+            />
+          </Form.Group>
+        </Col>
+      </Row>
+
+      <Row className="mb-3">
+        <Col md={4}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Chiều dài (cm) (*)</Form.Label>
+            <Form.Control
+              type="number"
+              name="length"
+              step="1"
+              min="1"
+              className="luxury-input"
+              value={createData.length}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+        </Col>
+
+        <Col md={4}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Chiều rộng (cm) (*)</Form.Label>
+            <Form.Control
+              type="number"
+              name="width"
+              step="1"
+              min="1"
+              className="luxury-input"
+              value={createData.width}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+        </Col>
+
+        <Col md={4}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Chiều cao (cm) (*)</Form.Label>
+            <Form.Control
+              type="number"
+              name="height"
+              step="1"
+              min="1"
+              className="luxury-input"
+              value={createData.height}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+        </Col>
+      </Row>
+
+      <Row className="mb-3">
+        <Col md={6}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Loại dịch vụ (*)</Form.Label>
+            <Form.Select
+              name="service_type"
+              value={createData.service_type}
+              onChange={handleCreateChange}
+              className="luxury-select"
+            >
+              {serviceTypes.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name} ({Number(service.fee).toLocaleString()} VNĐ)
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Col>
+
+        <Col md={6}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Phương thức thanh toán (*)</Form.Label>
+            <Form.Select
+              name="payment_method_id"
+              value={createData.payment_method_id}
+              onChange={handleCreateChange}
+              className="luxury-select"
+            >
+              {paymentMethods.map((method) => (
+                <option key={method.id} value={method.id}>{method.name}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+        </Col>
+      </Row>
+
+      <Row className="mb-3">
+        <Col md={6}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Tiền thu hộ (COD) - VNĐ</Form.Label>
+            <Form.Control
+              type="number"
+              name="cod_amount"
+              step="1000"
+              min="0"
+              className="luxury-input"
+              value={createData.cod_amount}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+        </Col>
+
+        <Col md={6}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">Ghi chú</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={2}
+              name="note"
+              placeholder="Ghi chú cho đơn hàng"
+              className="luxury-input"
+              value={createData.note}
+              onChange={handleCreateChange}
+            />
+          </Form.Group>
+        </Col>
+      </Row>
+
+      {/* Fee Calculation Display */}
+      <div className="luxury-section-header mb-2">
+        <h6 className="fw-bold d-flex align-items-center mb-0">
+          <FaMoneyBillWave className="me-2 text-success" /> Chi Tiết Phí
+        </h6>
+      </div>
+
+      <div
+        className="mb-3 p-3"
+        style={{
+          backgroundColor: "#f8f9fa",
+          borderRadius: "8px",
+          border: "1px solid #dee2e6",
+        }}
+      >
+        {calculateFees.fees_detail.map((fee, idx) => (
+          <div key={idx} className="d-flex justify-content-between mb-1 small">
+            <span>{fee.name}:</span>
+            <strong>{Number(fee.amount).toLocaleString("vi-VN")} VNĐ</strong>
+          </div>
+        ))}
+
+        <hr className="my-2" />
+
+        <div className="d-flex justify-content-between fw-bold text-primary">
+          <span>Tổng phí vận chuyển:</span>
+          <strong>{Number(calculateFees.total_shipping_fee).toLocaleString("vi-VN")} VNĐ</strong>
+        </div>
+
+        {calculateFees.cod_amount > 0 && (
+          <>
+            <div className="d-flex justify-content-between mt-2">
+              <span>Tiền thu hộ (COD):</span>
+              <strong className="text-success">
+                {Number(calculateFees.cod_amount).toLocaleString("vi-VN")} VNĐ
+              </strong>
             </div>
-            <Row className="mb-3">
-              <Col md={12}>
-                <Form.Control 
-                  type="file" 
-                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" 
-                  multiple={true}
-                  onChange={handleImageChange} 
-                  className="luxury-input mb-3"
-                  style={{ cursor: "pointer" }}
-                  disabled={productImages.length >= 5}
-                />
-                {productImages.length >= 5 && (
-                  <Form.Text className="text-warning d-block mb-2">
-                    Đã đạt tối đa 5 ảnh. Vui lòng xóa ảnh để thêm ảnh mới.
-                  </Form.Text>
-                )}
-                {productImages.length > 0 && (
-                  <div className="luxury-image-preview">
-                    <div className="d-flex flex-wrap gap-3">
-                      {productImages.map((file, index) => (
-                        <div key={index} className="luxury-image-item position-relative">
-                          <img src={URL.createObjectURL(file)} alt={`Preview ${index + 1}`} className="luxury-preview-img" />
-                          <button type="button" className="luxury-image-remove btn btn-sm btn-danger position-absolute" onClick={() => removeImage(index)} title="Xóa ảnh">×</button>
-                        </div>
-                      ))}
-                    </div>
+
+            <div
+              className="d-flex justify-content-between mt-2 fw-bold"
+              style={{ fontSize: "1.1em", color: "#28a745" }}
+            >
+              <span>Tổng tiền cần thanh toán:</span>
+              <strong>
+                {Number(calculateFees.total_amount_with_cod).toLocaleString("vi-VN")} VNĐ
+              </strong>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="luxury-section-header mb-2">
+        <h6 className="fw-bold d-flex align-items-center mb-0">
+          <FaImage className="me-2 text-primary" /> Ảnh sản phẩm
+          <span className="text-muted small fw-normal ms-2">
+            ({productImages.length}/5 ảnh)
+          </span>
+        </h6>
+      </div>
+
+      <Row className="mb-2">
+        <Col md={12}>
+          <Form.Control
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+            multiple={true}
+            onChange={handleImageChange}
+            className="luxury-input mb-2"
+            style={{ cursor: "pointer" }}
+            disabled={productImages.length >= 5}
+          />
+
+          {productImages.length >= 5 && (
+            <Form.Text className="text-warning d-block mb-2">
+              Đã đạt tối đa 5 ảnh. Vui lòng xóa ảnh để thêm ảnh mới.
+            </Form.Text>
+          )}
+
+          {productImages.length > 0 && (
+            <div className="luxury-image-preview">
+              <div className="d-flex flex-wrap gap-2">
+                {productImages.map((file, index) => (
+                  <div
+                    key={index}
+                    className="luxury-image-item position-relative"
+                    style={{ width: "80px", height: "80px" }}
+                  >
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Preview ${index + 1}`}
+                      className="luxury-preview-img"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        borderRadius: "4px",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="luxury-image-remove btn btn-sm btn-danger position-absolute"
+                      style={{
+                        top: "-5px",
+                        right: "-5px",
+                        width: "20px",
+                        height: "20px",
+                        padding: 0,
+                        fontSize: "12px",
+                      }}
+                      onClick={() => removeImage(index)}
+                      title="Xóa ảnh"
+                    >
+                      ×
+                    </button>
                   </div>
-                )}
-              </Col>
-            </Row>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer className="luxury-modal-footer">
-          <Button variant="secondary" onClick={() => { setShowCreateModal(false); resetCreateModal(); }} className="btn-lux-outline-secondary">Hủy</Button>
-          <Button variant="primary" onClick={handleCreateSubmit} className="btn-lux-primary-blue"><FaPlus className="me-2" /> Tạo Vận Đơn</Button>
-        </Modal.Footer>
-      </Modal>
+                ))}
+              </div>
+            </div>
+          )}
+        </Col>
+      </Row>
+        </Form>
+      </div>
 
-      {/* MODAL EDIT - LUXURY */}
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg" className="modal-luxury" centered>
-        <Modal.Header closeButton className="luxury-modal-header" style={{ background: "linear-gradient(135deg, #6c757d, #adb5bd)", borderBottom: "none" }}>
-          <Modal.Title className="text-white d-flex align-items-center"><FaEdit className="me-2" /> Cập nhật Đơn hàng</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="luxury-modal-body p-4">
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold d-flex align-items-center"><FaMapMarkerAlt className="me-2 text-primary" /> Địa chỉ người nhận</Form.Label>
-              <Form.Control name="receiver_address" value={editData.receiver_address} onChange={handleEditChange} placeholder="Nhập địa chỉ người nhận" className="luxury-input" />
-            </Form.Group>
-            <Form.Group>
-              <Form.Label className="fw-bold d-flex align-items-center"><FaBox className="me-2 text-primary" /> Trạng thái</Form.Label>
-              <Form.Select name="status" value={editData.status} onChange={handleEditChange} className="luxury-select">
-                <option value="1">1 - Booked (Đã tạo đơn)</option>
-                <option value="2">2 - Approved (Đã duyệt)</option>
-                <option value="3">3 - Assigned (Đã phân công shipper)</option>
-                <option value="4">4 - Picked Up (Đã lấy hàng)</option>
-                <option value="5">5 - Delivered (Giao thành công)</option>
-                <option value="6">6 - Failed (Giao thất bại)</option>
-              </Form.Select>
-              <Form.Text className="text-muted">Lưu ý: Thay đổi trạng thái phải tuân thủ workflow. Admin có thể override.</Form.Text>
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer className="luxury-modal-footer">
-          <Button variant="secondary" onClick={() => setShowEditModal(false)} className="btn-lux-outline-secondary">Hủy</Button>
-          <Button variant="primary" onClick={handleUpdateSubmit} className="btn-lux-primary-blue">Cập nhật</Button>
-        </Modal.Footer>
-      </Modal>
+      {/* ================= FOOTER ================= */}
+      <div className="dqn-modal-footer">
+        <Button
+          variant="secondary"
+          className="btn-lux-outline-secondary"
+          onClick={() => {
+            setShowCreateModal(false);
+            resetCreateModal();
+          }}
+        >
+          Hủy
+        </Button>
 
-      {/* MODAL ASSIGN SHIPPER */}
-      <Modal show={showAssignModal} onHide={() => { setShowAssignModal(false); setSelectedOrderForShipper(null); }} size="lg" className="modal-luxury" centered>
-        <Modal.Header closeButton className="luxury-modal-header" style={{ background: "linear-gradient(135deg, #ffc107, #ffde59)", borderBottom: "none" }}>
-          <Modal.Title className="text-white d-flex align-items-center"><FaShippingFast className="me-2" /> Phân công Shipper</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="luxury-modal-body p-4">
-          <Form>
-            {selectedOrderForShipper && <OrderInfoDisplay order={selectedOrderForShipper} iconColor="text-warning" />}
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold d-flex align-items-center"><FaShippingFast className="me-2 text-warning" /> Chọn Shipper <span className="text-danger ms-1">*</span></Form.Label>
-              <Form.Select value={assignData.shipper_id} onChange={(e) => setAssignData({ ...assignData, shipper_id: e.target.value })} size="lg" className="luxury-select">
-                <option value="">-- Chọn Shipper --</option>
-                {shippers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email}) {s.status === "active" ? "✓" : ""}</option>)}
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold">Ghi chú phân công <span className="text-muted small fw-normal">(Tùy chọn)</span></Form.Label>
-              <Form.Control as="textarea" rows={3} placeholder="Ví dụ: Đơn gấp – giao trong hôm nay, Khách VIP..." value={assignData.note} onChange={(e) => setAssignData({ ...assignData, note: e.target.value })} className="luxury-textarea" />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer className="luxury-modal-footer">
-          <Button variant="secondary" onClick={() => { setShowAssignModal(false); setSelectedOrderForShipper(null); }} className="btn-lux-outline-secondary">Hủy</Button>
-          <Button variant="warning" onClick={handleAssignSubmit} disabled={!assignData.shipper_id} className="btn-lux-primary-yellow"><FaShippingFast className="me-2" /> Xác nhận Phân công</Button>
-        </Modal.Footer>
-      </Modal>
+        <Button
+          variant="primary"
+          className="btn-lux-primary-blue"
+          onClick={handleCreateSubmit}
+        >
+          <FaPlus className="me-2" /> Tạo Vận Đơn
+        </Button>
+      </div>
 
-      {/* MODAL ASSIGN AGENT */}
-      <Modal show={showAssignAgentModal} onHide={() => { setShowAssignAgentModal(false); setSelectedOrderForAgent(null); }} size="lg" className="modal-luxury" centered>
-        <Modal.Header closeButton className="luxury-modal-header" style={{ background: "linear-gradient(135deg, #e53935, #ff5252)", borderBottom: "none" }}>
-          <Modal.Title className="text-white d-flex align-items-center"><FaUserTie className="me-2" /> Phân công Agent</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="luxury-modal-body p-4">
-          <Form>
-            {selectedOrderForAgent && <OrderInfoDisplay order={selectedOrderForAgent} iconColor="text-danger" />}
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold d-flex align-items-center"><FaUserTie className="me-2 text-danger" /> Chọn Agent <span className="text-danger ms-1">*</span></Form.Label>
-              <Form.Select value={assignAgentData.agent_id} onChange={(e) => setAssignAgentData({ ...assignAgentData, agent_id: e.target.value })} size="lg" className="luxury-select">
-                <option value="">-- Chọn Agent --</option>
-                {agents.map(a => <option key={a.id} value={a.id}>{a.name} ({a.email}) {a.status === "active" ? "✓" : ""}</option>)}
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-bold">Ghi chú phân công <span className="text-muted small fw-normal">(Tùy chọn)</span></Form.Label>
-              <Form.Control as="textarea" rows={3} placeholder="Ví dụ: Đơn gấp – xử lý trong hôm nay, Khách VIP..." value={assignAgentData.note} onChange={(e) => setAssignAgentData({ ...assignAgentData, note: e.target.value })} className="luxury-textarea" />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer className="luxury-modal-footer">
-          <Button variant="secondary" onClick={() => { setShowAssignAgentModal(false); setSelectedOrderForAgent(null); }} className="btn-lux-outline-secondary">Hủy</Button>
-          <Button variant="danger" onClick={handleAssignAgentSubmit} disabled={!assignAgentData.agent_id} className="btn-lux-primary-red"><FaUserTie className="me-2" /> Xác nhận Phân công</Button>
-        </Modal.Footer>
-      </Modal>
+    </div>
+  </div>
+)}
+
+
+
+      {/* MODAL EDIT - DQN LUXURY */}
+      {showEditModal && (
+        <div className="dqn-modal-overlay">
+          <div className="dqn-modal">
+            {/* ================= HEADER ================= */}
+            <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #6c757d, #adb5bd)" }}>
+              <div className="dqn-modal-title">
+                <FaEdit /> Cập nhật Đơn hàng
+              </div>
+              <button
+                className="dqn-modal-close"
+                onClick={() => setShowEditModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* ================= BODY (SCROLL) ================= */}
+            <div className="dqn-modal-body">
+              <Form>
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold d-flex align-items-center">
+                    <FaMapMarkerAlt className="me-2 text-primary" /> Địa chỉ người nhận
+                  </Form.Label>
+                  <Form.Control 
+                    name="receiver_address" 
+                    value={editData.receiver_address} 
+                    onChange={handleEditChange} 
+                    placeholder="Nhập địa chỉ người nhận" 
+                    className="luxury-input" 
+                  />
+                </Form.Group>
+                <Form.Group>
+                  <Form.Label className="fw-bold d-flex align-items-center">
+                    <FaBox className="me-2 text-primary" /> Trạng thái
+                  </Form.Label>
+                  <Form.Select name="status" value={editData.status} onChange={handleEditChange} className="luxury-select">
+                    <option value="1">1 - Booked (Đã tạo đơn)</option>
+                    <option value="2">2 - Approved (Đã duyệt)</option>
+                    <option value="3">3 - Assigned (Đã phân công shipper)</option>
+                    <option value="4">4 - Picked Up (Đã lấy hàng)</option>
+                    <option value="5">5 - Delivered (Giao thành công)</option>
+                    <option value="6">6 - Failed (Giao thất bại)</option>
+                  </Form.Select>
+                  <Form.Text className="text-muted">Lưu ý: Thay đổi trạng thái phải tuân thủ workflow. Admin có thể override.</Form.Text>
+                </Form.Group>
+              </Form>
+            </div>
+
+            {/* ================= FOOTER ================= */}
+            <div className="dqn-modal-footer">
+              <Button 
+                variant="secondary" 
+                onClick={() => setShowEditModal(false)} 
+                className="btn-lux-outline-secondary"
+              >
+                Hủy
+              </Button>
+              <Button 
+                variant="primary" 
+                onClick={handleUpdateSubmit} 
+                className="btn-lux-primary-blue"
+              >
+                Cập nhật
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ASSIGN SHIPPER - DQN LUXURY */}
+      {showAssignModal && (
+        <div className="dqn-modal-overlay">
+          <div className="dqn-modal">
+            {/* ================= HEADER ================= */}
+            <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #ffc107, #ffde59)" }}>
+              <div className="dqn-modal-title">
+                <FaShippingFast /> Phân công Shipper
+              </div>
+              <button
+                className="dqn-modal-close"
+                onClick={() => {
+                  setShowAssignModal(false);
+                  setSelectedOrderForShipper(null);
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* ================= BODY (SCROLL) ================= */}
+            <div className="dqn-modal-body">
+              <Form>
+                {selectedOrderForShipper && <OrderInfoDisplay order={selectedOrderForShipper} iconColor="text-warning" />}
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold d-flex align-items-center">
+                    <FaShippingFast className="me-2 text-warning" /> Chọn Shipper <span className="text-danger ms-1">*</span>
+                  </Form.Label>
+                  <Form.Select 
+                    value={assignData.shipper_id} 
+                    onChange={(e) => setAssignData({ ...assignData, shipper_id: e.target.value })} 
+                    size="lg" 
+                    className="luxury-select"
+                  >
+                    <option value="">-- Chọn Shipper --</option>
+                    {shippers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email}) {s.status === "active" ? "✓" : ""}</option>)}
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold">
+                    Ghi chú phân công <span className="text-muted small fw-normal">(Tùy chọn)</span>
+                  </Form.Label>
+                  <Form.Control 
+                    as="textarea" 
+                    rows={3} 
+                    placeholder="Ví dụ: Đơn gấp – giao trong hôm nay, Khách VIP..." 
+                    value={assignData.note} 
+                    onChange={(e) => setAssignData({ ...assignData, note: e.target.value })} 
+                    className="luxury-textarea" 
+                  />
+                </Form.Group>
+              </Form>
+            </div>
+
+            {/* ================= FOOTER ================= */}
+            <div className="dqn-modal-footer">
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setShowAssignModal(false);
+                  setSelectedOrderForShipper(null);
+                }} 
+                className="btn-lux-outline-secondary"
+              >
+                Hủy
+              </Button>
+              <Button 
+                variant="warning" 
+                onClick={handleAssignSubmit} 
+                disabled={!assignData.shipper_id} 
+                className="btn-lux-primary-yellow"
+              >
+                <FaShippingFast className="me-2" /> Xác nhận Phân công
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ASSIGN AGENT - DQN LUXURY */}
+      {showAssignAgentModal && (
+        <div className="dqn-modal-overlay">
+          <div className="dqn-modal">
+            {/* ================= HEADER ================= */}
+            <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #e53935, #ff5252)" }}>
+              <div className="dqn-modal-title">
+                <FaUserTie /> Phân công Agent
+              </div>
+              <button
+                className="dqn-modal-close"
+                onClick={() => {
+                  setShowAssignAgentModal(false);
+                  setSelectedOrderForAgent(null);
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* ================= BODY (SCROLL) ================= */}
+            <div className="dqn-modal-body">
+              <Form>
+                {selectedOrderForAgent && <OrderInfoDisplay order={selectedOrderForAgent} iconColor="text-danger" />}
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold d-flex align-items-center">
+                    <FaUserTie className="me-2 text-danger" /> Chọn Agent <span className="text-danger ms-1">*</span>
+                  </Form.Label>
+                  <Form.Select 
+                    value={assignAgentData.agent_id} 
+                    onChange={(e) => setAssignAgentData({ ...assignAgentData, agent_id: e.target.value })} 
+                    size="lg" 
+                    className="luxury-select"
+                  >
+                    <option value="">-- Chọn Agent --</option>
+                    {agents.map(a => <option key={a.id} value={a.id}>{a.name} ({a.email}) {a.status === "active" ? "✓" : ""}</option>)}
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold">
+                    Ghi chú phân công <span className="text-muted small fw-normal">(Tùy chọn)</span>
+                  </Form.Label>
+                  <Form.Control 
+                    as="textarea" 
+                    rows={3} 
+                    placeholder="Ví dụ: Đơn gấp – xử lý trong hôm nay, Khách VIP..." 
+                    value={assignAgentData.note} 
+                    onChange={(e) => setAssignAgentData({ ...assignAgentData, note: e.target.value })} 
+                    className="luxury-textarea" 
+                  />
+                </Form.Group>
+              </Form>
+            </div>
+
+            {/* ================= FOOTER ================= */}
+            <div className="dqn-modal-footer">
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setShowAssignAgentModal(false);
+                  setSelectedOrderForAgent(null);
+                }} 
+                className="btn-lux-outline-secondary"
+              >
+                Hủy
+              </Button>
+              <Button 
+                variant="danger" 
+                onClick={handleAssignAgentSubmit} 
+                disabled={!assignAgentData.agent_id} 
+                className="btn-lux-primary-red"
+              >
+                <FaUserTie className="me-2" /> Xác nhận Phân công
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

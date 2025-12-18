@@ -1,0 +1,325 @@
+/* ================================
+   GLOBAL STYLE
+================================ */
+.orders-container {
+    padding: 32px;
+    max-width: 1180px;
+    margin: 0 auto;
+    font-family: "Inter", sans-serif;
+}
+
+.page-title {
+    font-size: 30px;
+    font-weight: 800;
+    margin-bottom: 26px;
+    color: #003A57;
+    letter-spacing: -0.5px;
+}
+
+/* ================================
+   TABS (ALL / PENDING / COMPLETED / CANCELLED)
+================================ */
+.order-tabs {
+    display: flex;
+    gap: 22px;
+    margin-bottom: 30px;
+}
+
+.order-tabs button {
+    background: none;
+    border: none;
+    padding: 10px 2px;
+    font-size: 16px;
+    cursor: pointer;
+    color: #6D7A8B;
+    position: relative;
+    font-weight: 500;
+    transition: 0.25s ease;
+}
+
+.order-tabs button:hover {
+    color: #FF6B35;
+}
+
+.order-tabs button.active {
+    color: #FF6B35;
+    font-weight: 700;
+}
+
+.order-tabs button.active::after {
+    content: "";
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, #FF6B35, #0077C8);
+    border-radius: 12px;
+}
+
+/* ================================
+   SEARCH + FILTERS AREA
+================================ */
+.order-filters {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: #F9FAFB;
+    padding: 20px;
+    border-radius: 14px;
+    margin-bottom: 30px;
+    border: 1px solid #E5E8EF;
+}
+
+.search-input {
+    flex: 1;
+    padding: 12px 15px;
+    border: 1px solid #D8DDE6;
+    border-radius: 12px;
+    font-size: 15px;
+    background: white;
+    transition: 0.2s ease;
+}
+
+.search-input:focus {
+    border-color: #0077C8;
+    box-shadow: 0 0 0 3px rgba(0,119,200,0.2);
+}
+
+.date-filters input {
+    padding: 11px 12px;
+    border: 1px solid #D8DDE6;
+    border-radius: 12px;
+    font-size: 14px;
+}
+
+.sort-select {
+    padding: 11px 16px;
+    border: 1px solid #D8DDE6;
+    border-radius: 12px;
+    font-size: 14px;
+    background: white;
+}
+
+/* ================================
+   ORDERS TABLE
+================================ */
+.orders-table {
+    width: 100%;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    overflow: hidden;
+    border: 1px solid #E6ECF2;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #F1F5F9;
+}
+
+thead tr th {
+    text-align: left;
+    padding: 18px;
+    font-size: 14px;
+    color: #5E6C7B;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+tbody tr {
+    border-bottom: 1px solid #F1F5F9;
+    transition: 0.25s ease;
+}
+
+tbody tr:hover {
+    background: #FAFCFF;
+}
+
+tbody td {
+    padding: 20px 18px;
+    font-size: 15px;
+    color: #2F3A45;
+}
+
+.order-code {
+    color: #0077C8;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.order-code:hover {
+    color: #FF6B35;
+}
+
+/* ================================
+   PRODUCT CELL
+================================ */
+.product-name {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.product-name img {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #eee;
+    border: 1px solid #ddd;
+}
+
+/* ================================
+   PAYMENT
+================================ */
+.payment-paid {
+    color: #22c55e;
+    font-weight: 700;
+}
+
+.payment-cod {
+    color: #F97316;
+    font-weight: 700;
+}
+
+/* ================================
+   STATUS BADGES – NEW PREMIUM STYLE
+================================ */
+.status {
+    padding: 7px 14px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    display: inline-block;
+}
+
+.status-pending {
+    background: #FFF4E8;
+    color: #FF6B35;
+    border: 1px solid #FF6B35;
+}
+
+.status-processing {
+    background: #E8F3FF;
+    color: #0077C8;
+    border: 1px solid #0077C8;
+}
+
+.status-completed {
+    background: #EAFBF1;
+    color: #22c55e;
+    border: 1px solid #22c55e;
+}
+
+.status-cancelled {
+    background: #FFEAEA;
+    color: #E53935;
+    border: 1px solid #E53935;
+}
+
+/* ================================
+   INVOICE ICON
+================================ */
+.invoice-icon i {
+    font-size: 20px;
+    color: #0077C8;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.invoice-icon i:hover {
+    color: #FF6B35;
+}
+
+/* ================================
+   EMPTY / LOADING STATE
+================================ */
+.no-orders {
+    text-align: center;
+    padding: 30px;
+    color: #8796A8;
+    font-size: 16px;
+}
+
+.empty-state,
+.loading-state {
+    text-align: center;
+    margin-top: 70px;
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 4px solid #ddd;
+    border-top-color: #0077C8;
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+/* ================================
+   TAB CONTENT ANIMATION
+================================ */
+.tab-content {
+    animation: fadeSlide 0.35s ease;
+}
+
+@keyframes fadeSlide {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ================================
+   DETAIL BUTTON
+================================ */
+.btn-detail {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #0077C8, #005b88);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 12px rgba(0, 119, 200, 0.25);
+    white-space: nowrap;
+}
+
+.btn-detail:hover {
+    background: linear-gradient(135deg, #FF6B35, #ff8a5c);
+    box-shadow: 0 6px 18px rgba(255, 107, 53, 0.35);
+    transform: translateY(-2px);
+}
+
+.btn-detail:active {
+    transform: translateY(0);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+.btn-detail:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 119, 200, 0.3);
+}
+
+.btn-detail i {
+    margin-right: 6px;
+    font-size: 13px;
+}
