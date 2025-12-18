@@ -73,7 +73,7 @@ class OrderService extends BaseService
                 }
                 $checkCat->close();
             }
-            
+
             $serviceType = (int)($data["service_type"] ?? 0);
             $paymentId   = (int)($data["payment_method_id"] ?? 0);
             $codAmount   = (float)($data["cod_amount"] ?? 0);
@@ -81,7 +81,7 @@ class OrderService extends BaseService
             if ($serviceType <= 0 || $paymentId <= 0) {
                 throw new Exception("service_type / payment_method_id is required");
             }
-            
+
             // Validate foreign keys tồn tại trong database
             // Validate service_type
             $checkService = $this->prepare("SELECT id FROM service_types WHERE id = ?");
@@ -92,7 +92,7 @@ class OrderService extends BaseService
                 throw new Exception("service_type không tồn tại trong database");
             }
             $checkService->close();
-            
+
             // Validate payment_method_id
             $checkPayment = $this->prepare("SELECT id FROM payment_methods WHERE id = ?");
             $checkPayment->bind_param("i", $paymentId);
@@ -102,7 +102,7 @@ class OrderService extends BaseService
                 throw new Exception("payment_method_id không tồn tại trong database");
             }
             $checkPayment->close();
-            
+
             // Validate status (đã được set ở trên, nhưng đảm bảo tồn tại)
             $checkStatus = $this->prepare("SELECT id FROM statuses WHERE id = ?");
             $checkStatus->bind_param("i", $status);
@@ -377,7 +377,7 @@ class OrderService extends BaseService
         if ($role === "admin") {
             $role = "system";
         }
-        
+
         $stmt = $this->prepare("
             INSERT INTO order_history (order_id, status_id, user_id, role, note)
             VALUES (?, ?, ?, ?, ?)
@@ -390,19 +390,19 @@ class OrderService extends BaseService
     {
         // Lấy số thứ tự từ database để tạo mã theo thứ tự
         $stmt = $this->prepare("SELECT MAX(id) AS max_id FROM orders");
-            $stmt->execute();
+        $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
         $nextNumber = ($row && $row['max_id']) ? (int)$row['max_id'] + 1 : 1;
-        
+
         // Tạo mã theo format ORD + số thứ tự (4 chữ số, có padding 0)
         $code = "ORD" . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
-        
+
         // Kiểm tra xem mã đã tồn tại chưa (phòng trường hợp có xóa đơn)
         $check = $this->prepare("SELECT id FROM orders WHERE order_code = ?");
         $check->bind_param("s", $code);
         $check->execute();
-        
+
         // Nếu mã đã tồn tại, tìm số tiếp theo
         if ($check->get_result()->num_rows > 0) {
             $stmt2 = $this->prepare("SELECT MAX(CAST(SUBSTRING(order_code, 4) AS UNSIGNED)) AS max_num FROM orders WHERE order_code LIKE 'ORD%'");
@@ -427,5 +427,84 @@ class OrderService extends BaseService
         } while ($stmt->get_result()->num_rows > 0);
 
         return $code;
+    }
+
+    //Update order status and log history using MySQLi Transaction
+    /**
+     * Update order status and log history using MySQLi Transaction
+     * * @param int $orderId
+     * @param int $newStatusId
+     * @param int $userId (ID of the person performing action)
+     * @param string $userRole (Role: 'shipper', 'admin'...)
+     * @param string $note (Log message)
+     * @return bool
+     * @throws Exception
+     */
+    //function updateOrderStatusWithHistory
+    public function updateOrderStatusWithHistory($orderId, $newStatusId, $userId, $userRole, $note)
+    {
+        // 1. Get the global database connection variable from db.php
+        global $conn;
+
+        // 2. Start Transaction (Bắt đầu chế độ an toàn)
+        // From this point, nothing is saved permanently until we command 'commit()'
+        $conn->begin_transaction();
+
+        try {
+            // ---------------------------------------------------------
+            // A. Update the Order Status
+            // ---------------------------------------------------------
+            $sqlOrder = "UPDATE orders SET status_id = ?, updated_at = NOW() WHERE id = ?";
+
+            // Prepare the statement
+            $stmtOrder = $conn->prepare($sqlOrder);
+            if (!$stmtOrder) {
+                throw new Exception("Prepare failed (Order): " . $conn->error);
+            }
+
+            // Bind parameters: "ii" means "integer, integer"
+            // $newStatusId -> first ?, $orderId -> second ?
+            $stmtOrder->bind_param("ii", $newStatusId, $orderId);
+
+            // Execute
+            if (!$stmtOrder->execute()) {
+                throw new Exception("Execute failed (Order): " . $stmtOrder->error);
+            }
+            $stmtOrder->close();
+
+            // ---------------------------------------------------------
+            // B. Insert into Order History
+            // ---------------------------------------------------------
+            $sqlHistory = "INSERT INTO order_history (order_id, status_id, user_id, role, note, created_at) 
+                           VALUES (?, ?, ?, ?, ?, NOW())";
+
+            $stmtHistory = $conn->prepare($sqlHistory);
+            if (!$stmtHistory) {
+                throw new Exception("Prepare failed (History): " . $conn->error);
+            }
+
+            // Bind parameters: "iiiss"
+            // i (int): order_id
+            // i (int): status_id
+            // i (int): user_id
+            // s (string): role
+            // s (string): note
+            $stmtHistory->bind_param("iiiss", $orderId, $newStatusId, $userId, $userRole, $note);
+
+            if (!$stmtHistory->execute()) {
+                throw new Exception("Execute failed (History): " . $stmtHistory->error);
+            }
+            $stmtHistory->close();
+
+            // ---------------------------------------------------------
+            // 3. Commit (Lưu tất cả thay đổi)
+            // ---------------------------------------------------------
+            $conn->commit();
+            return true;
+        } catch (Exception $e) {
+            // 4. Rollback (Nếu có bất kỳ lỗi nào, hủy bỏ mọi thay đổi nãy giờ)
+            $conn->rollback();
+            throw $e; // Ném lỗi ra để API bên ngoài biết và báo cho Frontend
+        }
     }
 }
