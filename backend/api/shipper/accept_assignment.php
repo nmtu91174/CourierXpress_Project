@@ -1,61 +1,105 @@
 <?php
 // backend/api/shipper/accept_assignment.php
+// Shipper accepts the assignment (Status 2 -> 3)
 
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+// CORS Headers
+require_once __DIR__ . "/../../core/Cors.php";
+Cors::handlePreflight();
+Cors::setHeaders();
 
-require_once '../../db.php';
+// ✅ OPTIONS must exit early
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
+    http_response_code(200);
+    exit;
+}
 
-// Check HTTP Method
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+// ==========================
+// METHOD CHECK
+// ==========================
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     http_response_code(405);
-    echo json_encode(["message" => "Method not allowed."]);
-    exit;
+    echo json_encode([
+        "status" => "error",
+        "message" => "Method not allowed"
+    ]);
+    exit();
 }
 
-$data = json_decode(file_get_contents("php://input"));
+// ==========================
+// CORE IMPORTS
+// ==========================
+require_once __DIR__ . "/../../db.php";
+require_once __DIR__ . "/../../core/Response.php";
+require_once __DIR__ . "/../../middleware/require_login.php";
+require_once __DIR__ . "/../../middleware/require_role.php";
+require_once __DIR__ . "/../../services/OrderService.php";
 
-if (!isset($data->order_id) || !isset($data->shipper_id)) {
-    http_response_code(400);
-    echo json_encode(["message" => "Incomplete data."]);
-    exit;
+// ==========================
+// AUTH & PERMISSION
+// ==========================
+require_login(); // Bắt buộc đăng nhập
+require_role(["shipper"]); // Chỉ Shipper mới được gọi
+
+$shipperId = $GLOBALS['auth_user']['id'];
+$role      = $GLOBALS['auth_user']['role'];
+
+// ==========================
+// READ INPUT
+// ==========================
+$data = json_decode(file_get_contents("php://input"), true);
+$orderId = isset($data["order_id"]) ? (int)$data["order_id"] : 0;
+
+if ($orderId <= 0) {
+    Response::error("Missing order_id");
 }
 
-$order_id = intval($data->order_id);
-$shipper_id = intval($data->shipper_id);
-
-// 1. Verify that the order is currently assigned to this shipper AND status is 2 (Assigned)
-// We must prevent jumping status strictly.
-$sql_check = "SELECT id FROM orders WHERE id = ? AND shipper_id = ? AND status_id = 2";
-$stmt = $conn->prepare($sql_check);
-$stmt->bind_param("ii", $order_id, $shipper_id);
-$stmt->execute();
-$result = $stmt->get_result();
+// ==========================
+// VALIDATION
+// ==========================
+// 1. Check if order exists and belongs to this shipper
+// 2. Check if status is 2 (Approved/Assigned)
+// [NOTE]: Column name in DB is 'status', NOT 'status_id'
+$check = $conn->prepare("SELECT id, status, shipper_id FROM orders WHERE id = ?");
+$check->bind_param("i", $orderId);
+$check->execute();
+$result = $check->get_result();
 
 if ($result->num_rows === 0) {
-    http_response_code(400);
-    echo json_encode(["message" => "Invalid order status or not assigned to you."]);
-    exit;
+    Response::error("Order not found");
 }
 
-// 2. Update status to 3 (Picking Up / Đã xác nhận và đi lấy hàng)
-$sql_update = "UPDATE orders SET status_id = 3, updated_at = NOW() WHERE id = ?";
-$stmt_update = $conn->prepare($sql_update);
-$stmt_update->bind_param("i", $order_id);
+$order = $result->fetch_assoc();
 
-if ($stmt_update->execute()) {
-    // Log history
-    $log_sql = "INSERT INTO order_history (order_id, status_id, user_id, description) VALUES (?, 3, ?, 'Shipper accepted assignment, heading to pickup.')";
-    $log_stmt = $conn->prepare($log_sql);
-    $log_stmt->bind_param("ii", $order_id, $shipper_id);
-    $log_stmt->execute();
+if ((int)$order['shipper_id'] !== $shipperId) {
+    Response::error("You are not assigned to this order");
+}
 
-    echo json_encode(["message" => "Order accepted. Status updated to Picking Up (3)."]);
-} else {
-    http_response_code(500);
-    echo json_encode(["message" => "Database error."]);
+if ((int)$order['status'] !== 2) {
+    Response::error("Order is not in 'Assigned' status (Current status: " . $order['status'] . ")");
+}
+
+// ==========================
+// PROCESS: UPDATE STATUS 2 -> 3
+// ==========================
+try {
+    $service = new OrderService($conn);
+
+    // Use OrderService to handle Transaction and History Logging automatically
+    // Status 3 = Assigned/Picking Up
+    $service->updateStatus(
+        $orderId,
+        3,
+        $shipperId,
+        $role,
+        "Shipper accepted assignment, heading to pickup."
+    );
+
+    Response::success("Order accepted. Status updated to Picking Up (3).", [
+        "order_id" => $orderId,
+        "status" => 3
+    ]);
+} catch (Exception $e) {
+    Response::serverError($e->getMessage());
 }
 
 $conn->close();

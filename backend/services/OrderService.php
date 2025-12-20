@@ -1,6 +1,6 @@
 <?php
 // backend/services/OrderService.php
-// FULL WORKFLOW – SAFE VERSION (NO 500)
+// FULL WORKFLOW – SAFE VERSION (Atomic Transactions)
 
 require_once __DIR__ . "/../core/BaseService.php";
 require_once __DIR__ . "/FeeService.php";
@@ -18,6 +18,7 @@ class OrderService extends BaseService
     /* =====================================================
      * CREATE ORDER (customer / admin / agent)
      * ===================================================== */
+    // Giữ nguyên code cũ của bạn
     public function create(array $data, array $images = [])
     {
         return $this->transaction(function () use ($data, $images) {
@@ -60,11 +61,10 @@ class OrderService extends BaseService
             $distanceKm = (float)($data["distance_km"] ?? 0);
             if ($distanceKm <= 0) throw new Exception("distance_km is required");
 
-            // category_id: nếu <= 0 hoặc không tồn tại thì set NULL (foreign key constraint)
+            // Category logic
             $categoryId = null;
             if (isset($data["category_id"]) && (int)$data["category_id"] > 0) {
                 $catId = (int)$data["category_id"];
-                // Validate category_id tồn tại trong item_categories
                 $checkCat = $this->prepare("SELECT id FROM item_categories WHERE id = ?");
                 $checkCat->bind_param("i", $catId);
                 $checkCat->execute();
@@ -82,14 +82,13 @@ class OrderService extends BaseService
                 throw new Exception("service_type / payment_method_id is required");
             }
 
-            // Validate foreign keys tồn tại trong database
             // Validate service_type
             $checkService = $this->prepare("SELECT id FROM service_types WHERE id = ?");
             $checkService->bind_param("i", $serviceType);
             $checkService->execute();
             if ($checkService->get_result()->num_rows === 0) {
                 $checkService->close();
-                throw new Exception("service_type không tồn tại trong database");
+                throw new Exception("service_type does not exist");
             }
             $checkService->close();
 
@@ -99,17 +98,17 @@ class OrderService extends BaseService
             $checkPayment->execute();
             if ($checkPayment->get_result()->num_rows === 0) {
                 $checkPayment->close();
-                throw new Exception("payment_method_id không tồn tại trong database");
+                throw new Exception("payment_method_id does not exist");
             }
             $checkPayment->close();
 
-            // Validate status (đã được set ở trên, nhưng đảm bảo tồn tại)
+            // Validate status
             $checkStatus = $this->prepare("SELECT id FROM statuses WHERE id = ?");
             $checkStatus->bind_param("i", $status);
             $checkStatus->execute();
             if ($checkStatus->get_result()->num_rows === 0) {
                 $checkStatus->close();
-                throw new Exception("status không tồn tại trong database");
+                throw new Exception("status does not exist");
             }
             $checkStatus->close();
 
@@ -171,18 +170,6 @@ class OrderService extends BaseService
                 )
             ");
 
-            // Type string: 22 parameters - đếm theo thứ tự
-            // 1-3: customer_id(i), agent_id(i), shipper_id(i) = iii
-            // 4-10: order_code(s), sender_name(s), sender_phone(s), sender_address(s), receiver_name(s), receiver_phone(s), receiver_address(s) = sssssss
-            // 11: category_id(i) = i
-            // 12-15: weight(d), length(d), width(d), height(d) = dddd
-            // 16: service_type(i) = i
-            // 17: notes(s) = s
-            // 18: status(i) = i
-            // 19-21: total_amount(d), cod_amount(d), total_shipping_fee(d) = ddd
-            // 22: payment_method_id(i) = i
-            // Tổng: "iiisssssssiddddisidddi" = 22 ký tự
-            // Xử lý NULL cho category_id - cần biến riêng để bind_param có thể thay đổi
             $categoryIdParam = $categoryId;
             $stmt->bind_param(
                 "iiisssssssiddddisidddi",
@@ -248,7 +235,10 @@ class OrderService extends BaseService
                 $img->execute();
             }
 
-            $this->logAudit($actorId, $actorRole, "CREATE_ORDER", $orderId, $orderCode);
+            // Optional: Call logAudit if exists
+            if (method_exists($this, 'logAudit')) {
+                $this->logAudit($actorId, $actorRole, "CREATE_ORDER", $orderId, $orderCode);
+            }
 
             return [
                 "order_id"     => $orderId,
@@ -261,28 +251,90 @@ class OrderService extends BaseService
     /* =====================================================
      * UPDATE STATUS
      * ===================================================== */
+    // Giữ nguyên logic, sửa thông báo lỗi sang Tiếng Anh
     public function updateStatus(int $orderId, int $newStatus, int $actorId, string $actorRole, string $note)
     {
         return $this->transaction(function () use ($orderId, $newStatus, $actorId, $actorRole, $note) {
 
             $this->ensureOrderExists($orderId);
 
-            // Validate status tồn tại trong bảng statuses (foreign key constraint)
             $checkStatus = $this->prepare("SELECT id FROM statuses WHERE id = ?");
             $checkStatus->bind_param("i", $newStatus);
             $checkStatus->execute();
             if ($checkStatus->get_result()->num_rows === 0) {
                 $checkStatus->close();
-                throw new Exception("Status {$newStatus} không tồn tại trong database. Chỉ chấp nhận các status: 1 (booked), 2 (approved), 3 (assigned), 4 (picked_up), 5 (delivered), 6 (failed)");
+                throw new Exception("Status {$newStatus} not found. Allowed: 1..6");
             }
             $checkStatus->close();
 
+            // [LƯU Ý QUAN TRỌNG] Cột trong DB là 'status', không phải 'status_id'
             $stmt = $this->prepare("UPDATE orders SET status = ? WHERE id = ?");
             $stmt->bind_param("ii", $newStatus, $orderId);
             $stmt->execute();
 
             $this->logHistory($orderId, $newStatus, $actorId, $actorRole, $note);
-            $this->logAudit($actorId, $actorRole, "UPDATE_STATUS", $orderId, $note);
+
+            if (method_exists($this, 'logAudit')) {
+                $this->logAudit($actorId, $actorRole, "UPDATE_STATUS", $orderId, $note);
+            }
+
+            return true;
+        });
+    }
+
+    /* =====================================================
+     * [NEW METHOD] CONFIRM PICKUP (ATOMIC TRANSACTION)
+     * =====================================================
+     * Nhiệm vụ: Cập nhật status -> 4, lưu ảnh, cập nhật cân nặng và tính tiền.
+     * Tất cả diễn ra trong 1 transaction để đảm bảo an toàn.
+     */
+    public function confirmPickup(int $orderId, int $shipperId, float $actualWeight, string $proofUrl, float $penaltyFee, float $newTotalAmount)
+    {
+        return $this->transaction(function () use ($orderId, $shipperId, $actualWeight, $proofUrl, $penaltyFee, $newTotalAmount) {
+
+            // 1. Kiểm tra quyền sở hữu và Status hiện tại (Phải là 3 - Assigned)
+            $check = $this->prepare("SELECT status FROM orders WHERE id = ? AND shipper_id = ?");
+            $check->bind_param("ii", $orderId, $shipperId);
+            $check->execute();
+            $res = $check->get_result()->fetch_assoc();
+
+            if (!$res) throw new Exception("Order not found or not assigned to you.");
+            // 3 = STATUS_ASSIGNED
+            if ((int)$res['status'] !== self::STATUS_ASSIGNED) throw new Exception("Order is not in 'Assigned' status (Must be 3).");
+
+            // 2. Cập nhật thông tin Pickup
+            // status -> 4 (STATUS_PICKED)
+            $statusPicked = self::STATUS_PICKED;
+
+            // Sử dụng đúng tên cột trong database: 'status', 'actual_weight', 'pickup_proof', 'penalty_fee'
+            $stmt = $this->prepare("
+                UPDATE orders SET 
+                    actual_weight = ?, 
+                    pickup_proof = ?, 
+                    penalty_fee = ?, 
+                    total_amount = ?, 
+                    status = ?, 
+                    updated_at = NOW() 
+                WHERE id = ?
+            ");
+
+            // Bind: d(double), s(string), d, d, i(int), i
+            $stmt->bind_param("dsddii", $actualWeight, $proofUrl, $penaltyFee, $newTotalAmount, $statusPicked, $orderId);
+
+            if (!$stmt->execute()) {
+                throw new Exception("Database update failed: " . $stmt->error);
+            }
+
+            // 3. Ghi lịch sử đơn hàng (Tiếng Anh)
+            $note = "Shipper picked up package. Actual Weight: {$actualWeight}g.";
+            if ($penaltyFee > 0) $note .= " Penalty Fee Applied: {$penaltyFee}";
+
+            $this->logHistory($orderId, $statusPicked, $shipperId, 'shipper', $note);
+
+            // 4. Log Audit hệ thống
+            if (method_exists($this, 'logAudit')) {
+                $this->logAudit($shipperId, 'shipper', "CONFIRM_PICKUP", $orderId, "Weight: $actualWeight, Penalty: $penaltyFee");
+            }
 
             return true;
         });
@@ -299,7 +351,7 @@ class OrderService extends BaseService
                 UPDATE orders SET agent_id = ?, status = ?
                 WHERE id = ? AND agent_id IS NULL
             ");
-            $statusApproved = self::STATUS_APPROVED; // Phải gán vào biến để bind_param
+            $statusApproved = self::STATUS_APPROVED;
             $stmt->bind_param("iii", $agentId, $statusApproved, $orderId);
             $stmt->execute();
 
@@ -308,7 +360,10 @@ class OrderService extends BaseService
             }
 
             $this->logHistory($orderId, self::STATUS_APPROVED, $adminId, "system", $note);
-            $this->logAudit($adminId, "admin", "ASSIGN_AGENT", $orderId, "agent={$agentId}");
+
+            if (method_exists($this, 'logAudit')) {
+                $this->logAudit($adminId, "admin", "ASSIGN_AGENT", $orderId, "agent={$agentId}");
+            }
 
             return true;
         });
@@ -321,37 +376,49 @@ class OrderService extends BaseService
     {
         return $this->transaction(function () use ($orderId, $shipperId, $actorId, $role, $note) {
 
+            // ... (Đoạn kiểm tra logic cũ giữ nguyên) ...
             $check = $this->prepare("SELECT status, agent_id FROM orders WHERE id = ?");
             $check->bind_param("i", $orderId);
             $check->execute();
             $row = $check->get_result()->fetch_assoc();
 
             if (!$row) throw new Exception("Order not found");
+
+            // Đơn hàng phải ở trạng thái 2 (Approved) mới được gán Shipper
             if ((int)$row["status"] !== self::STATUS_APPROVED) {
-                throw new Exception("Order not approved");
+                throw new Exception("Order not approved (Status must be 2)");
             }
 
-            // Agent chỉ có thể assign shipper cho đơn của mình
-            // Admin có thể assign shipper cho bất kỳ đơn nào
             if ($role === "agent" && (int)$row["agent_id"] !== $actorId) {
                 throw new Exception("Order not belong to agent");
             }
 
+            // [SỬA ĐOẠN NÀY]
+            // Cập nhật shipper_id nhưng GIỮ NGUYÊN STATUS LÀ 2 (Approved)
+            // Để Shipper thấy đơn ở Dashboard và bấm "Nhận đơn" (chuyển sang 3)
             $stmt = $this->prepare("
                 UPDATE orders SET shipper_id = ?, status = ?
                 WHERE id = ? AND shipper_id IS NULL
             ");
-            $statusAssigned = self::STATUS_ASSIGNED; // Phải gán vào biến để bind_param
+
+            // [THAY ĐỔI QUAN TRỌNG] 
+            // Cũ: $statusAssigned = self::STATUS_ASSIGNED; (Là 3 - Sai luồng)
+            // Mới: $statusAssigned = self::STATUS_APPROVED; (Là 2 - Đúng luồng)
+            $statusAssigned = self::STATUS_APPROVED;
+
             $stmt->bind_param("iii", $shipperId, $statusAssigned, $orderId);
             $stmt->execute();
 
             if ($stmt->affected_rows === 0) {
-                throw new Exception("Order already has shipper");
+                throw new Exception("Order already has shipper or update failed");
             }
 
-            // logHistory sẽ tự động convert 'admin' thành 'system'
-            $this->logHistory($orderId, self::STATUS_ASSIGNED, $actorId, $role, $note);
-            $this->logAudit($actorId, $role, "ASSIGN_SHIPPER", $orderId, "shipper={$shipperId}");
+            // Ghi log
+            $this->logHistory($orderId, self::STATUS_APPROVED, $actorId, $role, $note);
+
+            if (method_exists($this, 'logAudit')) {
+                $this->logAudit($actorId, $role, "ASSIGN_SHIPPER", $orderId, "shipper={$shipperId}");
+            }
 
             return true;
         });
@@ -372,15 +439,13 @@ class OrderService extends BaseService
 
     private function logHistory(int $orderId, int $statusId, int $userId, string $role, string $note)
     {
-        // order_history.role chỉ có: 'customer','agent','shipper','system'
-        // Convert 'admin' thành 'system'
         if ($role === "admin") {
             $role = "system";
         }
 
         $stmt = $this->prepare("
-            INSERT INTO order_history (order_id, status_id, user_id, role, note)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO order_history (order_id, status_id, user_id, role, note, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
         ");
         $stmt->bind_param("iiiss", $orderId, $statusId, $userId, $role, $note);
         $stmt->execute();
@@ -388,22 +453,18 @@ class OrderService extends BaseService
 
     private function generateOrderCode(): string
     {
-        // Lấy số thứ tự từ database để tạo mã theo thứ tự
         $stmt = $this->prepare("SELECT MAX(id) AS max_id FROM orders");
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
         $nextNumber = ($row && $row['max_id']) ? (int)$row['max_id'] + 1 : 1;
 
-        // Tạo mã theo format ORD + số thứ tự (4 chữ số, có padding 0)
         $code = "ORD" . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
 
-        // Kiểm tra xem mã đã tồn tại chưa (phòng trường hợp có xóa đơn)
         $check = $this->prepare("SELECT id FROM orders WHERE order_code = ?");
         $check->bind_param("s", $code);
         $check->execute();
 
-        // Nếu mã đã tồn tại, tìm số tiếp theo
         if ($check->get_result()->num_rows > 0) {
             $stmt2 = $this->prepare("SELECT MAX(CAST(SUBSTRING(order_code, 4) AS UNSIGNED)) AS max_num FROM orders WHERE order_code LIKE 'ORD%'");
             $stmt2->execute();
@@ -429,52 +490,32 @@ class OrderService extends BaseService
         return $code;
     }
 
-    //Update order status and log history using MySQLi Transaction
     /**
      * Update order status and log history using MySQLi Transaction
-     * * @param int $orderId
-     * @param int $newStatusId
-     * @param int $userId (ID of the person performing action)
-     * @param string $userRole (Role: 'shipper', 'admin'...)
-     * @param string $note (Log message)
-     * @return bool
-     * @throws Exception
+     * [FIXED] Corrected column name 'status_id' to 'status' to match 'orders' table
      */
-    //function updateOrderStatusWithHistory
     public function updateOrderStatusWithHistory($orderId, $newStatusId, $userId, $userRole, $note)
     {
-        // 1. Get the global database connection variable from db.php
         global $conn;
 
-        // 2. Start Transaction (Bắt đầu chế độ an toàn)
-        // From this point, nothing is saved permanently until we command 'commit()'
         $conn->begin_transaction();
 
         try {
-            // ---------------------------------------------------------
-            // A. Update the Order Status
-            // ---------------------------------------------------------
-            $sqlOrder = "UPDATE orders SET status_id = ?, updated_at = NOW() WHERE id = ?";
+            // [FIXED] 'status_id' -> 'status' (Khớp với SQL eproject.sql)
+            $sqlOrder = "UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?";
 
-            // Prepare the statement
             $stmtOrder = $conn->prepare($sqlOrder);
             if (!$stmtOrder) {
                 throw new Exception("Prepare failed (Order): " . $conn->error);
             }
 
-            // Bind parameters: "ii" means "integer, integer"
-            // $newStatusId -> first ?, $orderId -> second ?
             $stmtOrder->bind_param("ii", $newStatusId, $orderId);
 
-            // Execute
             if (!$stmtOrder->execute()) {
                 throw new Exception("Execute failed (Order): " . $stmtOrder->error);
             }
             $stmtOrder->close();
 
-            // ---------------------------------------------------------
-            // B. Insert into Order History
-            // ---------------------------------------------------------
             $sqlHistory = "INSERT INTO order_history (order_id, status_id, user_id, role, note, created_at) 
                            VALUES (?, ?, ?, ?, ?, NOW())";
 
@@ -483,12 +524,6 @@ class OrderService extends BaseService
                 throw new Exception("Prepare failed (History): " . $conn->error);
             }
 
-            // Bind parameters: "iiiss"
-            // i (int): order_id
-            // i (int): status_id
-            // i (int): user_id
-            // s (string): role
-            // s (string): note
             $stmtHistory->bind_param("iiiss", $orderId, $newStatusId, $userId, $userRole, $note);
 
             if (!$stmtHistory->execute()) {
@@ -496,15 +531,61 @@ class OrderService extends BaseService
             }
             $stmtHistory->close();
 
-            // ---------------------------------------------------------
-            // 3. Commit (Lưu tất cả thay đổi)
-            // ---------------------------------------------------------
             $conn->commit();
             return true;
         } catch (Exception $e) {
-            // 4. Rollback (Nếu có bất kỳ lỗi nào, hủy bỏ mọi thay đổi nãy giờ)
             $conn->rollback();
-            throw $e; // Ném lỗi ra để API bên ngoài biết và báo cho Frontend
+            throw $e;
         }
+    }
+
+    /* =====================================================
+     * [NEW METHOD] CONFIRM DELIVERY (ATOMIC TRANSACTION)
+     * =====================================================
+     */
+    public function confirmDelivery(int $orderId, int $shipperId, string $proofUrl)
+    {
+        return $this->transaction(function () use ($orderId, $shipperId, $proofUrl) {
+
+            // 1. Validate Order Status (Must be 4 - In Transit/Picked Up)
+            $check = $this->prepare("SELECT status FROM orders WHERE id = ? AND shipper_id = ?");
+            $check->bind_param("ii", $orderId, $shipperId);
+            $check->execute();
+            $res = $check->get_result()->fetch_assoc();
+
+            if (!$res) throw new Exception("Order not found or not assigned to you.");
+
+            // STATUS_PICKED = 4
+            if ((int)$res['status'] !== self::STATUS_PICKED) throw new Exception("Order is not in 'In Transit' status (Must be 4).");
+
+            // 2. Update Order to Delivered (5) and save Proof Image
+            $statusDelivered = self::STATUS_DELIVERED; // 5
+
+            $stmt = $this->prepare("
+                UPDATE orders SET 
+                    status = ?, 
+                    delivery_proof = ?, 
+                    updated_at = NOW() 
+                WHERE id = ?
+            ");
+
+            // Bind: i(int), s(string), i(int)
+            $stmt->bind_param("isi", $statusDelivered, $proofUrl, $orderId);
+
+            if (!$stmt->execute()) {
+                throw new Exception("Database update failed: " . $stmt->error);
+            }
+
+            // 3. Log History
+            $note = "Shipper delivered successfully.";
+            $this->logHistory($orderId, $statusDelivered, $shipperId, 'shipper', $note);
+
+            // 4. Log Audit
+            if (method_exists($this, 'logAudit')) {
+                $this->logAudit($shipperId, 'shipper', "CONFIRM_DELIVERY", $orderId, "Delivered successfully");
+            }
+
+            return true;
+        });
     }
 }

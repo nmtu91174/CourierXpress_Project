@@ -1,32 +1,58 @@
 <?php
 // backend/api/shipper/update_location.php
+// Shipper sends GPS coordinates here periodically
 
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Allow-Headers: Content-Type");
+require_once __DIR__ . "/../../core/Cors.php";
+Cors::handlePreflight();
+Cors::setHeaders();
 
-require_once '../../db.php';
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
+    http_response_code(200);
+    exit;
+}
 
-$data = json_decode(file_get_contents("php://input"));
-
-if (!isset($data->shipper_id) || !isset($data->lat) || !isset($data->lng)) {
-    http_response_code(400);
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    http_response_code(405);
     exit();
 }
 
-$shipper_id = intval($data->shipper_id);
-$lat = floatval($data->lat);
-$lng = floatval($data->lng);
+require_once __DIR__ . "/../../db.php";
+require_once __DIR__ . "/../../core/Response.php";
+require_once __DIR__ . "/../../middleware/require_login.php";
+require_once __DIR__ . "/../../middleware/require_role.php";
 
-// Insert or Update (Upsert)
-$sql = "INSERT INTO shipper_locations (shipper_id, latitude, longitude) 
-        VALUES (?, ?, ?) 
-        ON DUPLICATE KEY UPDATE latitude = VALUES(latitude), longitude = VALUES(longitude)";
+// 1. Auth Check
+require_login();
+require_role(["shipper"]);
 
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("idd", $shipper_id, $lat, $lng);
-$stmt->execute();
+$shipperId = $GLOBALS['auth_user']['id'];
 
-echo json_encode(["status" => "ok"]);
+// 2. Read Input
+$data = json_decode(file_get_contents("php://input"), true);
+$lat  = isset($data['lat']) ? (float)$data['lat'] : 0;
+$lng  = isset($data['lng']) ? (float)$data['lng'] : 0;
+
+if ($lat == 0 && $lng == 0) {
+    Response::error("Invalid coordinates");
+}
+
+// 3. Upsert Location (Insert or Update if exists)
+// Table `shipper_locations` must exist (shipper_id is PK)
+$stmt = $conn->prepare("
+    INSERT INTO shipper_locations (shipper_id, latitude, longitude, updated_at) 
+    VALUES (?, ?, ?, NOW())
+    ON DUPLICATE KEY UPDATE 
+        latitude = VALUES(latitude), 
+        longitude = VALUES(longitude), 
+        updated_at = NOW()
+");
+
+$stmt->bind_param("idd", $shipperId, $lat, $lng);
+
+if ($stmt->execute()) {
+    Response::success("Location updated");
+} else {
+    Response::serverError("Database error: " . $stmt->error);
+}
+
 $conn->close();
