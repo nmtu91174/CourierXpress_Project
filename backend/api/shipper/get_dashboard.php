@@ -1,11 +1,14 @@
 <?php
 // backend/api/shipper/get_dashboard.php
-
+// Dashboard API for Shipper (Workflow mới)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// CORS Headers
+
+// ==========================
+// CORS
+// ==========================
 require_once __DIR__ . "/../../core/Cors.php";
 Cors::handlePreflight();
 Cors::setHeaders();
@@ -15,69 +18,141 @@ if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
     exit;
 }
 
+// ==========================
+// METHOD CHECK
+// ==========================
+if ($_SERVER["REQUEST_METHOD"] !== "GET") {
+    http_response_code(405);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Method not allowed"
+    ]);
+    exit;
+}
+
+// ==========================
+// CORE
+// ==========================
 require_once __DIR__ . "/../../db.php";
 require_once __DIR__ . "/../../core/Response.php";
 require_once __DIR__ . "/../../middleware/require_login.php";
 require_once __DIR__ . "/../../middleware/require_role.php";
 
-// Auth
+// ==========================
+// AUTH
+// ==========================
 require_login();
 require_role(["shipper"]);
 
 $shipperId = (int)$GLOBALS['auth_user']['id'];
 
 try {
-    // 1. Get Statistics
-    // Status 2: Assigned (Need to accept)
-    // Status 3, 4: In Progress (Picking up, Delivering)
-    // Status 5: Completed
+    // =====================================================
+    // 1️⃣ STATISTICS (CHO DASHBOARD CARD)
+    // =====================================================
+    // waiting_accept : status = 2
+    // active         : status = 3,4
+    // completed      : status = 5
+
     $sqlStats = "
-        SELECT 
-            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS assigned_count,
-            SUM(CASE WHEN status IN (3, 4) THEN 1 ELSE 0 END) AS active_count,
-            SUM(CASE WHEN status = 5 THEN 1 ELSE 0 END) AS completed_count
+        SELECT
+            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS waiting_accept,
+            SUM(CASE WHEN status IN (3,4) THEN 1 ELSE 0 END) AS active,
+            SUM(CASE WHEN status = 5 THEN 1 ELSE 0 END) AS completed
         FROM orders
         WHERE shipper_id = ?
     ";
+
     $stmtStats = $conn->prepare($sqlStats);
     $stmtStats->bind_param("i", $shipperId);
     $stmtStats->execute();
     $stats = $stmtStats->get_result()->fetch_assoc();
 
-    // 2. Assigned orders (Status = 2)
-    $sqlNew = "
-        SELECT id, order_code, sender_address, receiver_address, status
+    // Ensure not null
+    $stats = [
+        "waiting_accept" => (int)($stats["waiting_accept"] ?? 0),
+        "active"         => (int)($stats["active"] ?? 0),
+        "completed"      => (int)($stats["completed"] ?? 0),
+    ];
+
+    // =====================================================
+    // 2️⃣ WAITING ORDERS (STATUS = 2)
+    // =====================================================
+    $sqlWaiting = "
+        SELECT
+            id,
+            order_code,
+            sender_address,
+            receiver_address,
+            status
         FROM orders
-        WHERE shipper_id = ? AND status = 2
+        WHERE shipper_id = ?
+          AND status = 2
         ORDER BY created_at DESC
         LIMIT 5
     ";
-    $stmtNew = $conn->prepare($sqlNew);
-    $stmtNew->bind_param("i", $shipperId);
-    $stmtNew->execute();
-    $newOrders = $stmtNew->get_result()->fetch_all(MYSQLI_ASSOC);
 
-    // 3. Recent orders (Status 3,4,5)
-    $sqlRecent = "
-        SELECT id, order_code, receiver_name, receiver_address, status
+    $stmtWaiting = $conn->prepare($sqlWaiting);
+    $stmtWaiting->bind_param("i", $shipperId);
+    $stmtWaiting->execute();
+    $waitingOrders = $stmtWaiting->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    // =====================================================
+    // 3️⃣ ACTIVE ORDERS (STATUS = 3,4)
+    // =====================================================
+    $sqlActive = "
+        SELECT
+            id,
+            order_code,
+            receiver_name,
+            receiver_address,
+            status
         FROM orders
-        WHERE shipper_id = ? AND status IN (3,4,5)
-        ORDER BY COALESCE(updated_at, created_at) DESC
+        WHERE shipper_id = ?
+          AND status IN (3,4)
+        ORDER BY created_at DESC
         LIMIT 10
     ";
-    $stmtRecent = $conn->prepare($sqlRecent);
-    $stmtRecent->bind_param("i", $shipperId);
-    $stmtRecent->execute();
-    $recentOrders = $stmtRecent->get_result()->fetch_all(MYSQLI_ASSOC);
 
+    $stmtActive = $conn->prepare($sqlActive);
+    $stmtActive->bind_param("i", $shipperId);
+    $stmtActive->execute();
+    $activeOrders = $stmtActive->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    // =====================================================
+    // 4️⃣ COMPLETED ORDERS (STATUS = 5)
+    // =====================================================
+    $sqlCompleted = "
+        SELECT
+            id,
+            order_code,
+            receiver_name,
+            receiver_address,
+            status
+        FROM orders
+        WHERE shipper_id = ?
+          AND status = 5
+        ORDER BY created_at DESC
+        LIMIT 10
+    ";
+
+    $stmtCompleted = $conn->prepare($sqlCompleted);
+    $stmtCompleted->bind_param("i", $shipperId);
+    $stmtCompleted->execute();
+    $completedOrders = $stmtCompleted->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    // =====================================================
+    // 5️⃣ RESPONSE (KHỚP 100% FRONTEND)
+    // =====================================================
     Response::success("Dashboard data fetched", [
-        "stats" => $stats,
-        "assigned_orders" => $newOrders,
-        "recent_orders" => $recentOrders
+        "stats"            => $stats,
+        "waiting_orders"   => $waitingOrders,
+        "active_orders"    => $activeOrders,
+        "completed_orders" => $completedOrders
     ]);
-} catch (Throwable $e) {
+} catch (Exception $e) {
     error_log("GET_DASHBOARD_ERROR: " . $e->getMessage());
-    Response::serverError($e->getMessage());
+    Response::serverError("Failed to load dashboard");
 }
 
 $conn->close();
