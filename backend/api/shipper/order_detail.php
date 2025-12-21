@@ -2,7 +2,9 @@
 // backend/api/shipper/order_detail.php
 // Xem chi tiết đơn hàng (phân quyền theo role)
 
+// ==========================
 // CORS Headers
+// ==========================
 require_once __DIR__ . "/../../core/Cors.php";
 Cors::handlePreflight();
 Cors::setHeaders();
@@ -54,9 +56,28 @@ if ($orderId <= 0) {
 // ==========================
 // BASE ORDER QUERY
 // ==========================
+// [FIX] Chỉ select field cần thiết cho Order Detail
 $sql = "
     SELECT 
-        o.*,
+        o.id,
+        o.order_code,
+        o.sender_name,
+        o.sender_phone,
+        o.sender_address,
+        o.receiver_name,
+        o.receiver_phone,
+        o.receiver_address,
+        o.weight,
+        o.actual_weight,
+        o.status,
+        o.cod_amount,
+        o.total_amount,
+        o.penalty_fee,
+        o.total_shipping_fee,
+        o.notes,
+        o.created_at,
+        o.pickup_proof,
+        o.delivery_proof,
         c.name AS customer_name,
         a.name AS agent_name,
         s.name AS shipper_name
@@ -72,7 +93,7 @@ $sql = "
 // ==========================
 $whereClause = "";
 $params = [$orderId];
-$types = "i";
+$types  = "i";
 
 switch ($role) {
     case "admin":
@@ -86,6 +107,7 @@ switch ($role) {
         break;
 
     case "shipper":
+        // [QUAN TRỌNG] Shipper chỉ xem được đơn của mình
         $whereClause = " AND o.shipper_id = ?";
         $params[] = $userId;
         $types .= "i";
@@ -103,7 +125,14 @@ switch ($role) {
 
 $sql .= $whereClause;
 
+// ==========================
+// EXECUTE ORDER QUERY
+// ==========================
 $stmt = $conn->prepare($sql);
+if (!$stmt) {
+    Response::serverError("SQL prepare failed (orders)");
+}
+
 $stmt->bind_param($types, ...$params);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -116,13 +145,20 @@ $order = $result->fetch_assoc();
 $stmt->close();
 
 // ==========================
-// ORDER IMAGES
+// ORDER IMAGES (pickup / delivery)
 // ==========================
+// [FIX] Dùng đúng bảng order_images theo DB
 $imgStmt = $conn->prepare("
     SELECT image_url, type
     FROM order_images
     WHERE order_id = ?
+    ORDER BY created_at ASC
 ");
+
+if (!$imgStmt) {
+    Response::serverError("SQL prepare failed (order_images)");
+}
+
 $imgStmt->bind_param("i", $orderId);
 $imgStmt->execute();
 $order["images"] = $imgStmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -134,15 +170,23 @@ $imgStmt->close();
 $hisStmt = $conn->prepare("
     SELECT 
         oh.status_id,
+        s.code AS status_code,
+        s.description AS status_label,
         oh.note,
         oh.role,
         oh.created_at,
         u.name AS actor_name
     FROM order_history oh
+    LEFT JOIN statuses s ON oh.status_id = s.id
     LEFT JOIN users u ON oh.user_id = u.id
     WHERE oh.order_id = ?
     ORDER BY oh.created_at ASC
 ");
+
+if (!$hisStmt) {
+    Response::serverError("SQL prepare failed (order_history)");
+}
+
 $hisStmt->bind_param("i", $orderId);
 $hisStmt->execute();
 $order["history"] = $hisStmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -161,6 +205,11 @@ $feeStmt = $conn->prepare("
     INNER JOIN fees f ON of.fee_id = f.id
     WHERE of.order_id = ?
 ");
+
+if (!$feeStmt) {
+    Response::serverError("SQL prepare failed (order_fees)");
+}
+
 $feeStmt->bind_param("i", $orderId);
 $feeStmt->execute();
 $order["fees"] = $feeStmt->get_result()->fetch_all(MYSQLI_ASSOC);
