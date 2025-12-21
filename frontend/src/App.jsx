@@ -132,7 +132,9 @@ export default function App() {
         path="/createorder"
         element={
           <AuthLayout>
+            <Header />
             <CreateOrder />
+            <Footer />
           </AuthLayout>
         }
       />
@@ -234,17 +236,17 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-        <Route
-          path="/shipper/on-the-way"
-          element={
-            <ProtectedRoute allowed={['shipper']}>
-              <PublicLayout>
-                <DeliveryInProgress />
-              </PublicLayout>
-            </ProtectedRoute>
-          }
-        />
-              <Route
+      <Route
+        path="/shipper/on-the-way"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout>
+              <DeliveryInProgress />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/shipper/edit-order/:id"
         element={
           <ProtectedRoute allowed={['shipper']}>
@@ -254,7 +256,7 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-            <Route
+      <Route
         path="/shipper/order-history"
         element={
           <ProtectedRoute allowed={['shipper']}>

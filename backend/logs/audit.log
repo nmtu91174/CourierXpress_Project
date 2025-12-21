@@ -1,1 +1,3 @@
 [2025-12-20 09:20:17] user=1 role=admin action=ASSIGN_AGENT order=2 note=agent=3
+[2025-12-21 04:30:08] user=1 role=admin action=ASSIGN_AGENT order=7 note=agent=3
+[2025-12-21 04:30:24] user=1 role=admin action=ASSIGN_SHIPPER order=7 note=shipper=4
