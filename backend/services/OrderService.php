@@ -314,7 +314,7 @@ class OrderService extends BaseService
                     penalty_fee = ?, 
                     total_amount = ?, 
                     status = ?, 
-                    updated_at = NOW() 
+                   
                 WHERE id = ?
             ");
 
@@ -502,7 +502,7 @@ class OrderService extends BaseService
 
         try {
             // [FIXED] 'status_id' -> 'status' (Khớp với SQL eproject.sql)
-            $sqlOrder = "UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?";
+            $sqlOrder = "UPDATE orders SET status = ?, WHERE id = ?";
 
             $stmtOrder = $conn->prepare($sqlOrder);
             if (!$stmtOrder) {
@@ -565,7 +565,7 @@ class OrderService extends BaseService
                 UPDATE orders SET 
                     status = ?, 
                     delivery_proof = ?, 
-                    updated_at = NOW() 
+                    
                 WHERE id = ?
             ");
 
