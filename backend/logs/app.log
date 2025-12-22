@@ -17,3 +17,23 @@
 [2025-12-13 20:08:40] [ERROR] Cannot add or update a child row: a foreign key constraint fails (`eproject`.`orders`, CONSTRAINT `orders_ibfk_4` FOREIGN KEY (`status`) REFERENCES `statuses` (`id`))
 [2025-12-13 20:11:41] [ERROR] Cannot add or update a child row: a foreign key constraint fails (`eproject`.`orders`, CONSTRAINT `orders_ibfk_4` FOREIGN KEY (`status`) REFERENCES `statuses` (`id`))
 [2025-12-13 20:45:11] [ERROR] Cannot add or update a child row: a foreign key constraint fails (`eproject`.`orders`, CONSTRAINT `orders_ibfk_4` FOREIGN KEY (`status`) REFERENCES `statuses` (`id`))
+[2025-12-22 01:06:22] [SQL_ERROR] You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE id = ?' at line 8
+[2025-12-22 01:06:22] [ERROR] Database prepare failed
+[2025-12-22 01:07:23] [SQL_ERROR] You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE id = ?' at line 8
+[2025-12-22 01:07:23] [ERROR] Database prepare failed
+[2025-12-22 01:45:37] [SQL_ERROR] You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE id = ?' at line 8
+[2025-12-22 01:45:37] [ERROR] Database prepare failed
+[2025-12-22 01:46:44] [SQL_ERROR] You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE id = ?' at line 8
+[2025-12-22 01:46:44] [ERROR] Database prepare failed
+[2025-12-22 01:47:56] [SQL_ERROR] You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE id = ?' at line 8
+[2025-12-22 01:47:56] [ERROR] Database prepare failed
+[2025-12-22 01:48:54] [SQL_ERROR] You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE id = ?' at line 8
+[2025-12-22 01:48:54] [ERROR] Database prepare failed
+[2025-12-22 01:57:08] [SQL_ERROR] You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE id = ?' at line 8
+[2025-12-22 01:57:08] [ERROR] Database prepare failed
+[2025-12-22 02:02:51] [SQL_ERROR] You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE id = ?' at line 8
+[2025-12-22 02:02:51] [ERROR] Database prepare failed
+[2025-12-22 02:03:42] [SQL_ERROR] You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE id = ?' at line 8
+[2025-12-22 02:03:42] [ERROR] Database prepare failed
+[2025-12-22 02:30:52] [SQL_ERROR] You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'WHERE id = ?' at line 5
+[2025-12-22 02:30:52] [ERROR] Database prepare failed

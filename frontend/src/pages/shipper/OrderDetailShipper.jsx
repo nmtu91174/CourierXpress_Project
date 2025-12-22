@@ -14,29 +14,45 @@ import {
     Form
 } from "react-bootstrap";
 import {
-    FaMapMarkerAlt
-} from "react-icons/fa";
+    BsGeoAltFill,
+    BsCheckCircleFill,
+    BsBoxSeam,
+    BsCamera,
+    BsTruck
+} from "react-icons/bs";
 import Swal from "sweetalert2";
 import axios from "axios";
 
-// [FIX] API base phải khớp với HomePageShipper
+// API base khớp với HomePageShipper
 const API_BASE = "http://localhost:8888/api/shipper";
 
 const OrderDetailShipper = () => {
     const { id } = useParams();
     const navigate = useNavigate();
 
+    // ==========================
+    // STATE CHUNG
+    // ==========================
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Pickup
+    // ==========================
+    // PICKUP STATES
+    // ==========================
     const [showPickupModal, setShowPickupModal] = useState(false);
     const [actualWeight, setActualWeight] = useState("");
     const [pickupImage, setPickupImage] = useState(null);
 
-    // Delivery
+    // Checklist xác nhận nghiệp vụ
+    const [checkOrder, setCheckOrder] = useState(false);
+    const [checkSender, setCheckSender] = useState(false);
+    const [checkPackage, setCheckPackage] = useState(false);
+
+    // ==========================
+    // DELIVERY STATES
+    // ==========================
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [deliveryImage, setDeliveryImage] = useState(null);
 
@@ -47,7 +63,6 @@ const OrderDetailShipper = () => {
         const fetchOrderDetail = async () => {
             setLoading(true);
             try {
-                // [FIX QUAN TRỌNG] Gọi đúng API backend
                 const res = await axios.get(
                     `${API_BASE}/order_detail.php?order_id=${id}`,
                     { withCredentials: true }
@@ -57,10 +72,10 @@ const OrderDetailShipper = () => {
                     setOrder(res.data.data);
                     setError(null);
                 } else {
-                    setError(res.data.message || "Cannot load order details");
+                    setError(res.data.message);
                 }
-            } catch (err) {
-                setError(err.response?.data?.message || "Cannot connect to server");
+            } catch {
+                setError("Cannot connect to server");
             } finally {
                 setLoading(false);
             }
@@ -73,7 +88,7 @@ const OrderDetailShipper = () => {
     // ACCEPT ASSIGNMENT (2 → 3)
     // ==========================
     const handleAcceptOrder = async () => {
-        if (!window.confirm("Are you sure you want to accept this order?")) return;
+        if (!window.confirm("Xác nhận nhận đơn này?")) return;
 
         setIsSubmitting(true);
         try {
@@ -84,13 +99,13 @@ const OrderDetailShipper = () => {
             );
 
             if (res.data.status === "success") {
-                Swal.fire("Success", "Order accepted.", "success")
+                Swal.fire("Success", "Đã nhận đơn", "success")
                     .then(() => navigate("/shipper"));
             } else {
                 Swal.fire("Error", res.data.message, "error");
             }
         } catch {
-            Swal.fire("Error", "Cannot connect to server", "error");
+            Swal.fire("Error", "Server error", "error");
         } finally {
             setIsSubmitting(false);
         }
@@ -99,11 +114,15 @@ const OrderDetailShipper = () => {
     // ==========================
     // CONFIRM PICKUP (3 → 4)
     // ==========================
+    const canConfirmPickup =
+        checkOrder &&
+        checkSender &&
+        checkPackage &&
+        actualWeight &&
+        pickupImage;
+
     const handleConfirmPickupSubmit = async () => {
-        if (!actualWeight || !pickupImage) {
-            Swal.fire("Warning", "Missing data", "warning");
-            return;
-        }
+        if (!canConfirmPickup) return;
 
         setIsSubmitting(true);
         const formData = new FormData();
@@ -119,9 +138,8 @@ const OrderDetailShipper = () => {
             );
 
             if (res.data.status === "success") {
-                Swal.fire("Success", "Pickup confirmed", "success");
+                Swal.fire("Success", "Đã xác nhận lấy hàng", "success");
                 setShowPickupModal(false);
-                // Re-fetch order details after pickup confirmation
                 window.location.reload();
             } else {
                 Swal.fire("Error", res.data.message, "error");
@@ -137,10 +155,7 @@ const OrderDetailShipper = () => {
     // CONFIRM DELIVERY (4 → 5)
     // ==========================
     const handleConfirmDeliverySubmit = async () => {
-        if (!deliveryImage) {
-            Swal.fire("Warning", "Upload proof image", "warning");
-            return;
-        }
+        if (!deliveryImage) return;
 
         setIsSubmitting(true);
         const formData = new FormData();
@@ -155,9 +170,8 @@ const OrderDetailShipper = () => {
             );
 
             if (res.data.status === "success") {
-                Swal.fire("Success", "Delivered", "success");
+                Swal.fire("Success", "Giao hàng thành công", "success");
                 setShowDeliveryModal(false);
-                // Re-fetch order details after delivery confirmation
                 window.location.reload();
             } else {
                 Swal.fire("Error", res.data.message, "error");
@@ -169,192 +183,187 @@ const OrderDetailShipper = () => {
         }
     };
 
+    // ==========================
+    // RENDER
+    // ==========================
     if (loading) return <Container className="py-5 text-center"><Spinner /></Container>;
     if (error) return <Container className="py-5"><Alert variant="danger">{error}</Alert></Container>;
     if (!order) return null;
 
-    // ==========================
-    // STATUS FLAGS (FIXED)
-    // ==========================
-    // [FIX] Shipper đã được filter ở backend → chỉ cần check status
-    const isAssigned = parseInt(order.status) === 2;
-    const isPickingUp = parseInt(order.status) === 3;
-    const isInTransit = parseInt(order.status) === 4;
-    const isCompleted = parseInt(order.status) === 5;
+    const status = parseInt(order.status);
 
     return (
-        <Container className="py-5">
-            <h2 className="fw-bold mb-4">
-                Order #{order.order_code}
-            </h2>
+        <Container className="py-4">
 
-            <Card className="shadow-sm">
-                <Card.Header className="bg-danger text-white">
-                    <FaMapMarkerAlt className="me-2" />
-                    Delivery Info
-                </Card.Header>
-                <Card.Body className="d-flex justify-content-between align-items-center">
+            <h5 className="fw-bold mb-3">
+                📦 Order #{order.order_code}
+            </h5>
 
-                    <strong>Status: {order.status}</strong>
-
-                    {isAssigned && (
-                        <Button onClick={handleAcceptOrder} disabled={isSubmitting}>
-                            Accept Assignment
-                        </Button>
-                    )}
-
-                    {isPickingUp && (
-                        <Button variant="warning" onClick={() => setShowPickupModal(true)}>
-                            Confirm Pickup
-                        </Button>
-                    )}
-
-                    {isInTransit && (
-                        <Button variant="success" onClick={() => setShowDeliveryModal(true)}>
-                            Confirm Delivery
-                        </Button>
-                    )}
-
-                    {isCompleted && (
-                        <Button variant="secondary" disabled>
-                            Completed
-                        </Button>
-                    )}
+            {/* ==========================
+                ORDER INFO
+            ========================== */}
+            <Card className="mb-3 shadow-sm">
+                <Card.Body>
+                    <div className="mb-2">
+                        <BsGeoAltFill className="me-2 text-danger" />
+                        <strong>Pickup:</strong> {order.sender_address}
+                    </div>
+                    <div>
+                        <strong>Receiver:</strong> {order.receiver_name}
+                    </div>
                 </Card.Body>
             </Card>
+
             {/* ==========================
-    CONFIRM PICKUP MODAL
-    ========================== */}
-            <Modal
-                show={showPickupModal}
-                onHide={() => setShowPickupModal(false)}
-                backdrop="static"
-                centered
-            >
-                {/* ==========================
-        HEADER
-        ========================== */}
+                ACTIONS
+            ========================== */}
+            {status === 2 && (
+                <Button
+                    className="w-100 mb-2"
+                    onClick={handleAcceptOrder}
+                    disabled={isSubmitting}
+                >
+                    Nhận đơn
+                </Button>
+            )}
+
+            {status === 3 && (
+                <Button
+                    variant="warning"
+                    className="w-100 mb-2"
+                    onClick={() => setShowPickupModal(true)}
+                >
+                    Xác nhận lấy hàng
+                </Button>
+            )}
+
+            {status === 4 && (
+                <Button
+                    variant="success"
+                    className="w-100 mb-2"
+                    onClick={() => setShowDeliveryModal(true)}
+                >
+                    Xác nhận giao hàng
+                </Button>
+            )}
+
+            {/* ==========================
+                CONFIRM PICKUP MODAL
+            ========================== */}
+            <Modal show={showPickupModal} onHide={() => setShowPickupModal(false)} centered>
                 <Modal.Header closeButton>
                     <Modal.Title>
-                        📦 Confirm Pickup
+                        <BsBoxSeam className="me-2" />
+                        Checklist trước khi lấy hàng
                     </Modal.Title>
                 </Modal.Header>
 
-                {/* ==========================
-        BODY
-        ========================== */}
                 <Modal.Body>
-                    {/* Nhập cân nặng thực tế */}
+                    {/* ORDER SUMMARY */}
+                    <Card className="mb-3">
+                        <Card.Body className="p-2">
+                            <div><strong>#{order.order_code}</strong></div>
+                            <div className="small">{order.sender_address}</div>
+                        </Card.Body>
+                    </Card>
+
+                    {/* CHECKLIST */}
+                    <Form.Check
+                        className="mb-2"
+                        label="Đã kiểm tra đúng mã đơn hàng"
+                        checked={checkOrder}
+                        onChange={(e) => setCheckOrder(e.target.checked)}
+                    />
+                    <Form.Check
+                        className="mb-2"
+                        label="Đã xác nhận đúng người gửi & địa chỉ"
+                        checked={checkSender}
+                        onChange={(e) => setCheckSender(e.target.checked)}
+                    />
+                    <Form.Check
+                        className="mb-3"
+                        label="Đã kiểm tra đầy đủ kiện hàng"
+                        checked={checkPackage}
+                        onChange={(e) => setCheckPackage(e.target.checked)}
+                    />
+
+                    {/* WEIGHT */}
                     <Form.Group className="mb-3">
-                        <Form.Label>
-                            Actual Weight (grams)
-                        </Form.Label>
+                        <Form.Label>Cân nặng thực tế (gram)</Form.Label>
                         <Form.Control
                             type="number"
                             min="1"
-                            placeholder="Enter actual weight"
                             value={actualWeight}
                             onChange={(e) => setActualWeight(e.target.value)}
                         />
-                        {/* Giải thích cho shipper */}
-                        <Form.Text className="text-muted">
-                            Cân nặng thực tế sẽ được dùng để tính phí nếu có chênh lệch.
-                        </Form.Text>
                     </Form.Group>
 
-                    {/* Upload ảnh bằng chứng lấy hàng */}
-                    <Form.Group className="mb-3">
+                    {/* IMAGE */}
+                    <Form.Group>
                         <Form.Label>
-                            Pickup Proof Image
+                            <BsCamera className="me-1" />
+                            Ảnh xác nhận lấy hàng
                         </Form.Label>
                         <Form.Control
                             type="file"
                             accept="image/*"
+                            capture="environment"
                             onChange={(e) => setPickupImage(e.target.files[0])}
                         />
-                        <Form.Text className="text-muted">
-                            Vui lòng chụp rõ kiện hàng và địa điểm lấy.
-                        </Form.Text>
                     </Form.Group>
 
-                    {/* Cảnh báo nghiệp vụ */}
-                    <Alert variant="warning" className="small mb-0">
-                        ⚠️ Sau khi xác nhận lấy hàng, bạn sẽ không thể chỉnh sửa thông tin này.
+                    <Alert variant="warning" className="small mt-3">
+                        ⚠️ Sau khi xác nhận, không thể chỉnh sửa.
                     </Alert>
                 </Modal.Body>
 
-                {/* ==========================
-        FOOTER
-        ========================== */}
                 <Modal.Footer>
-                    <Button
-                        variant="secondary"
-                        onClick={() => setShowPickupModal(false)}
-                        disabled={isSubmitting}
-                    >
-                        Cancel
+                    <Button variant="secondary" onClick={() => setShowPickupModal(false)}>
+                        Hủy
                     </Button>
-
                     <Button
                         variant="warning"
+                        disabled={!canConfirmPickup || isSubmitting}
                         onClick={handleConfirmPickupSubmit}
-                        disabled={isSubmitting}
                     >
-                        {isSubmitting ? "Processing..." : "Confirm Pickup"}
+                        Xác nhận lấy hàng
                     </Button>
                 </Modal.Footer>
             </Modal>
 
             {/* ==========================
-    CONFIRM DELIVERY MODAL
-    ========================== */}
-            <Modal
-                show={showDeliveryModal}
-                onHide={() => setShowDeliveryModal(false)}
-                backdrop="static"
-                centered
-            >
+                CONFIRM DELIVERY MODAL
+            ========================== */}
+            <Modal show={showDeliveryModal} onHide={() => setShowDeliveryModal(false)} centered>
                 <Modal.Header closeButton>
                     <Modal.Title>
-                        🚚 Confirm Delivery
+                        <BsTruck className="me-2" />
+                        Xác nhận giao hàng
                     </Modal.Title>
                 </Modal.Header>
 
                 <Modal.Body>
-                    <Form.Group className="mb-3">
-                        <Form.Label>
-                            Delivery Proof Image
-                        </Form.Label>
+                    <Form.Group>
+                        <Form.Label>Ảnh giao hàng</Form.Label>
                         <Form.Control
                             type="file"
                             accept="image/*"
+                            capture="environment"
                             onChange={(e) => setDeliveryImage(e.target.files[0])}
                         />
-                        <Form.Text className="text-muted">
-                            Vui lòng chụp rõ kiện hàng tại nơi nhận hàng.
-                        </Form.Text>
                     </Form.Group>
-
-                    <Alert variant="warning" className="small mb-0">
-                        ⚠️ Sau khi xác nhận giao hàng, đơn hàng sẽ được đánh dấu là hoàn thành.
-                    </Alert>
                 </Modal.Body>
 
                 <Modal.Footer>
-                    <Button
-                        variant="secondary"
-                        onClick={() => setShowDeliveryModal(false)}
-                        disabled={isSubmitting}
-                    >
-                        Cancel
+                    <Button variant="secondary" onClick={() => setShowDeliveryModal(false)}>
+                        Hủy
                     </Button>
-
                     <Button
                         variant="success"
+                        disabled={!deliveryImage || isSubmitting}
                         onClick={handleConfirmDeliverySubmit}
-                        disabled={isSubmitting}
                     >
-                        {isSubmitting ? "Processing..." : "Confirm Delivery"}
+                        Xác nhận giao hàng
                     </Button>
                 </Modal.Footer>
             </Modal>
