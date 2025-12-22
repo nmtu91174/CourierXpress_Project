@@ -1,10 +1,9 @@
 <?php
 // backend/api/shipper/get_dashboard.php
-// Dashboard API for Shipper (Workflow mới)
+// Dashboard API for Shipper (Workflow mới - Merged)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-
 
 // ==========================
 // CORS
@@ -39,142 +38,134 @@ require_once __DIR__ . "/../../middleware/require_login.php";
 require_once __DIR__ . "/../../middleware/require_role.php";
 
 // ==========================
-// AUTH
+// AUTH & SAFETY CHECKS
 // ==========================
 require_login();
 require_role(["shipper"]);
 
-$shipperId = (int)$GLOBALS['auth_user']['id'];
+$authUser = $GLOBALS["auth_user"] ?? null;
+if (!$authUser || !isset($authUser["id"])) {
+    Response::error("Auth session missing. Please login again.");
+}
+
+$shipperId = (int)$authUser["id"];
+
+if (!isset($conn) || !$conn) {
+    Response::serverError("Database connection not initialized.");
+}
+
+/**
+ * Helper: prepare or throw readable error
+ */
+function prepareOrFail($conn, $sql) {
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new Exception("SQL prepare failed: " . $conn->error . " | SQL: " . $sql);
+    }
+    return $stmt;
+}
 
 try {
     // =====================================================
     // 1️⃣ STATISTICS (CHO DASHBOARD CARD)
     // =====================================================
-    // waiting_accept : status = 3 (ASSIGNED - đã gán, chưa pickup)
-    // active         : status = 4 (PICKED - đã lấy hàng, đang giao)
-    // completed      : status = 5 (DELIVERED)
-
     $sqlStats = "
         SELECT
-            SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) AS waiting_accept,
-            SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) AS active,
+            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS waiting_accept,
+            SUM(CASE WHEN status IN (3,4) THEN 1 ELSE 0 END) AS active,
             SUM(CASE WHEN status = 5 THEN 1 ELSE 0 END) AS completed
         FROM orders
         WHERE shipper_id = ?
     ";
 
-    $stmtStats = $conn->prepare($sqlStats);
+    $stmtStats = prepareOrFail($conn, $sqlStats);
     $stmtStats->bind_param("i", $shipperId);
-    $stmtStats->execute();
-    $stats = $stmtStats->get_result()->fetch_assoc();
+    if (!$stmtStats->execute()) {
+        throw new Exception("Stats execute failed: " . $stmtStats->error);
+    }
+    $statsRaw = $stmtStats->get_result()->fetch_assoc();
+    $stmtStats->close();
 
-    // Ensure not null
     $stats = [
-        "waiting_accept" => (int)($stats["waiting_accept"] ?? 0),
-        "active"         => (int)($stats["active"] ?? 0),
-        "completed"      => (int)($stats["completed"] ?? 0),
+        "waiting_accept" => (int)($statsRaw["waiting_accept"] ?? 0),
+        "active"         => (int)($statsRaw["active"] ?? 0),
+        "completed"      => (int)($statsRaw["completed"] ?? 0),
     ];
 
     // =====================================================
-    // 2️⃣ WAITING ORDERS (STATUS = 3 - ASSIGNED)
+    // 2️⃣ WAITING ORDERS (STATUS = 2)
     // =====================================================
-    // Status 3 = ASSIGNED: Đã được admin gán cho shipper, chưa pickup
     $sqlWaiting = "
-        SELECT
-            id,
-            order_code,
-            sender_address,
-            receiver_address,
-            status,
-            shipper_id
+        SELECT id, order_code, sender_address, receiver_address, status, shipper_id
         FROM orders
-        WHERE shipper_id = ?
-          AND status = 3
+        WHERE shipper_id = ? AND status = 2
         ORDER BY created_at DESC
         LIMIT 5
     ";
 
-    $stmtWaiting = $conn->prepare($sqlWaiting);
+    $stmtWaiting = prepareOrFail($conn, $sqlWaiting);
     $stmtWaiting->bind_param("i", $shipperId);
     $stmtWaiting->execute();
     $waitingOrdersRaw = $stmtWaiting->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmtWaiting->close();
     
-    // Ensure shipper_id is integer
-    $waitingOrders = [];
-    foreach ($waitingOrdersRaw as $order) {
+    $waitingOrders = array_map(function($order) {
         $order["id"] = (int)$order["id"];
         $order["status"] = (int)$order["status"];
         $order["shipper_id"] = (int)$order["shipper_id"];
-        $waitingOrders[] = $order;
-    }
+        return $order;
+    }, $waitingOrdersRaw);
 
     // =====================================================
-    // 3️⃣ ACTIVE ORDERS (STATUS = 4 - PICKED/IN TRANSIT)
+    // 3️⃣ ACTIVE ORDERS (STATUS = 3,4)
     // =====================================================
-    // Status 4 = PICKED: Shipper đã lấy hàng, đang giao
     $sqlActive = "
-        SELECT
-            id,
-            order_code,
-            receiver_name,
-            receiver_address,
-            status,
-            shipper_id
+        SELECT id, order_code, receiver_name, receiver_address, status, shipper_id
         FROM orders
-        WHERE shipper_id = ?
-          AND status = 4
+        WHERE shipper_id = ? AND status IN (3,4)
         ORDER BY created_at DESC
         LIMIT 10
     ";
 
-    $stmtActive = $conn->prepare($sqlActive);
+    $stmtActive = prepareOrFail($conn, $sqlActive);
     $stmtActive->bind_param("i", $shipperId);
     $stmtActive->execute();
     $activeOrdersRaw = $stmtActive->get_result()->fetch_all(MYSQLI_ASSOC);
-    
-    // Ensure shipper_id is integer
-    $activeOrders = [];
-    foreach ($activeOrdersRaw as $order) {
+    $stmtActive->close();
+
+    $activeOrders = array_map(function($order) {
         $order["id"] = (int)$order["id"];
         $order["status"] = (int)$order["status"];
         $order["shipper_id"] = (int)$order["shipper_id"];
-        $activeOrders[] = $order;
-    }
+        return $order;
+    }, $activeOrdersRaw);
 
     // =====================================================
     // 4️⃣ COMPLETED ORDERS (STATUS = 5)
     // =====================================================
     $sqlCompleted = "
-        SELECT
-            id,
-            order_code,
-            receiver_name,
-            receiver_address,
-            status,
-            shipper_id
+        SELECT id, order_code, receiver_name, receiver_address, status, shipper_id
         FROM orders
-        WHERE shipper_id = ?
-          AND status = 5
+        WHERE shipper_id = ? AND status = 5
         ORDER BY created_at DESC
         LIMIT 10
     ";
 
-    $stmtCompleted = $conn->prepare($sqlCompleted);
+    $stmtCompleted = prepareOrFail($conn, $sqlCompleted);
     $stmtCompleted->bind_param("i", $shipperId);
     $stmtCompleted->execute();
     $completedOrdersRaw = $stmtCompleted->get_result()->fetch_all(MYSQLI_ASSOC);
-    
-    // Ensure shipper_id is integer
-    $completedOrders = [];
-    foreach ($completedOrdersRaw as $order) {
+    $stmtCompleted->close();
+
+    $completedOrders = array_map(function($order) {
         $order["id"] = (int)$order["id"];
         $order["status"] = (int)$order["status"];
         $order["shipper_id"] = (int)$order["shipper_id"];
-        $completedOrders[] = $order;
-    }
+        return $order;
+    }, $completedOrdersRaw);
 
     // =====================================================
-    // 5️⃣ RESPONSE (KHỚP 100% FRONTEND)
+    // 5️⃣ RESPONSE
     // =====================================================
     Response::success("Dashboard data fetched", [
         "stats"            => $stats,
@@ -182,9 +173,11 @@ try {
         "active_orders"    => $activeOrders,
         "completed_orders" => $completedOrders
     ]);
+
 } catch (Exception $e) {
     error_log("GET_DASHBOARD_ERROR: " . $e->getMessage());
-    Response::serverError("Failed to load dashboard");
+    // Trả về message chi tiết của Exception để dễ debug như mong muốn của nhánh Giap-tuan-3
+    Response::serverError($e->getMessage());
+} finally {
+    if (isset($conn) && $conn) $conn->close();
 }
-
-$conn->close();

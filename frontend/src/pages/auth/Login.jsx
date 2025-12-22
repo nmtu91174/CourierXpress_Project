@@ -1,9 +1,12 @@
+
 import React, { useState } from 'react';
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaGoogle, FaFacebookF } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
 import "../../assets/styles/auth/login.css";
+const BACKEND_BASE = import.meta.env.VITE_BACKEND_BASE_URL;
+
 
 
 const Login = () => {
@@ -47,9 +50,10 @@ const Login = () => {
         if (!password.trim()) {
             return Toast.fire({ icon: "error", title: "Vui lòng nhập mật khẩu!" });
         }
-
+        
         try {
-            const res = await fetch("http://localhost:8888/api/auth/login.php", {
+            const res = await fetch(`${BACKEND_BASE}/api/auth/login.php`, {
+
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

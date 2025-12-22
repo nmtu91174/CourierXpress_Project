@@ -1,0 +1,228 @@
+/* frontend/src/assets/styles/admin/MasterDataPage.module.css */
+
+.page {
+  padding: 18px;
+}
+
+/* ===== Header ===== */
+.headerRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.2px;
+}
+
+.subtitle {
+  opacity: 0.75;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* ===== Toolbar ===== */
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search {
+  width: 320px;
+  max-width: 70vw;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid #e7e7e7;
+  outline: none;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  transition: box-shadow 160ms ease, border-color 160ms ease, transform 120ms ease;
+}
+
+.search:focus {
+  border-color: rgba(255, 77, 36, 0.45);
+  box-shadow: 0 0 0 4px rgba(255, 77, 36, 0.14);
+}
+
+.btn {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #e7e7e7;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  font-weight: 700;
+  color: #111827;
+  transition: transform 120ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.06);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+  transform: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+
+.btnPrimary {
+  border: 1px solid #111;
+  background: #111;
+  color: #fff;
+  box-shadow: none;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.10);
+}
+
+/* ===== Alert ===== */
+.alert {
+  padding: 14px;
+  border-radius: 14px;
+  background: #fff3f3;
+  border: 1px solid #ffd0d0;
+  color: #b42318;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+/* ===== Card ===== */
+.card {
+  background: #ffffff;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+}
+
+.cardHeader {
+  padding: 12px;
+  border-bottom: 1px solid #f1f1f1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.total {
+  font-weight: 800;
+  color: #111827;
+}
+
+.pill {
+  font-size: 12px;
+  opacity: 0.85;
+  background: #f6f7f9;
+  border: 1px solid #eef0f3;
+  padding: 6px 10px;
+  border-radius: 999px;
+  max-width: 70vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill code {
+  color: #ff4d24;
+  font-weight: 700;
+  background: transparent;
+}
+
+/* ===== Table ===== */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.theadRow {
+  text-align: left;
+  background: #fafafa;
+}
+
+.th {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 12px;
+  color: #6b7280;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f3f3;
+  color: #111827;
+  font-size: 13px;
+}
+
+.row:hover .td {
+  background: #fcfcfd;
+}
+
+/* Code badge */
+.codeBadge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #f6f7f9;
+  border: 1px solid #eef0f3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+/* ===== Actions ===== */
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btnSmall {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid #e7e7e7;
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform 120ms ease, box-shadow 160ms ease;
+}
+
+.btnSmall:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.06);
+}
+
+.btnDanger {
+  border: 1px solid #ffd0d0;
+  background: #fff3f3;
+  color: #b42318;
+}
+
+.note {
+  margin-top: 10px;
+  opacity: 0.75;
+  font-size: 13px;
+  color: #6b7280;
+}
