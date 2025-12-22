@@ -67,17 +67,13 @@ switch ($role) {
         break;
 
     case "agent":
-        // Agent có thể xem orders trong team scope (đơn của mình, đơn chưa có agent, đơn của agent khác để điều phối)
-        // Nếu có filter agent_id cụ thể, dùng filter đó
-        // Nếu không, agent thấy tất cả để điều phối (backend sẽ check quyền action khi thao tác)
-        $agentFilter = $_GET["agent_id"] ?? null;
-        if ($agentFilter && $agentFilter !== "all") {
-            // Filter cụ thể theo agent_id từ frontend
-            $where[] = "o.agent_id = ?";
-            $params[] = (int)$agentFilter;
-            $types   .= "i";
-        }
-        // Nếu không có filter agent_id, agent thấy tất cả orders (team scope) - không thêm WHERE clause
+        // [RBAC] Agent can view orders if:
+        // - orders.agent_id IS NULL (unassigned orders)
+        // - OR orders.agent_id = current_agent_id (their own orders)
+        // NOTE: Agent cannot view orders assigned to other agents (no team scope)
+        $where[] = "(o.agent_id IS NULL OR o.agent_id = ?)";
+        $params[] = $userId;
+        $types   .= "i";
         break;
 
     case "shipper":

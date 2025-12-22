@@ -84,7 +84,8 @@ try {
             order_code,
             sender_address,
             receiver_address,
-            status
+            status,
+            shipper_id
         FROM orders
         WHERE shipper_id = ?
           AND status = 2
@@ -95,7 +96,16 @@ try {
     $stmtWaiting = $conn->prepare($sqlWaiting);
     $stmtWaiting->bind_param("i", $shipperId);
     $stmtWaiting->execute();
-    $waitingOrders = $stmtWaiting->get_result()->fetch_all(MYSQLI_ASSOC);
+    $waitingOrdersRaw = $stmtWaiting->get_result()->fetch_all(MYSQLI_ASSOC);
+    
+    // Ensure shipper_id is integer
+    $waitingOrders = [];
+    foreach ($waitingOrdersRaw as $order) {
+        $order["id"] = (int)$order["id"];
+        $order["status"] = (int)$order["status"];
+        $order["shipper_id"] = (int)$order["shipper_id"];
+        $waitingOrders[] = $order;
+    }
 
     // =====================================================
     // 3️⃣ ACTIVE ORDERS (STATUS = 3,4)
@@ -106,7 +116,8 @@ try {
             order_code,
             receiver_name,
             receiver_address,
-            status
+            status,
+            shipper_id
         FROM orders
         WHERE shipper_id = ?
           AND status IN (3,4)
@@ -117,7 +128,16 @@ try {
     $stmtActive = $conn->prepare($sqlActive);
     $stmtActive->bind_param("i", $shipperId);
     $stmtActive->execute();
-    $activeOrders = $stmtActive->get_result()->fetch_all(MYSQLI_ASSOC);
+    $activeOrdersRaw = $stmtActive->get_result()->fetch_all(MYSQLI_ASSOC);
+    
+    // Ensure shipper_id is integer
+    $activeOrders = [];
+    foreach ($activeOrdersRaw as $order) {
+        $order["id"] = (int)$order["id"];
+        $order["status"] = (int)$order["status"];
+        $order["shipper_id"] = (int)$order["shipper_id"];
+        $activeOrders[] = $order;
+    }
 
     // =====================================================
     // 4️⃣ COMPLETED ORDERS (STATUS = 5)
@@ -128,7 +148,8 @@ try {
             order_code,
             receiver_name,
             receiver_address,
-            status
+            status,
+            shipper_id
         FROM orders
         WHERE shipper_id = ?
           AND status = 5
@@ -139,7 +160,16 @@ try {
     $stmtCompleted = $conn->prepare($sqlCompleted);
     $stmtCompleted->bind_param("i", $shipperId);
     $stmtCompleted->execute();
-    $completedOrders = $stmtCompleted->get_result()->fetch_all(MYSQLI_ASSOC);
+    $completedOrdersRaw = $stmtCompleted->get_result()->fetch_all(MYSQLI_ASSOC);
+    
+    // Ensure shipper_id is integer
+    $completedOrders = [];
+    foreach ($completedOrdersRaw as $order) {
+        $order["id"] = (int)$order["id"];
+        $order["status"] = (int)$order["status"];
+        $order["shipper_id"] = (int)$order["shipper_id"];
+        $completedOrders[] = $order;
+    }
 
     // =====================================================
     // 5️⃣ RESPONSE (KHỚP 100% FRONTEND)

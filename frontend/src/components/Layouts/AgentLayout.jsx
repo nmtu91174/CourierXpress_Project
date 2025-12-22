@@ -136,23 +136,6 @@ const AgentLayout = () => {
                             <FaUserTie /> <span>Assign Shipper</span>
                         </Link>
 
-                        <Link
-                            to="/agent/notifications"
-                            className={`sidebar-link ${isActive("/agent/notifications")}`}
-                            data-title="Notifications"
-                            onClick={() => setSidebarOpen(false)}
-                        >
-                            <FaBell /> <span>Notifications</span>
-                        </Link>
-
-                        <Link
-                            to="/agent/profile"
-                            className={`sidebar-link ${isActive("/agent/profile")}`}
-                            data-title="Profile"
-                            onClick={() => setSidebarOpen(false)}
-                        >
-                            <FaUser /> <span>Profile</span>
-                        </Link>
                     </nav>
                 </div>
 

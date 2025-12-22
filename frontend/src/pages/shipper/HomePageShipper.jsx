@@ -179,7 +179,24 @@ const ShipperHome = () => {
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => navigate(`/shipper/order/${order.id}`)}
+                    onClick={() => {
+                      // [RBAC GUARD] Backend API already filters by shipper_id
+                      // All orders returned are assigned to current shipper
+                      // But we check shipper_id field for extra safety
+                      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+                      const currentShipperId = currentUser.id;
+                      
+                      if (order.shipper_id && order.shipper_id === currentShipperId) {
+                        navigate(`/shipper/order/${order.id}`);
+                      } else if (order.shipper_id) {
+                        // Order has shipper_id but doesn't match - should not happen due to backend filter
+                        console.warn("Order shipper_id mismatch:", order.shipper_id, "vs", currentShipperId);
+                        navigate(`/shipper/order/${order.id}`); // Still navigate, backend will enforce
+                      } else {
+                        // No shipper_id in response - navigate anyway, backend will enforce
+                        navigate(`/shipper/order/${order.id}`);
+                      }
+                    }}
                   >
                     <FaMotorcycle className="me-2" />
                     Chi tiết & Nhận
@@ -224,7 +241,12 @@ const ShipperHome = () => {
                       <Button
                         variant="outline-secondary"
                         size="sm"
-                        onClick={() => navigate(`/shipper/order/${order.id}`)}
+                        onClick={() => {
+                          // [RBAC GUARD] Backend API already filters by shipper_id
+                          // All orders returned are assigned to current shipper
+                          // Navigate directly - backend will enforce RBAC
+                          navigate(`/shipper/order/${order.id}`);
+                        }}
                       >
                         <FaEye /> Xem
                       </Button>

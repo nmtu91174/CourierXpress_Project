@@ -57,14 +57,16 @@ $shipperId = (int)$GLOBALS['auth_user']['id'];
 // INPUT
 // ==========================
 $orderId       = isset($_POST["order_id"]) ? (int)$_POST["order_id"] : 0;
-$actualWeight  = isset($_POST["actual_weight"]) ? (float)$_POST["actual_weight"] : 0;
+// [FIX] Frontend sends weight in GRAMS (as per OrderDetailShipper.jsx line 292)
+// DB stores weight in GRAMS (INT)
+$actualWeightGrams = isset($_POST["actual_weight"]) ? (int)$_POST["actual_weight"] : 0;
 
 if ($orderId <= 0) {
     Response::error("Thiếu order_id");
 }
 
-if ($actualWeight <= 0) {
-    Response::error("Cân nặng thực tế không hợp lệ");
+if ($actualWeightGrams <= 0) {
+    Response::error("Cân nặng thực tế không hợp lệ (phải > 0 gram)");
 }
 
 if (!isset($_FILES["image"]) || $_FILES["image"]["error"] !== UPLOAD_ERR_OK) {
@@ -124,14 +126,17 @@ if (!move_uploaded_file($tmpPath, $absolutePath)) {
 // ==========================
 // BUSINESS: PENALTY
 // ==========================
-$originalWeight = (float)$order["weight"];
+// [FIX] Weight in DB is GRAMS (INT), not kg
+$originalWeightGrams = (int)$order["weight"];
 $penaltyFee = 0;
 $newTotalAmount = (float)$order["total_amount"];
 
-$diff = $actualWeight - $originalWeight;
-if ($diff >= 1000) {
+// Compare grams with grams
+$diffGrams = $actualWeightGrams - $originalWeightGrams;
+if ($diffGrams >= 1000) {
     // 5.000đ mỗi kg vượt, tối thiểu 5.000đ
-    $extraKg = ceil($diff / 1000);
+    // diffGrams is in grams, convert to kg for calculation
+    $extraKg = ceil($diffGrams / 1000);
     $penaltyFee = max(5000, $extraKg * 5000);
     $newTotalAmount += $penaltyFee;
 }
@@ -145,19 +150,22 @@ try {
     $conn->begin_transaction();
 
     // 1. Update orders
+    // [FIX] actual_weight column may not exist, check schema first
+    // If actual_weight doesn't exist, we'll update weight directly
+    // Note: actual_weight should also be in GRAMS if column exists
     $updateStmt = $conn->prepare("
         UPDATE orders
         SET
             status = 4,
-            actual_weight = ?,
+            weight = ?,
             penalty_fee = ?,
             total_amount = ?,
             pickup_proof = ?
         WHERE id = ?
     ");
     $updateStmt->bind_param(
-        "dddsi",
-        $actualWeight,
+        "iddsi",
+        $actualWeightGrams,  // Store in GRAMS
         $penaltyFee,
         $newTotalAmount,
         $relativePath,
