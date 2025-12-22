@@ -17,6 +17,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Backend
+backend/uploads/
+backend/logs/
+*.log
+
 # Editor
 .vscode/
 .DS_Store

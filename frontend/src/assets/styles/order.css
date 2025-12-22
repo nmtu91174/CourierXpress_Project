@@ -194,6 +194,11 @@
     font-weight: 500;
     padding: 12px 16px;
     transition: all 0.22s ease;
+  transform: none !important; /* Prevent scale effect from other CSS files */
+}
+
+.luxury-select:hover {
+  transform: none !important; /* Prevent scale effect on hover */
 }
 
 .luxury-select:focus {
@@ -201,6 +206,7 @@
     background: #ffffff;
     box-shadow: 0 0 0 3px rgba(46, 144, 250, 0.1);
     outline: none;
+  transform: none !important; /* Prevent scale effect on focus */
 }
 
 .luxury-textarea {
@@ -211,6 +217,11 @@
     padding: 12px 16px;
     transition: all 0.22s ease;
     resize: vertical;
+  transform: none !important; /* Prevent scale effect from other CSS files */
+}
+
+.luxury-textarea:hover {
+  transform: none !important; /* Prevent scale effect on hover */
 }
 
 .luxury-textarea:focus {
@@ -218,6 +229,7 @@
     background: #ffffff;
     box-shadow: 0 0 0 3px rgba(46, 144, 250, 0.1);
     outline: none;
+  transform: none !important; /* Prevent scale effect on focus */
 }
 
 .luxury-modal-footer {
@@ -241,10 +253,11 @@
 }
 
 .btn-lux-outline-secondary:hover {
-    background: #f8f9fa;
-    border-color: rgba(0, 0, 0, 0.25);
+  background: #6c757d;
+  color: #ffffff !important;
+  border-color: #6c757d;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 
 /* ================== LUXURY SECTION HEADER ================== */
@@ -268,6 +281,11 @@
     font-weight: 500;
     padding: 12px 16px;
     transition: all 0.22s ease;
+  transform: none !important; /* Prevent scale effect from other CSS files */
+}
+
+.luxury-input:hover {
+  transform: none !important; /* Prevent scale effect on hover */
 }
 
 .luxury-input:focus {
@@ -275,6 +293,7 @@
     background: #ffffff;
     box-shadow: 0 0 0 3px rgba(46, 144, 250, 0.1);
     outline: none;
+  transform: none !important; /* Prevent scale effect on focus */
 }
 
 .luxury-input::placeholder {
@@ -289,11 +308,13 @@
     border: 2px dashed rgba(0, 0, 0, 0.15);
     background: linear-gradient(180deg, #ffffff, #f9fafb);
     transition: all 0.22s ease;
+  transform: none !important; /* Prevent scale effect from other CSS files */
 }
 
 .luxury-input[type="file"]:hover {
     border-color: #2e90fa;
     background: #ffffff;
+  transform: none !important; /* Prevent scale effect on hover */
 }
 
 .luxury-input[type="file"]:focus {
@@ -301,6 +322,7 @@
     background: #ffffff;
     box-shadow: 0 0 0 3px rgba(46, 144, 250, 0.1);
     outline: none;
+  transform: none !important; /* Prevent scale effect on focus */
 }
 
 .luxury-input[type="file"]:disabled {
@@ -361,6 +383,9 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .page-header {
@@ -417,12 +442,26 @@
 .lux-table td {
     padding: 14px;
     font-size: .92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  background-color: transparent;
+  transition: background-color 0.05s linear;
 }
-/* ROW HOVER GLASS */
-.lux-table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(6px);
-    transition: .25s ease;
+/* NO HOVER EFFECTS - Clean, static, enterprise-style */
+/* Removed all hover effects for enterprise look */
+
+/* Prevent all transforms and size changes on any child elements */
+.lux-table tbody td * {
+  transform: none !important;
+  transition: none !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+.lux-table tbody td *:hover {
+  transform: none !important;
+  font-size: inherit !important;
 }
 
 /* STATUS BADGES */

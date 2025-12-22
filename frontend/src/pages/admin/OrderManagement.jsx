@@ -13,10 +13,11 @@ import OrderFilterBar from "../../components/orders/OrderFilterBar";
 import OrderDetailPanel from "../../components/orders/OrderDetailPanel";
 import StatusBadge from "../../components/common/StatusBadge";
 import { getStatusesInGroup } from "../../constants/orderStatusGroups";
+import { ORDER_STATUS, ORDER_STATUS_LABEL, isTerminalStatus } from "../../constants/orderStatus";
 import { initPageAnimations } from "../../utils/gsapAnimations";
 import hanoiData from "../../data/hanoi.json";
 
-const WEIGHT_THRESHOLD = 1.0;
+const WEIGHT_THRESHOLD = 1000; // 1000 grams = 1kg
 const DISTANCE_THRESHOLD = 0.0;
 const SERVICE_SURCHARGE_FEE_ID = 6;
 
@@ -66,15 +67,17 @@ export default function OrderManagement() {
     fromStreet: "", fromWard: "", fromDistrict: "",
     receiver_name: "", receiver_phone: "", receiver_email: "",
     toStreet: "", toWard: "", toDistrict: "",
-    item_name: "", category_id: "", weight: 1, length: 10, width: 10, height: 10,
-    service_type: 1, cod_amount: 0, payment_method_id: 1,
+    item_name: "", category_id: "", weight: 500, length: 10, width: 10, height: 10, // weight default 500 grams
+    service_type: 1, cod_amount: 0, payment_method_id: 1, payer_type: 1, // payer_type: 1 = Người gửi trả, 2 = Người nhận trả
     distance_km: "", note: ""
   });
   const [distanceKm, setDistanceKm] = useState(null);
   const [productImages, setProductImages] = useState([]);
-  const [editData, setEditData] = useState({ order_id: "", receiver_address: "", status: 1 });
+  const [editData, setEditData] = useState({ order_id: "", receiver_address: "", status: 1, original_status: 1 });
   const [assignData, setAssignData] = useState({ order_id: "", shipper_id: "", note: "" });
   const [assignAgentData, setAssignAgentData] = useState({ order_id: "", agent_id: "", note: "" });
+  const [confirmAssignShipper, setConfirmAssignShipper] = useState(false);
+  const [confirmAssignAgent, setConfirmAssignAgent] = useState(false);
 
   // KPI states
   const [kpiStats, setKpiStats] = useState({
@@ -82,6 +85,7 @@ export default function OrderManagement() {
     in_transit: 0,
     delivered: 0,
     failed: 0,
+    cancelled: 0,
   });
 
   // Fetch KPI stats
@@ -125,7 +129,7 @@ export default function OrderManagement() {
       }
     } catch (error) {
       console.error("Lỗi tải đơn:", error);
-      Swal.fire("Lỗi", "Không thể tải danh sách đơn hàng", "error");
+      Swal.fire("Error", "Cannot load orders", "error");
     } finally {
       setLoading(false);
     }
@@ -305,7 +309,8 @@ export default function OrderManagement() {
     const distance = distanceKm || data.distance_km || 0;
     let total_shipping_fee = 0;
     const fees_detail = [];
-    const weight = parseFloat(data.weight) || 0;
+    // Weight is now in GRAMS (INT) instead of KG (FLOAT)
+    const weight = parseInt(data.weight) || 0; // Weight in grams
     const cod_amount = parseFloat(data.cod_amount) || 0;
     const service_type = parseInt(data.service_type) || 1;
 
@@ -325,13 +330,14 @@ export default function OrderManagement() {
       fees_detail.push({ id: baseFee.id, code: baseFee.code, name: baseFee.name, amount: currentBaseFee });
     }
 
-    // 2. Weight fee
+    // 2. Weight fee (weight is in grams, threshold is 1000g = 1kg)
     if (weightFee && weight > WEIGHT_THRESHOLD) {
-      const extraKg = Math.ceil(weight - WEIGHT_THRESHOLD);
+      const extraGrams = weight - WEIGHT_THRESHOLD;
+      const extraKg = Math.ceil(extraGrams / 1000); // Convert grams to kg (rounded up)
       const extraWeightFee = extraKg * WEIGHT_FEE_PER_KG;
       if (extraWeightFee > 0) {
         total_shipping_fee += extraWeightFee;
-        fees_detail.push({ id: weightFee.id, code: weightFee.code, name: weightFee.name, amount: extraWeightFee });
+        fees_detail.push({ id: weightFee.id, code: weightFee.code, name: `${weightFee.name} (${extraKg}kg phụ trội)`, amount: extraWeightFee });
       }
     }
 
@@ -356,13 +362,20 @@ export default function OrderManagement() {
       }
     }
 
-    // 5. Service fee
-    const selectedService = serviceTypes.find(s => s.id === service_type);
-    if (selectedService) {
-      const serviceFee = parseFloat(selectedService.fee) || 0;
-      if (serviceFee > 0) {
+    // 5. Service fee - ALWAYS calculate if service_type is selected
+    if (service_type && serviceTypes.length > 0) {
+      // Convert both to numbers for comparison to avoid type mismatch
+      const selectedService = serviceTypes.find(s => Number(s.id) === Number(service_type));
+      if (selectedService && selectedService.fee) {
+        const serviceFee = parseFloat(selectedService.fee) || 0;
+        // Always add service fee (even if 0, to show in details)
         total_shipping_fee += serviceFee;
-        fees_detail.push({ id: SERVICE_SURCHARGE_FEE_ID, code: 'service_surcharge', name: `Phụ phí Dịch vụ (${selectedService.name})`, amount: serviceFee });
+        fees_detail.push({ 
+          id: SERVICE_SURCHARGE_FEE_ID, 
+          code: 'service_surcharge', 
+          name: `Phụ phí Dịch vụ (${selectedService.name || 'Service Type'})`, 
+          amount: serviceFee 
+        });
       }
     }
 
@@ -382,8 +395,12 @@ export default function OrderManagement() {
     const { name, value } = e.target;
     setCreateData(prev => ({
       ...prev,
-      [name]: (['weight', 'length', 'width', 'height', 'cod_amount', 'service_type', 'payment_method_id', 'category_id'].includes(name))
-        ? (name === 'service_type' || name === 'payment_method_id' || name === 'category_id' ? parseInt(value) || 0 : parseFloat(value) || 0)
+      [name]: (['weight', 'length', 'width', 'height', 'cod_amount', 'service_type', 'payment_method_id', 'category_id', 'payer_type'].includes(name))
+        ? (name === 'service_type' || name === 'payment_method_id' || name === 'category_id' || name === 'payer_type' 
+            ? parseInt(value) || (name === 'payer_type' ? 1 : 0) 
+            : name === 'weight' 
+              ? parseInt(value) || 0 // weight is now INT (grams)
+              : parseFloat(value) || 0)
         : value
     }));
   };
@@ -446,7 +463,7 @@ export default function OrderManagement() {
       );
       
       if (isDuplicate) {
-        invalidFiles.push(`${file.name} (đã được chọn)`);
+        invalidFiles.push(`${file.name} (already selected)`);
         return;
       }
 
@@ -477,7 +494,7 @@ export default function OrderManagement() {
       Swal.fire({
         icon: "warning",
         title: "Một số file không hợp lệ",
-        html: `Các file sau không được thêm:<br>${invalidFiles.join('<br>')}<br><br>Chỉ chấp nhận: JPG, PNG, GIF, WEBP (tối đa 5MB/file)`,
+        html: `The following files cannot be added:<br>${invalidFiles.join('<br>')}<br><br>Only accept: JPG, PNG, GIF, WEBP (max 5MB/file)`,
       });
     }
 
@@ -501,25 +518,25 @@ export default function OrderManagement() {
     
     if (!createData.sender_name || createData.sender_name.trim() === "") missingFields.push("Tên người gửi");
     if (!createData.sender_phone || createData.sender_phone.trim() === "") missingFields.push("Số điện thoại người gửi");
-    if (!createData.fromStreet || createData.fromStreet.trim() === "") missingFields.push("Số nhà, Tên đường (người gửi)");
-    if (!createData.fromDistrict || createData.fromDistrict.trim() === "") missingFields.push("Quận/Huyện (người gửi)");
+    if (!createData.fromStreet || createData.fromStreet.trim() === "") missingFields.push("Street Address (Sender)");
+    if (!createData.fromDistrict || createData.fromDistrict.trim() === "") missingFields.push("District (Sender)");
     
-    if (!createData.receiver_name || createData.receiver_name.trim() === "") missingFields.push("Tên người nhận");
-    if (!createData.receiver_phone || createData.receiver_phone.trim() === "") missingFields.push("Số điện thoại người nhận");
-    if (!createData.toStreet || createData.toStreet.trim() === "") missingFields.push("Số nhà, Tên đường (người nhận)");
-    if (!createData.toDistrict || createData.toDistrict.trim() === "") missingFields.push("Quận/Huyện (người nhận)");
+    if (!createData.receiver_name || createData.receiver_name.trim() === "") missingFields.push("Receiver Name");
+    if (!createData.receiver_phone || createData.receiver_phone.trim() === "") missingFields.push("Receiver Phone");
+    if (!createData.toStreet || createData.toStreet.trim() === "") missingFields.push("Street Address (Receiver)");
+    if (!createData.toDistrict || createData.toDistrict.trim() === "") missingFields.push("District (Receiver)");
     
-    if (!createData.category_id || createData.category_id === "" || createData.category_id === 0) missingFields.push("Loại hàng hóa");
-    if (!createData.weight || createData.weight === 0 || createData.weight === "") missingFields.push("Trọng lượng");
-    if (!createData.length || createData.length === 0 || createData.length === "") missingFields.push("Chiều dài");
-    if (!createData.width || createData.width === 0 || createData.width === "") missingFields.push("Chiều rộng");
-    if (!createData.height || createData.height === 0 || createData.height === "") missingFields.push("Chiều cao");
+    if (!createData.category_id || createData.category_id === "" || createData.category_id === 0) missingFields.push("Item Category");
+    if (!createData.weight || createData.weight === 0 || createData.weight === "") missingFields.push("Weight (grams)");
+    if (!createData.length || createData.length === 0 || createData.length === "") missingFields.push("Length");
+    if (!createData.width || createData.width === 0 || createData.width === "") missingFields.push("Width");
+    if (!createData.height || createData.height === 0 || createData.height === "") missingFields.push("Height");
     
     if (missingFields.length > 0) {
       return Swal.fire({
         icon: "error",
-        title: "Thiếu thông tin bắt buộc",
-        html: `Vui lòng nhập đầy đủ các trường sau:<br><strong>${missingFields.join(", ")}</strong>`,
+        title: "Missing Required Fields",
+        html: `Please fill in the following fields:<br><strong>${missingFields.join(", ")}</strong>`,
       });
     }
 
@@ -541,12 +558,14 @@ export default function OrderManagement() {
       formData.append('receiver_email', createData.receiver_email || '');
       formData.append('item_name', createData.item_name || '');
       formData.append('category_id', createData.category_id);
-      formData.append('weight', createData.weight);
+      // Weight is in grams (INT) - ensure it's an integer
+      formData.append('weight', Math.round(parseFloat(createData.weight) || 0));
       formData.append('length', createData.length);
       formData.append('width', createData.width);
       formData.append('height', createData.height);
       formData.append('service_type_id', createData.service_type);
       formData.append('payment_method_id', createData.payment_method_id);
+      formData.append('payer_type', createData.payer_type || 1); // 1 = Người gửi trả, 2 = Người nhận trả
       formData.append('cod_amount', createData.cod_amount || 0);
       formData.append('note', createData.note || '');
       
@@ -589,18 +608,93 @@ export default function OrderManagement() {
         Swal.fire("Thành công", `Đã tạo đơn: ${data.data?.order_code || "thành công"}`, "success");
         setShowCreateModal(false);
         resetCreateModal();
-        fetchOrders();
+        
+        // Refresh orders list
+        await fetchOrders();
         fetchKPIStats();
+        
+        // If detail panel is open, fetch updated order detail
+        if (showDetailPanel && selectedOrder && data.data?.order_id) {
+          try {
+            const detailRes = await fetch(`${API_BASE}/get_order_detail.php?order_id=${data.data.order_id}`, {
+              method: "GET",
+              credentials: "include",
+            });
+            if (detailRes.ok) {
+              const detailData = await detailRes.json();
+              if (detailData.status === "success" && detailData.data) {
+                setSelectedOrder(detailData.data);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching order detail:", error);
+          }
+        }
       } else {
-        Swal.fire("Lỗi", data.message || "Không thể tạo đơn", "error");
+        Swal.fire("Error", data.message || "Cannot create order", "error");
       }
     } catch (error) {
-      Swal.fire("Lỗi", `Lỗi kết nối server: ${error.message}`, "error");
+      Swal.fire("Error", `Server connection error: ${error.message}`, "error");
     }
   };
 
+  // Get available status options for edit modal
+  // Enterprise Option A: Allows next status, previous status (rollback 1 step), or Failed
+  const getAvailableStatuses = (currentStatus) => {
+    const status = Number(currentStatus);
+    const options = [];
+    
+    // If terminal status, return empty (should not be editable)
+    if (isTerminalStatus(status)) {
+      return options; // Terminal states cannot be changed
+    }
+    
+    // Get next status in workflow
+    const nextStatus = status + 1;
+    
+    // Add next status (if exists and not terminal)
+    if (nextStatus <= ORDER_STATUS.DELIVERED) {
+      options.push({
+        value: nextStatus,
+        label: `${nextStatus} - ${ORDER_STATUS_LABEL[nextStatus] || "Unknown"}`
+      });
+    }
+    
+    // Enterprise: Allow rollback 1 step (Option A)
+    // Only allow rollback if current status > BOOKED (status 1)
+    if (status > ORDER_STATUS.BOOKED) {
+      const previousStatus = status - 1;
+      options.push({
+        value: previousStatus,
+        label: `${previousStatus} - ${ORDER_STATUS_LABEL[previousStatus] || "Unknown"} (Rollback)`
+      });
+    }
+    
+    // Always add Failed option (can be selected from any non-terminal status)
+    options.push({
+      value: ORDER_STATUS.FAILED,
+      label: `${ORDER_STATUS.FAILED} - ${ORDER_STATUS_LABEL[ORDER_STATUS.FAILED]}`
+    });
+    
+    return options;
+  };
+
   const openEditModal = (order) => {
-    setEditData({ order_id: order.id, receiver_address: order.receiver_address || order.address || "", status: order.status });
+    const currentStatus = Number(order.status);
+    // Get next status as default (or Failed if terminal/at last step)
+    let defaultStatus = currentStatus;
+    const availableStatuses = getAvailableStatuses(currentStatus);
+    if (availableStatuses.length > 0) {
+      // Default to next status (first option), or Failed if no next status
+      defaultStatus = availableStatuses[0].value;
+    }
+    
+    setEditData({ 
+      order_id: order.id, 
+      receiver_address: order.receiver_address || order.address || "", 
+      status: defaultStatus,
+      original_status: currentStatus // Store original status for dropdown logic
+    });
     setShowEditModal(true);
   };
   
@@ -616,56 +710,134 @@ export default function OrderManagement() {
       });
       const data = await res.json();
       if (data.status === "success") {
-        Swal.fire("Đã cập nhật", "", "success");
+        Swal.fire("Updated", "", "success");
         setShowEditModal(false);
         fetchOrders();
       } else {
-        Swal.fire("Lỗi", data.message || "Không thể cập nhật", "error");
+        Swal.fire("Error", data.message || "Cannot update", "error");
       }
     } catch (error) {
-      Swal.fire("Lỗi", "Lỗi kết nối server", "error");
+        Swal.fire("Error", "Server connection error", "error");
     }
   };
 
-  const handleDelete = async (orderId) => {
-    const result = await Swal.fire({
-      title: 'Xóa đơn hàng?',
-      text: "Hành động này không thể hoàn tác!",
+  // Enterprise: Cancel Order (Soft Cancel) - replaces Delete
+  const handleCancel = async (order) => {
+    const { value: cancelReason } = await Swal.fire({
+      title: 'Cancel Order?',
+      html: `
+        <p>This will mark the order as <strong>Cancelled</strong>.</p>
+        <p class="text-muted small">Note: Soft-cancelled orders (before assignment) can be reopened later.</p>
+        <input id="cancel-reason" class="swal2-input" placeholder="Cancel reason (optional)">
+      `,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
-      confirmButtonText: 'Xóa ngay',
-      cancelButtonText: 'Hủy'
+      confirmButtonText: 'Cancel Order',
+      cancelButtonText: 'Keep Order',
+      preConfirm: () => {
+        return document.getElementById('cancel-reason')?.value || 'Order cancelled by admin';
+      }
     });
     
-    if (result.isConfirmed) {
+    if (cancelReason !== undefined) {
       try {
-        const res = await fetch(`${API_BASE}/delete_order.php`, {
+        const res = await fetch(`${API_BASE}/cancel_order.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ order_id: orderId }),
+          body: JSON.stringify({ 
+            order_id: order.id,
+            cancel_reason: cancelReason
+          }),
         });
         
         if (!res.ok) {
           const errorText = await res.text();
           try {
             const errorData = JSON.parse(errorText);
-            return Swal.fire('Lỗi', errorData.message || `Lỗi server (${res.status})`, 'error');
+            return Swal.fire('Error', errorData.message || `Server error (${res.status})`, 'error');
           } catch {
-            return Swal.fire('Lỗi', `Lỗi server (${res.status})`, 'error');
+            return Swal.fire('Error', `Server error (${res.status})`, 'error');
           }
         }
         
         const data = await res.json();
         if (data.status === "success") {
-          Swal.fire('Đã xóa!', '', 'success');
+          const cancelType = data.data?.cancel_type || 'soft';
+          Swal.fire({
+            icon: 'success',
+            title: 'Order Cancelled',
+            text: cancelType === 'soft' 
+              ? 'Order cancelled. It can be reopened later.' 
+              : 'Order cancelled (operational). Cannot be reopened.',
+          });
           fetchOrders();
+          fetchKPIStats();
         } else {
-          Swal.fire('Lỗi', data.message || 'Không thể xóa đơn hàng', 'error');
+          Swal.fire('Error', data.message || 'Cannot cancel order', 'error');
         }
       } catch (error) {
-        Swal.fire('Lỗi', `Lỗi kết nối server: ${error.message}`, 'error');
+        Swal.fire('Error', `Server connection error: ${error.message}`, 'error');
+      }
+    }
+  };
+
+  // Enterprise: Reopen Order (only for soft-cancelled orders)
+  const handleReopen = async (order) => {
+    const { value: reopenReason } = await Swal.fire({
+      title: 'Reopen Order?',
+      html: `
+        <p>This will restore the order to its previous status.</p>
+        <p class="text-muted small">Only soft-cancelled orders (before assignment) can be reopened.</p>
+        <input id="reopen-reason" class="swal2-input" placeholder="Reopen reason (optional)">
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#28a745',
+      confirmButtonText: 'Reopen Order',
+      cancelButtonText: 'Keep Cancelled',
+      preConfirm: () => {
+        return document.getElementById('reopen-reason')?.value || 'Order reopened by admin';
+      }
+    });
+    
+    if (reopenReason !== undefined) {
+      try {
+        const res = await fetch(`${API_BASE}/reopen_order.php`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ 
+            order_id: order.id,
+            reopen_reason: reopenReason
+          }),
+        });
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          try {
+            const errorData = JSON.parse(errorText);
+            return Swal.fire('Error', errorData.message || `Server error (${res.status})`, 'error');
+          } catch {
+            return Swal.fire('Error', `Server error (${res.status})`, 'error');
+          }
+        }
+        
+        const data = await res.json();
+        if (data.status === "success") {
+          Swal.fire({
+            icon: 'success',
+            title: 'Order Reopened',
+            text: `Order restored to status: ${data.data?.status_label || 'Previous status'}`,
+          });
+          fetchOrders();
+          fetchKPIStats();
+        } else {
+          Swal.fire('Error', data.message || 'Cannot reopen order', 'error');
+        }
+      } catch (error) {
+        Swal.fire('Error', `Server connection error: ${error.message}`, 'error');
       }
     }
   };
@@ -673,43 +845,72 @@ export default function OrderManagement() {
   const openAssignModal = (o) => {
     setSelectedOrderForShipper(o);
     setAssignData({ order_id: o.id, shipper_id: "", note: "" });
+    setConfirmAssignShipper(false);
     setShowAssignModal(true);
   };
 
   const handleAssignSubmit = async () => {
     if (!assignData.shipper_id) {
-      return Swal.fire("Chú ý", "Vui lòng chọn shipper", "warning");
+      return Swal.fire("Warning", "Please select a shipper", "warning");
+    }
+    if (!confirmAssignShipper) {
+      return Swal.fire("Warning", "Please confirm the assignment", "warning");
     }
     try {
       const res = await fetch(`${API_BASE}/assign_shipper.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...assignData, note: assignData.note || "Phân công shipper" }),
+        body: JSON.stringify({ ...assignData, note: assignData.note || "Assign shipper" }),
       });
       const data = await res.json();
       if (data.status === "success") {
-        Swal.fire("Thành công", "Đã phân công shipper!", "success");
+        Swal.fire("Success", "Shipper assigned successfully!", "success");
         setShowAssignModal(false);
         setSelectedOrderForShipper(null);
-        fetchOrders();
+        setConfirmAssignShipper(false);
+        
+        // Refresh orders list
+        await fetchOrders();
+        
+        // If detail panel is open for this order, fetch updated order detail
+        if (showDetailPanel && selectedOrder && selectedOrder.id === assignData.order_id) {
+          try {
+            const detailRes = await fetch(`${API_BASE}/get_order_detail.php?order_id=${assignData.order_id}`, {
+              method: "GET",
+              credentials: "include",
+            });
+            if (detailRes.ok) {
+              const detailData = await detailRes.json();
+              if (detailData.status === "success" && detailData.data) {
+                setSelectedOrder(detailData.data);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching order detail:", error);
+          }
+        }
       } else {
         Swal.fire("Lỗi", data.message || "Không thể phân công", "error");
       }
     } catch (error) {
-      Swal.fire("Lỗi", "Lỗi kết nối server", "error");
+        Swal.fire("Error", "Server connection error", "error");
     }
   };
 
   const openAssignAgentModal = (o) => {
     setSelectedOrderForAgent(o);
     setAssignAgentData({ order_id: o.id, agent_id: "", note: "" });
+    setConfirmAssignAgent(false);
     setShowAssignAgentModal(true);
   };
 
   const handleAssignAgentSubmit = async () => {
     if (!assignAgentData.agent_id) {
-      return Swal.fire("Chú ý", "Vui lòng chọn agent", "warning");
+      return Swal.fire("Warning", "Please select an agent", "warning");
+    }
+    if (!confirmAssignAgent) {
+      return Swal.fire("Warning", "Please confirm the assignment", "warning");
     }
     try {
       const res = await fetch(`${API_BASE}/assign_agent.php`, {
@@ -720,14 +921,35 @@ export default function OrderManagement() {
       });
       const data = await res.json();
       if (data.status === "success") {
-        Swal.fire("Thành công", "Đã phân công agent!", "success");
+        Swal.fire("Success", "Agent assigned successfully!", "success");
         setShowAssignAgentModal(false);
-        fetchOrders();
+        setConfirmAssignAgent(false);
+        
+        // Refresh orders list
+        await fetchOrders();
+        
+        // If detail panel is open for this order, fetch updated order detail
+        if (showDetailPanel && selectedOrder && selectedOrder.id === assignAgentData.order_id) {
+          try {
+            const detailRes = await fetch(`${API_BASE}/get_order_detail.php?order_id=${assignAgentData.order_id}`, {
+              method: "GET",
+              credentials: "include",
+            });
+            if (detailRes.ok) {
+              const detailData = await detailRes.json();
+              if (detailData.status === "success" && detailData.data) {
+                setSelectedOrder(detailData.data);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching order detail:", error);
+          }
+        }
       } else {
         Swal.fire("Lỗi", data.message || "Không thể phân công", "error");
       }
     } catch (error) {
-      Swal.fire("Lỗi", "Lỗi kết nối server", "error");
+        Swal.fire("Error", "Server connection error", "error");
     }
   };
 
@@ -747,12 +969,17 @@ export default function OrderManagement() {
       setFilterBranch(location.state.agent_id);
       
       // Priority: specific status > status_group
-      if (location.state.status) {
+      // If both are set, status takes priority
+      if (location.state.status && location.state.status !== "all") {
         setFilterStatus(location.state.status);
         setFilterStatusGroup("all"); // Clear status group if specific status is set
-      } else if (location.state.status_group) {
+      } else if (location.state.status_group && location.state.status_group !== "all") {
         setFilterStatusGroup(location.state.status_group);
         setFilterStatus("all"); // Clear specific status if status group is set
+      } else {
+        // If both are "all" or not set, reset to defaults
+        setFilterStatus("all");
+        setFilterStatusGroup("all");
       }
       
       // Clear navigation state after applying filters
@@ -788,47 +1015,111 @@ export default function OrderManagement() {
       fromStreet: "", fromWard: "", fromDistrict: "",
       receiver_name: "", receiver_phone: "", receiver_email: "",
       toStreet: "", toWard: "", toDistrict: "",
-      item_name: "", category_id: "", weight: 1, length: 10, width: 10, height: 10,
-      service_type: 1, cod_amount: 0, payment_method_id: 1,
+      item_name: "", category_id: "", weight: 500, length: 10, width: 10, height: 10, // weight default 500 grams
+      service_type: 1, cod_amount: 0, payment_method_id: 1, payer_type: 1, // payer_type: 1 = Người gửi trả
       distance_km: "", note: ""
     });
     setProductImages([]);
     setDistanceKm(null);
   };
 
-  // Order info component (reusable)
-  const OrderInfoDisplay = ({ order, iconColor = "text-warning" }) => (
-    <div className="luxury-order-info mb-4">
-      <div className="d-flex align-items-center mb-3">
-        <FaInfoCircle className={`me-2 ${iconColor}`} />
-        <h6 className="fw-bold mb-0">Thông tin đơn hàng</h6>
+  // Order info component (reusable) - ENTERPRISE ENHANCED
+  const OrderInfoDisplay = ({ order, iconColor = "text-warning" }) => {
+    // Extract area from address (simple extraction)
+    const getArea = (address) => {
+      if (!address) return "N/A";
+      // Try to extract district from address
+      const districts = Object.keys(hanoiData);
+      for (const district of districts) {
+        if (address.includes(district)) return district;
+      }
+      return address.split(",").pop()?.trim() || address;
+    };
+
+    return (
+      <div className="luxury-order-info mb-4 p-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+        <div className="d-flex align-items-center mb-3">
+          <FaInfoCircle className={`me-2 ${iconColor}`} />
+          <h6 className="fw-bold mb-0">Order Summary (Read-Only)</h6>
+        </div>
+        <Row className="g-3">
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaBox className="me-1" /> Order Code</small><div className="fw-bold text-primary">{order.order_code || order.code || "N/A"}</div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaCalendarAlt className="me-1" /> Created Date</small><div className="fw-bold">{order.created_at ? new Date(order.created_at).toLocaleString("en-US") : "N/A"}</div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-block mb-1">Status</small><div style={{ display: "inline-block" }}><StatusBadge status={order.status} /></div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaRoute className="me-1" /> Service Type</small><div className="fw-bold">{order.service_type_name || serviceTypes.find(s => s.id === order.service_type)?.name || "Standard"}</div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Pickup Area</small><div className="small fw-semibold">{getArea(order.sender_address)}</div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Delivery Area</small><div className="small fw-semibold">{getArea(order.receiver_address)}</div></div></Col>
+          {order.weight && (
+            <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaWeight className="me-1" /> Weight</small><div className="fw-bold">{Number(order.weight).toLocaleString("en-US")} grams</div></div></Col>
+          )}
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaCreditCard className="me-1" /> Payment Method</small><div className="fw-bold">{order.payment_method_name || (order.payment_method_id === 1 ? "Cash" : order.payment_method_id === 2 ? "Bank Transfer" : order.payment_method_id === 3 ? "MoMo Wallet" : "Not specified")}</div></div></Col>
+        </Row>
       </div>
-      <Row className="g-3">
-        <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaBox className="me-1" /> Mã đơn hàng</small><div className="fw-bold text-primary">{order.order_code || order.code}</div></div></Col>
-        <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaCalendarAlt className="me-1" /> Ngày tạo</small><div className="fw-bold">{new Date(order.created_at).toLocaleString("vi-VN")}</div></div></Col>
-        <Col md={6}><div className="luxury-info-item"><small className="text-muted d-block mb-1">Trạng thái</small><StatusBadge status={order.status} /></div></Col>
-        <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMoneyBillWave className="me-1" /> COD</small><div className="fw-bold text-success">{order.cod_amount ? `${Number(order.cod_amount).toLocaleString("vi-VN")} ₫` : "Không có"}</div></div></Col>
-        <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaCreditCard className="me-1" /> Phương thức thanh toán</small><div className="fw-bold">{order.payment_method_id === 1 ? "Tiền mặt" : order.payment_method_id === 2 ? "Chuyển khoản" : order.payment_method_id === 3 ? "Ví MoMo" : "Chưa xác định"}</div></div></Col>
-        <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Địa chỉ gửi</small><div className="small">{order.sender_address || "-"}</div></div></Col>
-        <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Địa chỉ nhận</small><div className="small">{order.receiver_address || "-"}</div></div></Col>
-      </Row>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="admin-page">
       <div className="page-header d-flex justify-content-between mb-4">
-        <h3 className="fw-bold">Quản lý Đơn hàng</h3>
+        <h3 className="fw-bold">Order Management</h3>
         <Button className="btn-lux-primary" onClick={() => setShowCreateModal(true)}>
-          <FaPlus className="me-2" /> Tạo vận đơn
+          <FaPlus className="me-2" /> Create Order
         </Button>
       </div>
 
       <Row className="g-3 mb-4">
-        <Col md={3}><Card className="border-0 shadow-sm text-white kpi-item" style={{ background: "linear-gradient(135deg,#007bff,#35a0ff)" }}><Card.Body className="d-flex justify-content-between align-items-center"><div><h2 className="fw-bold my-1">{kpiStats.total_orders}</h2><small>Tổng đơn</small></div><FaBox className="fs-1 opacity-50" /></Card.Body></Card></Col>
-        <Col md={3}><Card className="border-0 shadow-sm text-white kpi-item" style={{ background: "linear-gradient(135deg,#ffc107,#ffde59)" }}><Card.Body className="d-flex justify-content-between align-items-center"><div><h2 className="fw-bold my-1">{kpiStats.in_transit}</h2><small>Đang vận chuyển</small></div><FaShippingFast className="fs-1 opacity-50" /></Card.Body></Card></Col>
-        <Col md={3}><Card className="border-0 shadow-sm text-white kpi-item" style={{ background: "linear-gradient(135deg,#43a047,#8bc34a)" }}><Card.Body className="d-flex justify-content-between align-items-center"><div><h2 className="fw-bold my-1">{kpiStats.delivered}</h2><small>Đã giao</small></div><FaCheckCircle className="fs-1 opacity-50" /></Card.Body></Card></Col>
-        <Col md={3}><Card className="border-0 shadow-sm text-white kpi-item" style={{ background: "linear-gradient(135deg,#e53935,#ff5252)" }}><Card.Body className="d-flex justify-content-between align-items-center"><div><h2 className="fw-bold my-1">{kpiStats.failed}</h2><small>Huỷ đơn</small></div><FaExclamationTriangle className="fs-1 opacity-50" /></Card.Body></Card></Col>
+        <Col md={3}>
+          <Card className="border-0 shadow-sm text-white kpi-item" style={{ background: "linear-gradient(135deg,#007bff,#35a0ff)" }}>
+            <Card.Body>
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <p className="m-0 opacity-75 small">Total Orders</p>
+                  <h2 className="fw-bold my-1">{kpiStats.total_orders}</h2>
+                </div>
+                <FaBox className="fs-1 opacity-50" />
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={3}>
+          <Card className="border-0 shadow-sm text-white kpi-item" style={{ background: "linear-gradient(135deg,#ffc107,#ffde59)" }}>
+            <Card.Body>
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <p className="m-0 opacity-75 small">In Transit</p>
+                  <h2 className="fw-bold my-1">{kpiStats.in_transit}</h2>
+                </div>
+                <FaShippingFast className="fs-1 opacity-50" />
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={3}>
+          <Card className="border-0 shadow-sm text-white kpi-item" style={{ background: "linear-gradient(135deg,#43a047,#8bc34a)" }}>
+            <Card.Body>
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <p className="m-0 opacity-75 small">Delivered</p>
+                  <h2 className="fw-bold my-1">{kpiStats.delivered}</h2>
+                </div>
+                <FaCheckCircle className="fs-1 opacity-50" />
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={3}>
+          <Card className="border-0 shadow-sm text-white kpi-item" style={{ background: "linear-gradient(135deg,#e53935,#ff5252)" }}>
+            <Card.Body>
+              <div className="d-flex justify-content-between align-items-center">
+                <div>
+                  <p className="m-0 opacity-75 small">Cancelled</p>
+                  <h2 className="fw-bold my-1">{kpiStats.cancelled || 0}</h2>
+                </div>
+                <FaExclamationTriangle className="fs-1 opacity-50" />
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
       </Row>
 
       <OrderFilterBar
@@ -872,7 +1163,8 @@ export default function OrderManagement() {
         onAssignAgent={openAssignAgentModal}
         onAssignShipper={openAssignModal}
         onEditOrder={openEditModal}
-        onDeleteOrder={(order) => handleDelete(order.id)}
+        onCancelOrder={handleCancel}
+        onReopenOrder={handleReopen}
       />
 
       <OrderDetailPanel
@@ -891,7 +1183,7 @@ export default function OrderManagement() {
       {/* ================= HEADER ================= */}
       <div className="dqn-modal-header">
         <div className="dqn-modal-title">
-          <FaPlus /> Tạo Vận Đơn Mới
+          <FaPlus /> Create New Order
         </div>
 
         <button
@@ -912,15 +1204,15 @@ export default function OrderManagement() {
         <Col md={6}>
           <div className="luxury-section-header mb-2">
             <h6 className="fw-bold d-flex align-items-center text-primary mb-0">
-              <FaUser className="me-2" /> Người Gửi
+              <FaUser className="me-2" /> Sender
             </h6>
           </div>
 
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Tên người gửi (*)</Form.Label>
+            <Form.Label className="small text-muted">Sender Name (*)</Form.Label>
             <Form.Control
               name="sender_name"
-              placeholder="Nhập tên người gửi"
+              placeholder="Enter sender name"
               className="luxury-input"
               value={createData.sender_name}
               onChange={handleCreateChange}
@@ -928,10 +1220,10 @@ export default function OrderManagement() {
           </Form.Group>
 
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Số điện thoại (*)</Form.Label>
+            <Form.Label className="small text-muted">Phone (*)</Form.Label>
             <Form.Control
               name="sender_phone"
-              placeholder="Nhập số điện thoại"
+              placeholder="Enter phone number"
               className="luxury-input"
               value={createData.sender_phone}
               onChange={handleCreateChange}
@@ -939,10 +1231,10 @@ export default function OrderManagement() {
           </Form.Group>
 
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Số nhà, Tên đường (*)</Form.Label>
+            <Form.Label className="small text-muted">Street Address (*)</Form.Label>
             <Form.Control
               name="fromStreet"
-              placeholder="Số nhà, Tên đường"
+              placeholder="Street address"
               className="luxury-input"
               value={createData.fromStreet}
               onChange={handleCreateChange}
@@ -952,14 +1244,14 @@ export default function OrderManagement() {
           <Row className="mb-2">
             <Col md={6}>
               <Form.Group>
-                <Form.Label className="small text-muted">Quận/Huyện (*)</Form.Label>
+                <Form.Label className="small text-muted">District (*)</Form.Label>
                 <Form.Select
                   name="fromDistrict"
                   value={createData.fromDistrict}
                   onChange={(e) => handleDistrictChange(e, "from")}
                   className="luxury-select"
                 >
-                  <option value="">-- Chọn Quận/Huyện --</option>
+                  <option value="">-- Select District --</option>
                   {Object.keys(hanoiData).map((d) => (
                     <option key={d} value={d}>{d}</option>
                   ))}
@@ -969,7 +1261,7 @@ export default function OrderManagement() {
 
             <Col md={6}>
               <Form.Group>
-                <Form.Label className="small text-muted">Phường/Xã</Form.Label>
+                <Form.Label className="small text-muted">Ward</Form.Label>
                 <Form.Select
                   name="fromWard"
                   value={createData.fromWard}
@@ -977,7 +1269,7 @@ export default function OrderManagement() {
                   disabled={!createData.fromDistrict}
                   className="luxury-select"
                 >
-                  <option value="">-- Chọn Phường/Xã --</option>
+                  <option value="">-- Select Ward --</option>
                   {createData.fromDistrict &&
                     hanoiData[createData.fromDistrict]?.map((w) => (
                       <option key={w} value={w}>{w}</option>
@@ -991,15 +1283,15 @@ export default function OrderManagement() {
         <Col md={6}>
           <div className="luxury-section-header mb-2">
             <h6 className="fw-bold d-flex align-items-center text-success mb-0">
-              <FaUser className="me-2" /> Người Nhận
+              <FaUser className="me-2" /> Receiver
             </h6>
           </div>
 
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Tên người nhận (*)</Form.Label>
+            <Form.Label className="small text-muted">Receiver Name (*)</Form.Label>
             <Form.Control
               name="receiver_name"
-              placeholder="Nhập tên người nhận"
+              placeholder="Enter receiver name"
               className="luxury-input"
               value={createData.receiver_name}
               onChange={handleCreateChange}
@@ -1007,10 +1299,10 @@ export default function OrderManagement() {
           </Form.Group>
 
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Số điện thoại (*)</Form.Label>
+            <Form.Label className="small text-muted">Phone (*)</Form.Label>
             <Form.Control
               name="receiver_phone"
-              placeholder="Nhập số điện thoại"
+              placeholder="Enter phone number"
               className="luxury-input"
               value={createData.receiver_phone}
               onChange={handleCreateChange}
@@ -1022,7 +1314,7 @@ export default function OrderManagement() {
             <Form.Control
               type="email"
               name="receiver_email"
-              placeholder="Email người nhận"
+              placeholder="Receiver email"
               className="luxury-input"
               value={createData.receiver_email}
               onChange={handleCreateChange}
@@ -1030,10 +1322,10 @@ export default function OrderManagement() {
           </Form.Group>
 
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Số nhà, Tên đường (*)</Form.Label>
+            <Form.Label className="small text-muted">Street Address (*)</Form.Label>
             <Form.Control
               name="toStreet"
-              placeholder="Số nhà, Tên đường"
+              placeholder="Street address"
               className="luxury-input"
               value={createData.toStreet}
               onChange={handleCreateChange}
@@ -1043,14 +1335,14 @@ export default function OrderManagement() {
           <Row className="mb-2">
             <Col md={6}>
               <Form.Group>
-                <Form.Label className="small text-muted">Quận/Huyện (*)</Form.Label>
+                <Form.Label className="small text-muted">District (*)</Form.Label>
                 <Form.Select
                   name="toDistrict"
                   value={createData.toDistrict}
                   onChange={(e) => handleDistrictChange(e, "to")}
                   className="luxury-select"
                 >
-                  <option value="">-- Chọn Quận/Huyện --</option>
+                  <option value="">-- Select District --</option>
                   {Object.keys(hanoiData).map((d) => (
                     <option key={d} value={d}>{d}</option>
                   ))}
@@ -1060,7 +1352,7 @@ export default function OrderManagement() {
 
             <Col md={6}>
               <Form.Group>
-                <Form.Label className="small text-muted">Phường/Xã</Form.Label>
+                <Form.Label className="small text-muted">Ward</Form.Label>
                 <Form.Select
                   name="toWard"
                   value={createData.toWard}
@@ -1068,7 +1360,7 @@ export default function OrderManagement() {
                   disabled={!createData.toDistrict}
                   className="luxury-select"
                 >
-                  <option value="">-- Chọn Phường/Xã --</option>
+                  <option value="">-- Select Ward --</option>
                   {createData.toDistrict &&
                     hanoiData[createData.toDistrict]?.map((w) => (
                       <option key={w} value={w}>{w}</option>
@@ -1082,17 +1374,17 @@ export default function OrderManagement() {
 
       <div className="luxury-section-header mb-2">
         <h6 className="fw-bold d-flex align-items-center mb-0">
-          <FaBox className="me-2 text-primary" /> Thông tin Hàng hóa
+          <FaBox className="me-2 text-primary" /> Item Information
         </h6>
       </div>
 
       <Row className="mb-3">
         <Col md={12}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Tên hàng hóa</Form.Label>
+            <Form.Label className="small text-muted">Item Name</Form.Label>
             <Form.Control
               name="item_name"
-              placeholder="Nhập tên hàng hóa (ví dụ: Quần áo, Điện thoại, Sách...)"
+              placeholder="Enter item name (e.g., Clothes, Phone, Books...)"
               className="luxury-input"
               value={createData.item_name}
               onChange={handleCreateChange}
@@ -1104,14 +1396,14 @@ export default function OrderManagement() {
       <Row className="mb-3">
         <Col md={4}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Loại hàng hóa (*)</Form.Label>
+            <Form.Label className="small text-muted">Item Category (*)</Form.Label>
             <Form.Select
               name="category_id"
               value={createData.category_id}
               onChange={handleCreateChange}
               className="luxury-select"
             >
-              <option value="">-- Chọn loại hàng hóa --</option>
+              <option value="">-- Select Category --</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
@@ -1121,22 +1413,23 @@ export default function OrderManagement() {
 
         <Col md={4}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Trọng lượng (kg) (*)</Form.Label>
+            <Form.Label className="small text-muted">Weight (grams) (*)</Form.Label>
             <Form.Control
               type="number"
               name="weight"
-              step="0.1"
-              min="0.1"
+              step="1"
+              min="1"
               className="luxury-input"
               value={createData.weight}
               onChange={handleCreateChange}
+              placeholder="e.g., 500 (for 0.5kg)"
             />
           </Form.Group>
         </Col>
 
         <Col md={4}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Khoảng cách (km)</Form.Label>
+            <Form.Label className="small text-muted">Distance (km)</Form.Label>
             <Form.Control
               type="number"
               name="distance_km"
@@ -1156,7 +1449,7 @@ export default function OrderManagement() {
       <Row className="mb-3">
         <Col md={4}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Chiều dài (cm) (*)</Form.Label>
+            <Form.Label className="small text-muted">Length (cm) (*)</Form.Label>
             <Form.Control
               type="number"
               name="length"
@@ -1171,7 +1464,7 @@ export default function OrderManagement() {
 
         <Col md={4}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Chiều rộng (cm) (*)</Form.Label>
+            <Form.Label className="small text-muted">Width (cm) (*)</Form.Label>
             <Form.Control
               type="number"
               name="width"
@@ -1186,7 +1479,7 @@ export default function OrderManagement() {
 
         <Col md={4}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Chiều cao (cm) (*)</Form.Label>
+            <Form.Label className="small text-muted">Height (cm) (*)</Form.Label>
             <Form.Control
               type="number"
               name="height"
@@ -1203,7 +1496,7 @@ export default function OrderManagement() {
       <Row className="mb-3">
         <Col md={6}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Loại dịch vụ (*)</Form.Label>
+            <Form.Label className="small text-muted">Service Type (*)</Form.Label>
             <Form.Select
               name="service_type"
               value={createData.service_type}
@@ -1221,7 +1514,7 @@ export default function OrderManagement() {
 
         <Col md={6}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Phương thức thanh toán (*)</Form.Label>
+            <Form.Label className="small text-muted">Payment Method (*)</Form.Label>
             <Form.Select
               name="payment_method_id"
               value={createData.payment_method_id}
@@ -1239,7 +1532,22 @@ export default function OrderManagement() {
       <Row className="mb-3">
         <Col md={6}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Tiền thu hộ (COD) - VNĐ</Form.Label>
+            <Form.Label className="small text-muted">Shipping Fee Payer (*)</Form.Label>
+            <Form.Select
+              name="payer_type"
+              value={createData.payer_type}
+              onChange={handleCreateChange}
+              className="luxury-select"
+            >
+              <option value={1}>Sender Pays</option>
+              <option value={2}>Receiver Pays</option>
+            </Form.Select>
+          </Form.Group>
+        </Col>
+
+        <Col md={6}>
+          <Form.Group className="mb-2">
+            <Form.Label className="small text-muted">COD Amount - VND</Form.Label>
             <Form.Control
               type="number"
               name="cod_amount"
@@ -1251,15 +1559,17 @@ export default function OrderManagement() {
             />
           </Form.Group>
         </Col>
+      </Row>
 
-        <Col md={6}>
+      <Row className="mb-3">
+        <Col md={12}>
           <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Ghi chú</Form.Label>
+            <Form.Label className="small text-muted">Notes</Form.Label>
             <Form.Control
               as="textarea"
               rows={2}
               name="note"
-              placeholder="Ghi chú cho đơn hàng"
+              placeholder="Notes for order"
               className="luxury-input"
               value={createData.note}
               onChange={handleCreateChange}
@@ -1271,7 +1581,7 @@ export default function OrderManagement() {
       {/* Fee Calculation Display */}
       <div className="luxury-section-header mb-2">
         <h6 className="fw-bold d-flex align-items-center mb-0">
-          <FaMoneyBillWave className="me-2 text-success" /> Chi Tiết Phí
+          <FaMoneyBillWave className="me-2 text-success" /> Fee Details
         </h6>
       </div>
 
@@ -1286,23 +1596,23 @@ export default function OrderManagement() {
         {calculateFees.fees_detail.map((fee, idx) => (
           <div key={idx} className="d-flex justify-content-between mb-1 small">
             <span>{fee.name}:</span>
-            <strong>{Number(fee.amount).toLocaleString("vi-VN")} VNĐ</strong>
+            <strong>{Number(fee.amount).toLocaleString("en-US")} VND</strong>
           </div>
         ))}
 
         <hr className="my-2" />
 
         <div className="d-flex justify-content-between fw-bold text-primary">
-          <span>Tổng phí vận chuyển:</span>
-          <strong>{Number(calculateFees.total_shipping_fee).toLocaleString("vi-VN")} VNĐ</strong>
+          <span>Total Shipping Fee:</span>
+          <strong>{Number(calculateFees.total_shipping_fee).toLocaleString("en-US")} VND</strong>
         </div>
 
         {calculateFees.cod_amount > 0 && (
           <>
             <div className="d-flex justify-content-between mt-2">
-              <span>Tiền thu hộ (COD):</span>
+              <span>COD Amount:</span>
               <strong className="text-success">
-                {Number(calculateFees.cod_amount).toLocaleString("vi-VN")} VNĐ
+                {Number(calculateFees.cod_amount).toLocaleString("en-US")} VND
               </strong>
             </div>
 
@@ -1310,9 +1620,9 @@ export default function OrderManagement() {
               className="d-flex justify-content-between mt-2 fw-bold"
               style={{ fontSize: "1.1em", color: "#28a745" }}
             >
-              <span>Tổng tiền cần thanh toán:</span>
+              <span>Total Amount:</span>
               <strong>
-                {Number(calculateFees.total_amount_with_cod).toLocaleString("vi-VN")} VNĐ
+                {Number(calculateFees.total_amount_with_cod).toLocaleString("en-US")} VND
               </strong>
             </div>
           </>
@@ -1321,9 +1631,9 @@ export default function OrderManagement() {
 
       <div className="luxury-section-header mb-2">
         <h6 className="fw-bold d-flex align-items-center mb-0">
-          <FaImage className="me-2 text-primary" /> Ảnh sản phẩm
+          <FaImage className="me-2 text-primary" /> Product Images
           <span className="text-muted small fw-normal ms-2">
-            ({productImages.length}/5 ảnh)
+            ({productImages.length}/5 images)
           </span>
         </h6>
       </div>
@@ -1342,7 +1652,7 @@ export default function OrderManagement() {
 
           {productImages.length >= 5 && (
             <Form.Text className="text-warning d-block mb-2">
-              Đã đạt tối đa 5 ảnh. Vui lòng xóa ảnh để thêm ảnh mới.
+              Maximum 5 images reached. Please remove an image to add a new one.
             </Form.Text>
           )}
 
@@ -1378,7 +1688,7 @@ export default function OrderManagement() {
                         fontSize: "12px",
                       }}
                       onClick={() => removeImage(index)}
-                      title="Xóa ảnh"
+                      title="Remove Image"
                     >
                       ×
                     </button>
@@ -1402,7 +1712,7 @@ export default function OrderManagement() {
             resetCreateModal();
           }}
         >
-          Hủy
+          Cancel
         </Button>
 
         <Button
@@ -1410,7 +1720,7 @@ export default function OrderManagement() {
           className="btn-lux-primary-blue"
           onClick={handleCreateSubmit}
         >
-          <FaPlus className="me-2" /> Tạo Vận Đơn
+          <FaPlus className="me-2" /> Create Order
         </Button>
       </div>
 
@@ -1427,7 +1737,7 @@ export default function OrderManagement() {
             {/* ================= HEADER ================= */}
             <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #6c757d, #adb5bd)" }}>
               <div className="dqn-modal-title">
-                <FaEdit /> Cập nhật Đơn hàng
+                <FaEdit /> Update Order
               </div>
               <button
                 className="dqn-modal-close"
@@ -1442,29 +1752,54 @@ export default function OrderManagement() {
               <Form>
                 <Form.Group className="mb-3">
                   <Form.Label className="fw-bold d-flex align-items-center">
-                    <FaMapMarkerAlt className="me-2 text-primary" /> Địa chỉ người nhận
+                    <FaMapMarkerAlt className="me-2 text-primary" /> Receiver Address
                   </Form.Label>
                   <Form.Control 
                     name="receiver_address" 
                     value={editData.receiver_address} 
                     onChange={handleEditChange} 
-                    placeholder="Nhập địa chỉ người nhận" 
+                    placeholder="Enter receiver address" 
                     className="luxury-input" 
                   />
                 </Form.Group>
                 <Form.Group>
                   <Form.Label className="fw-bold d-flex align-items-center">
-                    <FaBox className="me-2 text-primary" /> Trạng thái
+                    <FaBox className="me-2 text-primary" /> New Status
                   </Form.Label>
-                  <Form.Select name="status" value={editData.status} onChange={handleEditChange} className="luxury-select">
-                    <option value="1">1 - Booked (Đã tạo đơn)</option>
-                    <option value="2">2 - Approved (Đã duyệt)</option>
-                    <option value="3">3 - Assigned (Đã phân công shipper)</option>
-                    <option value="4">4 - Picked Up (Đã lấy hàng)</option>
-                    <option value="5">5 - Delivered (Giao thành công)</option>
-                    <option value="6">6 - Failed (Giao thất bại)</option>
-                  </Form.Select>
-                  <Form.Text className="text-muted">Lưu ý: Thay đổi trạng thái phải tuân thủ workflow. Admin có thể override.</Form.Text>
+                  {/* Show current status */}
+                  {(() => {
+                    const originalStatus = editData.original_status || editData.status;
+                    const isTerminal = isTerminalStatus(originalStatus);
+                    return (
+                      <>
+                        {!isTerminal && (
+                          <div className="mb-2 p-2 bg-light rounded">
+                            <small className="text-muted d-block mb-1">Current Status:</small>
+                            <div style={{ display: "inline-block" }}><StatusBadge status={originalStatus} /></div>
+                          </div>
+                        )}
+                        <Form.Select 
+                          name="status" 
+                          value={editData.status} 
+                          onChange={handleEditChange} 
+                          className="luxury-select"
+                          disabled={isTerminal}
+                        >
+                          {/* Only show available next statuses - next status and Failed */}
+                          {getAvailableStatuses(originalStatus).map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </Form.Select>
+                        <Form.Text className="text-muted">
+                          {isTerminal
+                            ? "Note: Terminal status (Delivered/Failed/Cancelled) cannot be changed."
+                            : "Note: You can advance to the next status, rollback 1 step, or mark as Failed."}
+                        </Form.Text>
+                      </>
+                    );
+                  })()}
                 </Form.Group>
               </Form>
             </div>
@@ -1476,14 +1811,14 @@ export default function OrderManagement() {
                 onClick={() => setShowEditModal(false)} 
                 className="btn-lux-outline-secondary"
               >
-                Hủy
+                Cancel
               </Button>
               <Button 
                 variant="primary" 
                 onClick={handleUpdateSubmit} 
                 className="btn-lux-primary-blue"
               >
-                Cập nhật
+                Update
               </Button>
             </div>
           </div>
@@ -1497,7 +1832,7 @@ export default function OrderManagement() {
             {/* ================= HEADER ================= */}
             <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #ffc107, #ffde59)" }}>
               <div className="dqn-modal-title">
-                <FaShippingFast /> Phân công Shipper
+                <FaShippingFast /> Assign Shipper
               </div>
               <button
                 className="dqn-modal-close"
@@ -1516,7 +1851,7 @@ export default function OrderManagement() {
                 {selectedOrderForShipper && <OrderInfoDisplay order={selectedOrderForShipper} iconColor="text-warning" />}
                 <Form.Group className="mb-3">
                   <Form.Label className="fw-bold d-flex align-items-center">
-                    <FaShippingFast className="me-2 text-warning" /> Chọn Shipper <span className="text-danger ms-1">*</span>
+                    <FaShippingFast className="me-2 text-warning" /> Select Shipper <span className="text-danger ms-1">*</span>
                   </Form.Label>
                   <Form.Select 
                     value={assignData.shipper_id} 
@@ -1524,23 +1859,66 @@ export default function OrderManagement() {
                     size="lg" 
                     className="luxury-select"
                   >
-                    <option value="">-- Chọn Shipper --</option>
-                    {shippers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email}) {s.status === "active" ? "✓" : ""}</option>)}
+                    <option value="">-- Select Shipper --</option>
+                    {shippers.map(s => {
+                      const workload = s.active_orders_count || 0;
+                      const workloadLabel = workload === 0 ? "Available" : workload < 5 ? "Low" : workload < 10 ? "Medium" : "High";
+                      const workloadColor = workload === 0 ? "text-success" : workload < 5 ? "text-info" : workload < 10 ? "text-warning" : "text-danger";
+                      return (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.email}) - {workload} active orders ({workloadLabel}) {s.status === "active" ? "✓" : ""}
+                        </option>
+                      );
+                    })}
                   </Form.Select>
+                  {assignData.shipper_id && (() => {
+                    const selected = shippers.find(s => s.id === Number(assignData.shipper_id));
+                    if (!selected) return null;
+                    const workload = selected.active_orders_count || 0;
+                    const afterAssign = workload + 1;
+                    return (
+                      <div className="mt-2 p-2 bg-light rounded">
+                        <small className="text-muted d-block mb-1">Estimated Load:</small>
+                        <div className="d-flex justify-content-between">
+                          <span>Current active orders: <strong>{workload}</strong></span>
+                          <span>After assign: <strong className="text-primary">{afterAssign}</strong></span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </Form.Group>
                 <Form.Group className="mb-3">
                   <Form.Label className="fw-bold">
-                    Ghi chú phân công <span className="text-muted small fw-normal">(Tùy chọn)</span>
+                    Assignment Note <span className="text-muted small fw-normal">(Optional)</span>
                   </Form.Label>
                   <Form.Control 
                     as="textarea" 
                     rows={3} 
-                    placeholder="Ví dụ: Đơn gấp – giao trong hôm nay, Khách VIP..." 
+                    placeholder="e.g., Urgent order - deliver today, VIP customer..." 
                     value={assignData.note} 
                     onChange={(e) => setAssignData({ ...assignData, note: e.target.value })} 
                     className="luxury-textarea" 
                   />
                 </Form.Group>
+
+                {/* Confirmation Block */}
+                <div className="mb-3 p-3 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded">
+                  <div className="d-flex align-items-start mb-2">
+                    <FaExclamationTriangle className="me-2 text-warning mt-1" />
+                    <div className="flex-grow-1">
+                      <strong className="d-block mb-1">Warning</strong>
+                      <small className="text-muted">This action will assign the order to the selected shipper.</small>
+                    </div>
+                  </div>
+                  <Form.Check
+                    type="checkbox"
+                    id="confirm-assign-shipper"
+                    label="I confirm this assignment"
+                    checked={confirmAssignShipper}
+                    onChange={(e) => setConfirmAssignShipper(e.target.checked)}
+                    className="mt-2"
+                  />
+                </div>
               </Form>
             </div>
 
@@ -1554,15 +1932,15 @@ export default function OrderManagement() {
                 }} 
                 className="btn-lux-outline-secondary"
               >
-                Hủy
+                Cancel
               </Button>
               <Button 
                 variant="warning" 
                 onClick={handleAssignSubmit} 
-                disabled={!assignData.shipper_id} 
+                disabled={!assignData.shipper_id || !confirmAssignShipper} 
                 className="btn-lux-primary-yellow"
               >
-                <FaShippingFast className="me-2" /> Xác nhận Phân công
+                <FaShippingFast className="me-2" /> Confirm Assignment
               </Button>
             </div>
           </div>
@@ -1576,7 +1954,7 @@ export default function OrderManagement() {
             {/* ================= HEADER ================= */}
             <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #e53935, #ff5252)" }}>
               <div className="dqn-modal-title">
-                <FaUserTie /> Phân công Agent
+                <FaUserTie /> Assign Agent
               </div>
               <button
                 className="dqn-modal-close"
@@ -1595,7 +1973,7 @@ export default function OrderManagement() {
                 {selectedOrderForAgent && <OrderInfoDisplay order={selectedOrderForAgent} iconColor="text-danger" />}
                 <Form.Group className="mb-3">
                   <Form.Label className="fw-bold d-flex align-items-center">
-                    <FaUserTie className="me-2 text-danger" /> Chọn Agent <span className="text-danger ms-1">*</span>
+                    <FaUserTie className="me-2 text-danger" /> Select Agent <span className="text-danger ms-1">*</span>
                   </Form.Label>
                   <Form.Select 
                     value={assignAgentData.agent_id} 
@@ -1603,23 +1981,65 @@ export default function OrderManagement() {
                     size="lg" 
                     className="luxury-select"
                   >
-                    <option value="">-- Chọn Agent --</option>
-                    {agents.map(a => <option key={a.id} value={a.id}>{a.name} ({a.email}) {a.status === "active" ? "✓" : ""}</option>)}
+                    <option value="">-- Select Agent --</option>
+                    {agents.map(a => {
+                      const workload = a.active_orders_count || 0;
+                      const workloadLabel = workload === 0 ? "Available" : workload < 5 ? "Low" : workload < 10 ? "Medium" : "High";
+                      return (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.email}) - {workload} active orders ({workloadLabel}) {a.status === "active" ? "✓" : ""}
+                        </option>
+                      );
+                    })}
                   </Form.Select>
+                  {assignAgentData.agent_id && (() => {
+                    const selected = agents.find(a => a.id === Number(assignAgentData.agent_id));
+                    if (!selected) return null;
+                    const workload = selected.active_orders_count || 0;
+                    const afterAssign = workload + 1;
+                    return (
+                      <div className="mt-2 p-2 bg-light rounded">
+                        <small className="text-muted d-block mb-1">Estimated Workload:</small>
+                        <div className="d-flex justify-content-between">
+                          <span>Current active orders: <strong>{workload}</strong></span>
+                          <span>After assign: <strong className="text-primary">{afterAssign}</strong></span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </Form.Group>
                 <Form.Group className="mb-3">
                   <Form.Label className="fw-bold">
-                    Ghi chú phân công <span className="text-muted small fw-normal">(Tùy chọn)</span>
+                    Assignment Note <span className="text-muted small fw-normal">(Optional)</span>
                   </Form.Label>
                   <Form.Control 
                     as="textarea" 
                     rows={3} 
-                    placeholder="Ví dụ: Đơn gấp – xử lý trong hôm nay, Khách VIP..." 
+                    placeholder="e.g., Urgent order - process today, VIP customer..." 
                     value={assignAgentData.note} 
                     onChange={(e) => setAssignAgentData({ ...assignAgentData, note: e.target.value })} 
                     className="luxury-textarea" 
                   />
                 </Form.Group>
+
+                {/* Confirmation Block */}
+                <div className="mb-3 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded">
+                  <div className="d-flex align-items-start mb-2">
+                    <FaExclamationTriangle className="me-2 text-danger mt-1" />
+                    <div className="flex-grow-1">
+                      <strong className="d-block mb-1">Warning</strong>
+                      <small className="text-muted">This action will assign the order to the selected agent.</small>
+                    </div>
+                  </div>
+                  <Form.Check
+                    type="checkbox"
+                    id="confirm-assign-agent"
+                    label="I confirm this assignment"
+                    checked={confirmAssignAgent}
+                    onChange={(e) => setConfirmAssignAgent(e.target.checked)}
+                    className="mt-2"
+                  />
+                </div>
               </Form>
             </div>
 
@@ -1633,15 +2053,15 @@ export default function OrderManagement() {
                 }} 
                 className="btn-lux-outline-secondary"
               >
-                Hủy
+                Cancel
               </Button>
               <Button 
                 variant="danger" 
                 onClick={handleAssignAgentSubmit} 
-                disabled={!assignAgentData.agent_id} 
+                disabled={!assignAgentData.agent_id || !confirmAssignAgent} 
                 className="btn-lux-primary-red"
               >
-                <FaUserTie className="me-2" /> Xác nhận Phân công
+                <FaUserTie className="me-2" /> Confirm Assignment
               </Button>
             </div>
           </div>

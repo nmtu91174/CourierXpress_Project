@@ -71,14 +71,15 @@
                 0 12px 32px rgba(0, 0, 0, 0.04);
     border: none;
     background: #ffffff;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
 }
 
+/* Card hover - only shadow, no transform to avoid conflict with table row hover */
 .card-lux:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1),
                 0 16px 48px rgba(0, 0, 0, 0.06);
-    transform: translateY(-2px);
+    /* Removed transform to prevent conflict with table row hover */
 }
 
 .card-lux .card-body {
@@ -101,8 +102,9 @@
     border: 1.5px solid rgba(0, 0, 0, 0.1);
     padding: 10px 14px;
     font-size: 0.9rem;
-    transition: all 0.25s ease;
+    transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
     background: #fafbfc;
+    transform: none !important; /* Prevent scale effect on hover */
 }
 
 .card-lux .form-select:focus,
@@ -114,10 +116,12 @@
                 0 4px 12px rgba(0, 123, 255, 0.08);
 }
 
-.card-lux .form-select:hover,
-.card-lux .form-control:hover {
+/* Scoped to agents management page only - prevent affecting dashboard filters */
+.agents-management-page .card-lux .form-select:hover,
+.agents-management-page .card-lux .form-control:hover {
     border-color: rgba(0, 123, 255, 0.3);
     background: #ffffff;
+    transform: none !important; /* Prevent scale effect */
 }
 
 /* ================== LUXURY TABLE ================== */
@@ -132,6 +136,7 @@
     border-spacing: 0;
     width: 100%;
     background: #ffffff;
+    table-layout: fixed;
 }
 
 .lux-table thead {
@@ -153,15 +158,95 @@
     z-index: 10;
 }
 
+/* Column widths - optimized for AgentsManagement table only */
+/* Scoped to agents-management-page to avoid affecting OrderTable */
+.agents-management-page .lux-table thead th:nth-child(1),
+.agents-management-page .lux-table tbody td:nth-child(1) {
+    /* Agent (name + email) - wider */
+    width: 240px;
+    min-width: 240px;
+    max-width: 240px;
+}
+
+.agents-management-page .lux-table thead th:nth-child(2),
+.agents-management-page .lux-table tbody td:nth-child(2) {
+    /* Phone - wider */
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+}
+
+.agents-management-page .lux-table thead th:nth-child(3),
+.agents-management-page .lux-table tbody td:nth-child(3) {
+    /* Status - compact */
+    width: 110px;
+    min-width: 110px;
+    max-width: 110px;
+}
+
+.agents-management-page .lux-table thead th:nth-child(4),
+.agents-management-page .lux-table tbody td:nth-child(4) {
+    /* Tổng đơn - compact */
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+}
+
+.agents-management-page .lux-table thead th:nth-child(5),
+.agents-management-page .lux-table tbody td:nth-child(5) {
+    /* Đang xử lý - compact */
+    width: 110px;
+    min-width: 110px;
+    max-width: 110px;
+}
+
+.agents-management-page .lux-table thead th:nth-child(6),
+.agents-management-page .lux-table tbody td:nth-child(6) {
+    /* Hoàn tất - compact */
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+}
+
+.agents-management-page .lux-table thead th:nth-child(7),
+.agents-management-page .lux-table tbody td:nth-child(7) {
+    /* Lỗi - compact */
+    width: 90px;
+    min-width: 90px;
+    max-width: 90px;
+}
+
+.agents-management-page .lux-table thead th:nth-child(8),
+.agents-management-page .lux-table tbody td:nth-child(8) {
+    /* Pending - compact */
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+}
+
+.agents-management-page .lux-table thead th:nth-child(9),
+.agents-management-page .lux-table tbody td:nth-child(9) {
+    /* Ngày tạo - wider */
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+}
+
+.agents-management-page .lux-table thead th:nth-child(10),
+.agents-management-page .lux-table tbody td:nth-child(10) {
+    /* Actions - compact */
+    width: 140px;
+    min-width: 140px;
+    max-width: 140px;
+}
+
 .lux-table tbody tr {
-    transition: all 0.2s ease;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.lux-table tbody tr:hover {
-    background: linear-gradient(90deg, rgba(0, 123, 255, 0.03) 0%, rgba(0, 123, 255, 0.01) 100%);
-    transform: scale(1.001);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+/* HOVER - Apply to td instead of tr to fix repaint issue on scroll */
+.lux-table tbody tr:hover td {
+    background-color: rgba(0, 123, 255, 0.03);
 }
 
 .lux-table tbody tr:last-child {
@@ -174,6 +259,25 @@
     color: #2d3748;
     vertical-align: middle;
     border: none;
+    transform: none !important;
+    transition: background-color 0.05s linear;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-wrap: break-word;
+    background-color: transparent;
+}
+
+/* Prevent all transforms and size changes on any child elements */
+.lux-table tbody td * {
+    transform: none !important;
+    transition: none !important;
+    font-size: inherit !important;
+    line-height: inherit !important;
+}
+
+.lux-table tbody td *:hover {
+    transform: none !important;
+    font-size: inherit !important;
 }
 
 .lux-table td .fw-bold {
@@ -186,41 +290,130 @@
     font-size: 0.85rem;
 }
 
-/* ================== LUXURY BADGES ================== */
-.lux-table .badge {
+/* ================== LUXURY BADGES - ENTERPRISE PASTEL/OUTLINE ================== */
+/* Enterprise Safe: Pastel colors with outline style for KPI badges ONLY */
+/* Status badges (Active/Inactive) keep original solid colors */
+
+/* Base badge style - only for KPI columns (4, 5, 6, 7, 8) */
+.agents-management-page .lux-table tbody td:nth-child(4) .badge,
+.agents-management-page .lux-table tbody td:nth-child(5) .badge,
+.agents-management-page .lux-table tbody td:nth-child(6) .badge,
+.agents-management-page .lux-table tbody td:nth-child(7) .badge,
+.agents-management-page .lux-table tbody td:nth-child(8) .badge {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    letter-spacing: 0.2px;
+    border: 1.5px solid;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    display: inline-block;
+    transform: none !important;
+    box-shadow: none;
+}
+
+.agents-management-page .lux-table tbody td:nth-child(4) .badge:hover,
+.agents-management-page .lux-table tbody td:nth-child(5) .badge:hover,
+.agents-management-page .lux-table tbody td:nth-child(6) .badge:hover,
+.agents-management-page .lux-table tbody td:nth-child(7) .badge:hover,
+.agents-management-page .lux-table tbody td:nth-child(8) .badge:hover {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transform: none !important;
+}
+
+/* Total Orders (Column 4) - Primary (Blue) - Pastel outline */
+.agents-management-page .lux-table tbody td:nth-child(4) .badge.bg-primary {
+    background: rgba(0, 123, 255, 0.08) !important;
+    border-color: rgba(0, 123, 255, 0.3) !important;
+    color: #0056b3 !important;
+}
+
+.agents-management-page .lux-table tbody td:nth-child(4) .badge.bg-primary:hover {
+    background: rgba(0, 123, 255, 0.12) !important;
+    border-color: rgba(0, 123, 255, 0.4) !important;
+}
+
+/* In Progress (Column 5) - Warning (Yellow/Orange) - Pastel outline */
+.agents-management-page .lux-table tbody td:nth-child(5) .badge.bg-warning {
+    background: rgba(255, 193, 7, 0.1) !important;
+    border-color: rgba(255, 193, 7, 0.4) !important;
+    color: #b8860b !important;
+}
+
+.agents-management-page .lux-table tbody td:nth-child(5) .badge.bg-warning:hover {
+    background: rgba(255, 193, 7, 0.15) !important;
+    border-color: rgba(255, 193, 7, 0.5) !important;
+}
+
+/* Completed (Column 6) - Success (Green) - Pastel outline */
+.agents-management-page .lux-table tbody td:nth-child(6) .badge.bg-success {
+    background: rgba(67, 160, 71, 0.08) !important;
+    border-color: rgba(67, 160, 71, 0.3) !important;
+    color: #2e7d32 !important;
+}
+
+.agents-management-page .lux-table tbody td:nth-child(6) .badge.bg-success:hover {
+    background: rgba(67, 160, 71, 0.12) !important;
+    border-color: rgba(67, 160, 71, 0.4) !important;
+}
+
+/* Failed (Column 7) - Danger (Red) - Pastel outline */
+.agents-management-page .lux-table tbody td:nth-child(7) .badge.bg-danger {
+    background: rgba(229, 57, 53, 0.08) !important;
+    border-color: rgba(229, 57, 53, 0.3) !important;
+    color: #c62828 !important;
+}
+
+.agents-management-page .lux-table tbody td:nth-child(7) .badge.bg-danger:hover {
+    background: rgba(229, 57, 53, 0.12) !important;
+    border-color: rgba(229, 57, 53, 0.4) !important;
+}
+
+/* Pending (Column 8) - Warning with icon - Pastel outline */
+.agents-management-page .lux-table tbody td:nth-child(8) .badge.bg-warning {
+    background: rgba(255, 193, 7, 0.12) !important;
+    border-color: rgba(255, 193, 7, 0.4) !important;
+    color: #b8860b !important;
+}
+
+.agents-management-page .lux-table tbody td:nth-child(8) .badge.bg-warning:hover {
+    background: rgba(255, 193, 7, 0.18) !important;
+    border-color: rgba(255, 193, 7, 0.5) !important;
+}
+
+/* ================== STATUS BADGES (Column 3) - KEEP ORIGINAL SOLID COLORS ================== */
+/* Status badges (Active/Inactive) - Keep original gradient style */
+.agents-management-page .lux-table tbody td:nth-child(3) .badge {
     padding: 6px 12px;
     font-size: 0.75rem;
     font-weight: 600;
     border-radius: 8px;
     letter-spacing: 0.3px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s ease;
+    transition: box-shadow 0.1s linear;
+    display: inline-block;
+    transform: none !important;
+    border: none;
 }
 
-.lux-table .badge:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+.agents-management-page .lux-table tbody td:nth-child(3) .badge:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: none !important;
 }
 
-.badge.bg-success {
+.agents-management-page .lux-table tbody td:nth-child(3) .badge.bg-success {
     background: linear-gradient(135deg, #43a047, #66bb6a) !important;
+    color: #ffffff !important;
 }
 
-.badge.bg-danger {
+.agents-management-page .lux-table tbody td:nth-child(3) .badge.bg-danger {
     background: linear-gradient(135deg, #e53935, #ef5350) !important;
+    color: #ffffff !important;
 }
 
-.badge.bg-warning {
+.agents-management-page .lux-table tbody td:nth-child(3) .badge.bg-warning {
     background: linear-gradient(135deg, #ffc107, #ffca28) !important;
     color: #4d3b00 !important;
-}
-
-.badge.bg-primary {
-    background: linear-gradient(135deg, #007bff, #35a0ff) !important;
-}
-
-.badge.bg-secondary {
-    background: linear-gradient(135deg, #6c757d, #9ca3af) !important;
 }
 
 /* ================== LUXURY BUTTONS (SCOPED FOR AGENTS PAGE) ================== */
@@ -605,7 +798,7 @@
     }
 
     .modal-body{
-        width
+        width: 100%;
     }
 
     .modal-header {
@@ -827,11 +1020,14 @@
     justify-content: center;
     padding: 0;
     border-radius: 8px;
-    transition: all 0.2s ease;
+    transition: box-shadow 0.1s linear, background-color 0.1s linear;
+    flex-shrink: 0;
+    transform: none !important;
 }
 
 .lux-table td .btn:hover {
-    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transform: none !important;
 }
 
 /* ================== DRILL-DOWN BUTTONS ================== */

@@ -24,7 +24,7 @@ require_once __DIR__ . "/../../middleware/require_role.php";
 // AUTH
 // ==========================
 require_login();
-require_role(["admin"]);
+require_role(["admin", "agent"]); // Agent cần xem danh sách agents để filter orders trong team scope
 
 // ==========================
 // QUERY

@@ -23,6 +23,9 @@ import NoPermission from "./pages/auth/NoPermission.jsx";
 import CreateOrder from './pages/user/CreateOrder.jsx';
 import UserOrdersPage from './pages/shipper/UserOrdersPage.jsx';
 import UserProfilePage from './pages/shipper/UserProfilePage.jsx';
+import UserIdentityDashboard from './pages/admin/UserIdentityDashboard.jsx';
+import AccountSettingsPage from './pages/admin/AccountSettingsPage.jsx';
+import NotificationsPage from './pages/admin/NotificationsPage.jsx';
 import OrderDetail from './pages/user/OrderDetail.jsx';
 import Orders from './pages/user/Orders.jsx';
 import DeliveryInProgress from './pages/shipper/DeliveryInProgress.jsx';
@@ -33,6 +36,14 @@ import Dashboard from './pages/admin/Dashboard';
 import OrderManagement from './pages/admin/OrderManagement.jsx';
 import AgentsManagement from './pages/admin/AgentsManagement.jsx';
 import Reports from './pages/admin/Reports.jsx';
+
+// Agent pages
+import AgentLayout from './components/Layouts/AgentLayout.jsx';
+import AgentDashboard from './pages/agent/AgentDashboard.jsx';
+import MyOrders from './pages/agent/MyOrders.jsx';
+import AssignShipper from './pages/agent/AssignShipper.jsx';
+import AgentNotifications from './pages/agent/Notifications.jsx';
+import RequireRole from './components/guards/RequireRole.jsx';
 
 // Shipper pages
 import HomePageShipper from './pages/shipper/HomePageShipper.jsx';
@@ -144,7 +155,7 @@ export default function App() {
       <Route
         path="/user/profile"
         element={
-          <ProtectedRoute allowed={['customer']}>
+          <ProtectedRoute allowed={['customer', 'shipper']}>
             <PublicLayout>
               <UserProfilePage />
             </PublicLayout>
@@ -174,12 +185,12 @@ export default function App() {
         }
       />
 
-      {/* ================= ADMIN + AGENT ================= */}
+      {/* ================= ADMIN PORTAL ================= */}
 
       <Route
         path="/admin"
         element={
-          <ProtectedRoute allowed={['admin', 'agent']}>
+          <ProtectedRoute allowed={['admin']}>
             <AdminLayout />
           </ProtectedRoute>
         }
@@ -189,6 +200,28 @@ export default function App() {
         <Route path="orders" element={<OrderManagement />} />
         <Route path="agents" element={<AgentsManagement />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="profile" element={<UserIdentityDashboard />} />
+        <Route path="account-settings" element={<AccountSettingsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+      </Route>
+
+      {/* ================= AGENT PORTAL ================= */}
+
+      <Route
+        path="/agent"
+        element={
+          <RequireRole allowedRoles={['agent', 'admin']}>
+            <AgentLayout />
+          </RequireRole>
+        }
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AgentDashboard />} />
+        <Route path="orders" element={<MyOrders />} />
+        <Route path="assign-shipper" element={<AssignShipper />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="profile" element={<UserIdentityDashboard />} />
+        <Route path="account-settings" element={<AccountSettingsPage />} />
       </Route>
 
       {/* ================= SHIPPER ================= */}

@@ -1,0 +1,78 @@
+/* ======================================
+   AGENT TABLE - SPECIFIC COLUMN WIDTHS
+   For Agent Dashboard with "Assigned Agent" column
+====================================== */
+
+/* When showAgentColumn=true, we have 7 columns:
+   1. Order Code (120px)
+   2. Sender (280px - same as admin)
+   3. Receiver (280px - same as admin)
+   4. Assigned Agent (180px - WIDER to prevent wrapping)
+   5. Created Date (130px - compact, pushed right)
+   6. Status (115px - compact, pushed right)
+   7. Actions (130px - compact, pushed right)
+*/
+
+/* Override for Agent Dashboard table with Assigned Agent column */
+.lux-table.agent-table-with-agent-column thead th:nth-child(1),
+.lux-table.agent-table-with-agent-column tbody td:nth-child(1) {
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 120px !important;
+}
+
+.lux-table.agent-table-with-agent-column thead th:nth-child(2),
+.lux-table.agent-table-with-agent-column thead th:nth-child(3),
+.lux-table.agent-table-with-agent-column tbody td:nth-child(2),
+.lux-table.agent-table-with-agent-column tbody td:nth-child(3) {
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+}
+
+/* Assigned Agent - WIDER to prevent wrapping */
+.lux-table.agent-table-with-agent-column thead th:nth-child(4),
+.lux-table.agent-table-with-agent-column tbody td:nth-child(4) {
+  width: 180px !important;
+  min-width: 180px !important;
+  max-width: 180px !important;
+}
+
+.lux-table.agent-table-with-agent-column tbody td:nth-child(4) > div {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lux-table.agent-table-with-agent-column tbody td:nth-child(4) .fw-semibold {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  max-width: 100%;
+}
+
+/* Created Date - Compact, pushed right */
+.lux-table.agent-table-with-agent-column thead th:nth-child(5),
+.lux-table.agent-table-with-agent-column tbody td:nth-child(5) {
+  width: 130px !important;
+  min-width: 130px !important;
+  max-width: 130px !important;
+}
+
+/* Status - Compact, pushed right */
+.lux-table.agent-table-with-agent-column thead th:nth-child(6),
+.lux-table.agent-table-with-agent-column tbody td:nth-child(6) {
+  width: 115px !important;
+  min-width: 115px !important;
+  max-width: 115px !important;
+}
+
+/* Actions - Compact, pushed right */
+.lux-table.agent-table-with-agent-column thead th:nth-child(7),
+.lux-table.agent-table-with-agent-column tbody td:nth-child(7) {
+  width: 130px !important;
+  min-width: 130px !important;
+  max-width: 130px !important;
+}
+

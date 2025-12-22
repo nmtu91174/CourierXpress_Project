@@ -94,6 +94,34 @@ const OrderDetailShipper = () => {
         return parseInt(type) === 1 ? "Sender (Người gửi)" : "Receiver (Người nhận)";
     };
 
+    // Lấy vị trí GPS hiện tại
+    const getCurrentLocation = () => {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error("Geolocation is not supported by this browser"));
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    resolve({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    });
+                },
+                (error) => {
+                    reject(new Error(`Geolocation error: ${error.message}`));
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        });
+    };
+
     // ==========================
     // FETCH DATA
     // ==========================

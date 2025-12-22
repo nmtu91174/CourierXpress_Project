@@ -10,21 +10,21 @@ export const ORDER_STATUS_GROUPS = {
 };
 
 export const STATUS_GROUP_LABELS = {
-  all: "Tất cả",
-  pending: "Đang chờ xử lý",
-  approved: "Đã duyệt",
-  handling: "Đang giao",
-  completed: "Hoàn thành",
-  exception: "Sự cố",
+  all: "All",
+  pending: "Pending",
+  approved: "Approved",
+  handling: "In Transit",
+  completed: "Completed",
+  exception: "Exception",
 };
 
 export const STATUS_GROUP_OPTIONS = [
-  { value: "all", label: "Tất cả" },
-  { value: "pending", label: "Đang chờ xử lý" },
-  { value: "approved", label: "Đã duyệt" },
-  { value: "handling", label: "Đang giao" },
-  { value: "completed", label: "Hoàn thành" },
-  { value: "exception", label: "Sự cố" },
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "handling", label: "In Transit" },
+  { value: "completed", label: "Completed" },
+  { value: "exception", label: "Exception" },
 ];
 
 // Helper function để check status có trong group không

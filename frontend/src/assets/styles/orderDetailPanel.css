@@ -2,101 +2,301 @@
    ORDER DETAIL PANEL — Enterprise Luxury Sliding Panel (DQN)
    ============================================================ */
 
+/* OVERLAY BACKGROUND - Modal Style */
+.order-panel-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 9998;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
 .order-panel {
     position: fixed;
     top: 0;
     right: -480px;   /* Hidden default */
-    width: 420px;
+    width: 450px;
     height: 100vh;
-    background: #ffffff;
-    box-shadow: -4px 0 16px rgba(0,0,0,0.08);
+    background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
     z-index: 9999;
-    transition: right .35s cubic-bezier(.25,.1,.25,1);
+    transition: right .4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     display: flex;
     flex-direction: column;
-    border-left: 1px solid #eef0f4;
+    border-left: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .order-panel.open {
     right: 0;
+    animation: slideInRight 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-/* HEADER */
-.order-panel-header {
-    padding: 18px 20px;
-    border-bottom: 1px solid #eef0f4;
+@keyframes slideInRight {
+    from {
+        right: -480px;
+        opacity: 0;
+    }
+    to {
+        right: 0;
+        opacity: 1;
+    }
+}
+
+/* HEADER - DQN Luxury */
+.order-panel-header.luxury-panel-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #fafbfc;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .order-panel-header h5 {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: .3px;
+    color: #212529;
+}
+
+.order-panel-header .text-primary {
+    color: #007bff !important;
+    font-weight: 800;
 }
 
 /* CLOSE BUTTON */
 .btn-close-panel {
     border: none;
-    background: none;
-    color: #444;
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
     font-size: 1.2rem;
-    transition: .18s ease;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s ease;
+    cursor: pointer;
 }
 
 .btn-close-panel:hover {
-    color: #0d6efd;
-    transform: scale(1.15);
+    background: #6c757d;
+    color: #ffffff;
+    transform: scale(1.05);
 }
 
-/* BODY */
-.order-panel-body {
-    padding: 18px 22px;
+/* BODY - DQN Luxury */
+.order-panel-body.luxury-panel-body {
+    padding: 20px 24px;
     overflow-y: auto;
+    background: #ffffff;
 }
 
-/* SECTION */
-.panel-section {
-    margin-bottom: 24px;
+/* SECTION - DQN Luxury */
+.panel-section.luxury-section {
+    margin-bottom: 28px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease;
 }
 
-.section-title {
-    font-size: .82rem;
+.panel-section.luxury-section:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 123, 255, 0.2);
+}
+
+.section-title.luxury-section-title {
+    font-size: .85rem;
     text-transform: uppercase;
     font-weight: 700;
-    color: #6d7380;
-    margin-bottom: 10px;
-    letter-spacing: .5px;
+    color: #495057;
+    margin-bottom: 16px;
+    letter-spacing: .8px;
+    display: flex;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(0, 123, 255, 0.15);
 }
 
-.section-content p {
-    font-size: .9rem;
-    margin-bottom: 6px;
-    color: #333;
+.section-title.luxury-section-title svg {
+    color: #007bff;
+    font-size: 0.9rem;
 }
 
-.section-content strong {
-    color: #111;
+.section-content.luxury-section-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
-/* SCROLLBAR */
+/* Luxury Info Item */
+.luxury-info-item {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.luxury-info-item:last-child {
+    border-bottom: none;
+}
+
+.luxury-info-item small {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.luxury-info-item > div {
+    font-size: 0.95rem;
+    color: #212529;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.luxury-info-item .fw-bold,
+.luxury-info-item .fw-semibold {
+    font-size: 0.98rem;
+    color: #212529;
+    margin-top: 2px;
+}
+
+.luxury-info-item .text-primary {
+    color: #007bff !important;
+    font-weight: 700;
+}
+
+.luxury-info-item .text-success {
+    color: #28a745 !important;
+    font-weight: 700;
+}
+
+.luxury-info-item .text-warning {
+    color: #ffc107 !important;
+    font-weight: 700;
+}
+
+/* Luxury Note */
+.luxury-note {
+    background: rgba(0, 123, 255, 0.05);
+    border-left: 3px solid #007bff;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 0.9rem;
+    color: #495057;
+    line-height: 1.6;
+    font-style: italic;
+}
+
+/* Image Grid - DQN Luxury */
+.luxury-image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.luxury-image-item {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid rgba(0, 0, 0, 0.08);
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.luxury-image-item:hover {
+    border-color: #007bff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+}
+
+.luxury-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.luxury-image-item:hover .luxury-preview-img {
+    transform: scale(1.05);
+}
+
+/* SCROLLBAR - DQN Luxury */
 .order-panel-body::-webkit-scrollbar {
-    width: 7px;
+    width: 8px;
 }
+
 .order-panel-body::-webkit-scrollbar-thumb {
-    background: #c7c7c7;
+    background: linear-gradient(180deg, #c7c7c7, #a0a0a0);
     border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
 }
+
+.order-panel-body::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #a0a0a0, #808080);
+    background-clip: padding-box;
+}
+
 .order-panel-body::-webkit-scrollbar-track {
     background: #f1f1f1;
+    border-radius: 4px;
 }
 
 /* FOOTER ACTIONS (optional if needed) */
 .order-panel-footer {
-    border-top: 1px solid #eef0f4;
-    padding: 14px 18px;
-    background: #fafbfc;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .order-panel {
+        width: 100%;
+        right: -100%;
+    }
+
+    .order-panel-body.luxury-panel-body {
+        padding: 16px 18px;
+    }
+
+    .panel-section.luxury-section {
+        padding: 14px 16px;
+    }
+
+    .luxury-image-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 10px;
+    }
 }

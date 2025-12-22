@@ -53,16 +53,22 @@ $required = [
     "receiver_name",
     "receiver_phone",
     "receiver_address",
-    "item_name",
     "weight",
     "distance_km",
-    "payment_method_id"
+    "payment_method_id",
+    "payer_type"
 ];
 
 foreach ($required as $field) {
-    if (empty($data[$field])) {
+    if (empty($data[$field]) && $field !== "cod_amount") {
         Response::error("Thiếu dữ liệu: {$field}");
     }
+}
+
+// Validate payer_type
+$payerType = (int)($data["payer_type"] ?? 1);
+if (!in_array($payerType, [1, 2], true)) {
+    Response::error("payer_type phải là 1 (Người gửi trả) hoặc 2 (Người nhận trả)");
 }
 
 // ==========================
@@ -192,8 +198,22 @@ try {
     $data["actor_role"] = $role;
     
     // Thêm service_type mặc định nếu không có (OrderService yêu cầu)
-    if (empty($data["service_type"])) {
+    if (empty($data["service_type"]) && empty($data["service_type_id"])) {
         $data["service_type"] = 1; // Default service type
+    } elseif (!empty($data["service_type_id"])) {
+        // Support both service_type and service_type_id
+        $data["service_type"] = $data["service_type_id"];
+    }
+    
+    // Ensure payer_type is set (default to 1 = Người gửi trả)
+    if (empty($data["payer_type"])) {
+        $data["payer_type"] = 1;
+    }
+    
+    // Frontend always sends weight in GRAMS (INT)
+    // No conversion needed - just ensure it's an integer
+    if (isset($data["weight"])) {
+        $data["weight"] = (int)$data["weight"];
     }
     
     // Nếu admin tạo đơn mà không có customer_id, tạo customer mới từ thông tin người nhận
@@ -258,6 +278,38 @@ try {
         $imageUrls
     );
 
+    // ==========================
+    // GỬI EMAIL THÔNG BÁO
+    // ==========================
+    // Lấy email từ customer hoặc từ receiver_email
+    $customerEmail = null;
+    if ($data["customer_id"] > 0) {
+        // Lấy email từ customer account
+        $getCustomerEmail = $conn->prepare("SELECT email FROM users WHERE id = ? LIMIT 1");
+        if ($getCustomerEmail) {
+            $getCustomerEmail->bind_param("i", $data["customer_id"]);
+            if ($getCustomerEmail->execute()) {
+                $customerResult = $getCustomerEmail->get_result();
+                if ($customerRow = $customerResult->fetch_assoc()) {
+                    $customerEmail = $customerRow["email"];
+                }
+            }
+            $getCustomerEmail->close();
+        }
+    }
+    
+    // Ưu tiên: receiver_email từ form > customer email
+    $emailToSend = !empty($data["receiver_email"]) ? $data["receiver_email"] : $customerEmail;
+    
+    if ($emailToSend && filter_var($emailToSend, FILTER_VALIDATE_EMAIL)) {
+        send_email_notification(
+            $emailToSend,
+            $result["order_code"],
+            $result["shipping_fee"],
+            $data["cod_amount"] ?? 0
+        );
+    }
+
     // Đảm bảo response có đầy đủ thông tin về phí vận chuyển
     $responseData = [
         "order_id" => $result["order_id"],
@@ -277,3 +329,25 @@ try {
 }
 
 $conn->close();
+
+// ==========================
+// HÀM GỬI EMAIL THÔNG BÁO
+// ==========================
+function send_email_notification($to_email, $order_code, $shipping_fee, $cod_amount) {
+    $total = $shipping_fee + $cod_amount;
+    $subject = "Xác nhận Đơn hàng: " . $order_code;
+    $body = "Xin chào, \n\n";
+    $body .= "Bạn đã tạo thành công một đơn hàng vận chuyển. \n\n";
+    $body .= "Mã Vận Đơn (Tracking Code) của bạn là: " . $order_code . "\n";
+    $body .= "Phí vận chuyển tạm tính: " . number_format($shipping_fee) . " VNĐ\n";
+    $body .= "Tiền thu hộ (COD): " . number_format($cod_amount) . " VNĐ\n";
+    $body .= "Tổng tiền thu (Phí Ship + COD): " . number_format($total) . " VNĐ\n\n";
+    $body .= "Đơn hàng của bạn đang chờ Agent duyệt. Bạn sẽ nhận được thông báo tiếp theo sau khi duyệt.\n\n";
+    $body .= "Trân trọng.";
+    
+    // TODO: Thực hiện gửi email thật (hiện tại chỉ log)
+    // Có thể sử dụng PHPMailer, SendGrid, hoặc email service khác
+    error_log("EMAIL NOTIFICATION: To: {$to_email} | Subject: {$subject} | Order: {$order_code}");
+    
+    return true;
+}

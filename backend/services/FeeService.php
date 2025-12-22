@@ -17,7 +17,9 @@ class FeeService extends BaseService
     public function calculate(array $input): array
     {
         $distanceKm = (float) ($input['distance_km'] ?? 0);
-        $weightKg   = (float) ($input['weight'] ?? 0);
+        // Weight is now in GRAMS (INT) - convert to KG (FLOAT) for fee calculation
+        $weightGrams = (int) ($input['weight'] ?? 0);
+        $weightKg   = $weightGrams / 1000.0; // Convert grams to kg
         $lengthCm   = (float) ($input['length'] ?? 0);
         $widthCm    = (float) ($input['width'] ?? 0);
         $heightCm   = (float) ($input['height'] ?? 0);

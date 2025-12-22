@@ -43,6 +43,7 @@
     padding: 9px 12px;
     color: #101828;
     transition: all .22s ease;
+    transform: none !important; /* Prevent scale effect from other CSS files */
 }
 
 .lux-input-search {
@@ -57,6 +58,15 @@
     font-weight: 400;
 }
 
+/* Hover state - no scale */
+.lux-input:hover,
+.lux-select:hover,
+.lux-input-search:hover {
+    border-color: rgba(46, 144, 250, 0.3) !important;
+    background: #ffffff;
+    transform: none !important; /* Prevent scale effect */
+}
+
 /* Focus state */
 .lux-input:focus,
 .lux-select:focus,
@@ -67,6 +77,7 @@
         0 0 0 1px rgba(46, 144, 250, .45),
         0 6px 14px rgba(46, 144, 250, .18);
     outline: none;
+    transform: none !important; /* Prevent scale effect */
 }
 
 /* Disabled */
@@ -136,12 +147,12 @@
 }
 
 .btn-lux-outline:hover {
-    background: linear-gradient(135deg, #e53935, #1570ef);
+    background: linear-gradient(135deg, #2a329e, #1570ef);
     color: #ffffff;
     transform: translateY(-1px);
     box-shadow:
-        0 6px 14px rgba(229, 57, 53, .35),
-        0 2px 6px rgba(229, 57, 53, .25);
+        0 6px 14px rgba(205, 200, 231, 0.35),
+        0 2px 6px rgba(187, 188, 238, 0.25);
 }
 
 .btn-lux-outline:active {

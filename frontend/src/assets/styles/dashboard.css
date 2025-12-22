@@ -67,13 +67,16 @@
   border-radius: 6px;
   padding: 6px 14px;
   font-weight: 600;
-  transition: .25s ease;
+  transition: all .25s ease;
 }
-.btn-lux-primary-red:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
+
+/* Combine scale effect with translateY for btn-hover-scale on red button */
+.btn-lux-primary-red.btn-hover-scale:hover {
+  filter: brightness(1.15) saturate(1.15);
+  transform: translateY(-1px) scale(1.03);
   box-shadow: 0 4px 12px rgba(229, 57, 53, .35);
 }
+
 
 /* XANH LÁ - XEM BÁO CÁO */
 .btn-lux-primary-green {
@@ -174,10 +177,8 @@
   border-top: 1px solid #f1f3f7;
 }
 
-/* Hover row effect */
-.lux-table tbody tr:hover {
-  background: #f9fcff;
-}
+/* NO HOVER EFFECTS - Clean, static, enterprise-style */
+/* Removed all hover effects for enterprise look */
 
 /* ===================================
    CHART WRAPPER - Prevent button overlap
@@ -202,6 +203,24 @@
 .chart-wrapper .echarts-for-react {
   position: relative !important;
   z-index: 1 !important;
+}
+
+/* ===================================
+   DASHBOARD CONTAINER - Match background
+=================================== */
+/* Desktop: Remove container-fluid background if it exists, match admin-content background */
+.admin-content .admin-page.container-fluid {
+  background: transparent;
+}
+
+.admin-content .admin-page.container-fluid.p-0 {
+  background: transparent;
+}
+
+/* Ensure charts and notifications section have transparent background */
+.admin-content .chart-wrapper,
+.admin-content .fade-section {
+  background: transparent;
 }
 
 

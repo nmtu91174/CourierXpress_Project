@@ -145,6 +145,9 @@
     height: 100vh;
     overflow-y: auto;
     background: #f5f7fa;
+    width: calc(100% - 260px); /* Ensure content takes remaining width */
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 
@@ -160,9 +163,10 @@
     transition: all .28s cubic-bezier(.4, 0, .2, 1);
 }
 
+/* Card hover - only shadow, no transform to avoid conflict with table row hover */
 .admin-wrapper .card-lux:hover {
-    transform: translateY(-3px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12), 0 12px 28px rgba(0, 0, 0, 0.12);
+    /* Removed transform to prevent conflict with table row hover */
 }
 
 
@@ -259,9 +263,9 @@
 ====================================== */
 
 
-/* TABLET (icon-only sidebar) */
+/* TABLET (768px - 1199px) - Icon-only sidebar with tooltip */
 
-@media (max-width: 991px) {
+@media (max-width: 1199px) and (min-width: 768px) {
     .admin-wrapper .sidebar {
         width: 72px;
     }
@@ -274,6 +278,9 @@
         font-size: 0;
         /* hidden but keeps space */
     }
+    .admin-wrapper .sidebar-link {
+        position: relative;
+    }
     .admin-wrapper .sidebar-link span {
         display: none;
     }
@@ -281,78 +288,203 @@
         margin: 0 auto;
         font-size: 1.35rem;
     }
+    
+    /* Tooltip on hover for tablet */
+    .admin-wrapper .sidebar-link::after {
+        content: attr(data-title);
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        margin-left: 12px;
+        padding: 6px 12px;
+        background: rgba(26, 29, 33, 0.95);
+        color: #fff;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        white-space: nowrap;
+        border-radius: 6px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 10000;
+    }
+    
+    .admin-wrapper .sidebar-link:hover::after {
+        opacity: 1;
+    }
 }
 
 
 /* ======================================
-   MOBILE — SIDEBAR = NAVBAR BOTTOM
-   (Tableau style)
+   MOBILE — SIDEBAR DRAWER
+   Slide-in drawer from left
 ====================================== */
 
-@media (max-width: 768px) {
-    .admin-wrapper {
-        flex-direction: column;
+/* Mobile sidebar overlay */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9998;
+    display: none;
+}
+
+/* ==============================
+   HEADER - STICKY WITH BACKGROUND
+================================ */
+
+.admin-wrapper .admin-content > header {
+    /* Desktop: Normal positioning */
+    position: relative;
+    padding: 0;
+    margin-bottom: 1.5rem;
+}
+
+.admin-wrapper .admin-content > header h5 {
+    font-size: clamp(0.8125rem, 1.5vw + 0.5rem, 1rem);
+    font-weight: 500;
+    color: #374151;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Hamburger menu icon styling */
+.sidebar-toggle-mobile {
+    display: none;
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #374151;
+    margin-right: 1rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    transition: background-color 0.15s ease;
+}
+
+.sidebar-toggle-mobile:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.sidebar-toggle-mobile:focus {
+    outline: none;
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.sidebar-toggle-mobile svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2;
+}
+
+@media (max-width: 767px) {
+    /* Show overlay when sidebar is open */
+    .sidebar-overlay {
+        display: block;
     }
-    /* SIDEBAR becomes bottom nav */
-    .admin-wrapper .sidebar {
-        position: fixed;
-        bottom: 0;
+    
+    /* Show hamburger menu on mobile */
+    .sidebar-toggle-mobile {
+        display: flex;
+    }
+    
+    /* Header sticky on mobile only - bám sát top và bao hết màn hình */
+    .admin-wrapper .admin-content {
+        padding-top: 0 !important; /* Remove top padding to allow header to stick to top */
+        position: relative;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    
+    .admin-wrapper .admin-content > header {
+        position: sticky;
+        top: 0;
         left: 0;
         right: 0;
-        height: 100px;
-        width: 100% !important;
-        flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
-        border-right: none;
-        border-top: 1px solid var(--border-color);
-        padding: 0 12px;
-        box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.22);
+        z-index: 100;
+        background: #ffffff;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 1rem;
+        margin: 0;
+        width: 100vw; /* Full viewport width */
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        box-sizing: border-box;
+        margin-bottom: 1rem;
+    }
+    
+    /* Adjust admin-page padding to compensate */
+    .admin-wrapper .admin-content .admin-page {
+        padding-top: 0;
+    }
+    
+    /* Sidebar hidden by default on mobile */
+    .admin-wrapper .sidebar {
+        position: fixed;
+        top: 0;
+        left: -260px;
+        width: 260px;
+        height: 100vh;
         z-index: 9999;
-    }
-    .admin-wrapper .sidebar-header {
-        display: none;
-    }
-    /* NAV items */
-    .admin-wrapper .sidebar-menu {
-        display: flex;
-        flex-direction: row;
-        gap: 12px;
-        width: 100%;
-        padding: 0;
-        margin: 0;
-        justify-content: space-around;
-    }
-    .admin-wrapper .sidebar-link {
-        padding: 6px;
+        transition: left 0.3s ease;
         flex-direction: column;
-        text-align: center;
     }
-    .admin-wrapper .sidebar-link svg {
-        margin: 0;
-        font-size: 1.4rem;
-        opacity: 1;
+    
+    /* Sidebar open state */
+    .admin-wrapper .sidebar.sidebar-open {
+        left: 0;
     }
+    
+    /* Restore sidebar content visibility on mobile */
+    .admin-wrapper .sidebar-header {
+        display: block;
+    }
+    
     .admin-wrapper .sidebar-link span {
-        display: none !important;
+        display: inline !important;
     }
-    /* ======================================
-   ACTIVE NAV STYLE MOBILE
-====================================== */
-    .admin-wrapper .sidebar-link.active {
-        background: none !important;
-        color: #fff !important;
+    
+    .admin-wrapper .sidebar-link svg {
+        margin-right: 14px;
     }
-    @media (max-width: 768px) {
-        .admin-wrapper .sidebar-link.active svg {
-            color: var(--primary-color) !important;
-            transform: scale(1.25);
-        }
-        /* CONTENT FIX (avoid overlap bottom nav) */
-        .admin-wrapper .admin-content {
-            margin-left: 0 !important;
-            padding-bottom: 90px;
-            /* space for bottom nav */
-        }
+    
+    /* Content takes full width on mobile - consistent padding with cards */
+    .admin-wrapper .admin-content {
+        margin-left: 0 !important;
+        padding-top: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        padding-bottom: 1rem;
+        width: 100%;
+        max-width: 100%;
+    }
+    
+    /* Ensure all admin pages have consistent container width on mobile */
+    .admin-wrapper .admin-content .admin-page {
+        width: 100%;
+        max-width: 100%;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        padding-top: 0;
+    }
+    
+    /* Card containers should match content padding on mobile */
+    .admin-wrapper .admin-content .card-lux {
+        width: 100%;
+        max-width: 100%;
+        margin-left: 0;
+        margin-right: 0;
     }
 }

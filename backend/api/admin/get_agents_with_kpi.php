@@ -37,6 +37,8 @@ $search = $_GET["search"] ?? null;
 // ==========================
 // QUERY AGENTS WITH KPI
 // ==========================
+// FIX: Tách query để tránh duplicate khi LEFT JOIN order_approvals
+// Query chính: Orders stats (không join order_approvals để tránh duplicate)
 $sql = "
     SELECT
         u.id,
@@ -48,15 +50,12 @@ $sql = "
         
         COUNT(DISTINCT o.id) AS total_orders,
         
-        SUM(CASE WHEN o.status IN (1,2,3,4) THEN 1 ELSE 0 END) AS active_orders,
-        SUM(CASE WHEN o.status = 5 THEN 1 ELSE 0 END) AS completed_orders,
-        SUM(CASE WHEN o.status = 6 THEN 1 ELSE 0 END) AS failed_orders,
-        
-        COALESCE(SUM(CASE WHEN oa.status = 'pending' THEN 1 ELSE 0 END), 0) AS pending_approvals
+        COUNT(DISTINCT CASE WHEN o.status IN (3,4) THEN o.id ELSE NULL END) AS active_orders, -- In Progress: ASSIGNED (3) and PICKED (4)
+        COUNT(DISTINCT CASE WHEN o.status = 5 THEN o.id ELSE NULL END) AS completed_orders, -- DELIVERED (5)
+        COUNT(DISTINCT CASE WHEN o.status = 6 THEN o.id ELSE NULL END) AS failed_orders -- FAILED (6)
         
     FROM users u
     LEFT JOIN orders o ON o.agent_id = u.id
-    LEFT JOIN order_approvals oa ON oa.agent_id = u.id
     WHERE u.role = 'agent'
 ";
 
@@ -81,7 +80,7 @@ if ($search && trim($search) !== "") {
 
 $sql .= " GROUP BY u.id";
 
-// Build HAVING clause for workload and approval filters
+// Build HAVING clause for workload filters (pending_approvals sẽ được thêm sau)
 $havingConditions = [];
 
 if ($workloadFilter && $workloadFilter !== "all") {
@@ -98,21 +97,13 @@ if ($workloadFilter && $workloadFilter !== "all") {
     }
 }
 
-if ($approvalFilter && $approvalFilter !== "all") {
-    if ($approvalFilter === "has_pending") {
-        $havingConditions[] = "pending_approvals > 0";
-    } elseif ($approvalFilter === "no_pending") {
-        $havingConditions[] = "pending_approvals = 0";
-    }
-}
-
 if (!empty($havingConditions)) {
     $sql .= " HAVING " . implode(" AND ", $havingConditions);
 }
 
 $sql .= " ORDER BY active_orders DESC, total_orders DESC";
 
-// Execute query
+// Execute main query
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
     error_log("Prepare failed: " . $conn->error);
@@ -131,6 +122,7 @@ if (!$stmt->execute()) {
 $result = $stmt->get_result();
 $agents = [];
 
+// Fetch agents with order stats
 while ($row = $result->fetch_assoc()) {
     $agents[] = [
         "id" => (int)$row["id"],
@@ -143,11 +135,59 @@ while ($row = $result->fetch_assoc()) {
         "active_orders" => (int)$row["active_orders"],
         "completed_orders" => (int)$row["completed_orders"],
         "failed_orders" => (int)$row["failed_orders"],
-        "pending_approvals" => (int)$row["pending_approvals"],
+        "pending_approvals" => 0, // Will be filled in next query
     ];
 }
 
 $stmt->close();
+
+// Query 2: Get pending_approvals for each agent (separate to avoid duplicate)
+$pendingApprovalsMap = [];
+if (!empty($agents)) {
+    $agentIds = array_map(function($a) { return $a["id"]; }, $agents);
+    $placeholders = implode(",", array_fill(0, count($agentIds), "?"));
+    
+    $sqlPending = "
+        SELECT 
+            agent_id,
+            COUNT(*) AS pending_count
+        FROM order_approvals
+        WHERE agent_id IN ($placeholders) AND status = 'pending'
+        GROUP BY agent_id
+    ";
+    
+    $stmtPending = $conn->prepare($sqlPending);
+    if ($stmtPending) {
+        $typesPending = str_repeat("i", count($agentIds));
+        $stmtPending->bind_param($typesPending, ...$agentIds);
+        
+        if ($stmtPending->execute()) {
+            $resultPending = $stmtPending->get_result();
+            while ($rowPending = $resultPending->fetch_assoc()) {
+                $pendingApprovalsMap[(int)$rowPending["agent_id"]] = (int)$rowPending["pending_count"];
+            }
+        }
+        $stmtPending->close();
+    }
+}
+
+// Update pending_approvals for each agent
+foreach ($agents as &$agent) {
+    $agent["pending_approvals"] = $pendingApprovalsMap[$agent["id"]] ?? 0;
+}
+
+// Apply approval filter if needed
+if ($approvalFilter && $approvalFilter !== "all") {
+    $agents = array_filter($agents, function($agent) use ($approvalFilter) {
+        if ($approvalFilter === "has_pending") {
+            return $agent["pending_approvals"] > 0;
+        } elseif ($approvalFilter === "no_pending") {
+            return $agent["pending_approvals"] === 0;
+        }
+        return true;
+    });
+    $agents = array_values($agents); // Re-index array
+}
 $conn->close();
 
 // ==========================

@@ -1,0 +1,356 @@
+/* ==============================
+   AGENT DASHBOARD - WORKFLOW CONSOLE
+   Matching Dashboard.jsx and OrderManagement.jsx patterns
+================================ */
+
+/* Use dashboard.css for KPI cards and general styling */
+/* This file only contains agent-specific overrides if needed */
+
+/* Ensure container background is transparent */
+.agent-wrapper .agent-content .admin-page.container-fluid {
+  background: transparent;
+}
+
+.agent-wrapper .agent-content .admin-page.container-fluid.p-0 {
+  background: transparent;
+}
+
+/* ==============================
+   KPI SUMMARY ROW
+================================ */
+
+.kpi-summary-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.kpi-card {
+    background: #ffffff;
+    border: 1px solid #eef0f4;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 0.2s ease;
+}
+
+.kpi-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.kpi-content {
+    flex: 1;
+}
+
+.kpi-label {
+    font-size: 0.875rem;
+    color: #6d7380;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1a1d29;
+    line-height: 1;
+}
+
+/* ==============================
+   OPERATIONAL QUEUE CARD
+================================ */
+
+.operational-queue-card,
+.recent-activity-card {
+    background: #ffffff;
+    border: 1px solid #eef0f4;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.card-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eef0f4;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1d29;
+    margin: 0 0 0.25rem 0;
+}
+
+.card-subtitle {
+    font-size: 0.875rem;
+    color: #6d7380;
+}
+
+.queue-content {
+    overflow-x: auto;
+}
+
+.queue-table {
+    width: 100%;
+}
+
+.queue-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.queue-table thead th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #6d7380;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #eef0f4;
+}
+
+.queue-table tbody td {
+    padding: 1rem;
+    border-bottom: 1px solid #f5f7fa;
+    font-size: 0.9rem;
+    color: #1a1d29;
+}
+
+.queue-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.route-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.route-from,
+.route-to {
+    color: #1a1d29;
+    font-weight: 500;
+}
+
+.route-arrow {
+    color: #6d7380;
+}
+
+.priority-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #f5f7fa;
+    color: #6d7380;
+}
+
+.priority-tag.high {
+    background: #fff4e6;
+    color: #ff9800;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid #eef0f4;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1a1d29;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.btn-action:hover {
+    background: #f5f7fa;
+    border-color: #d1d5db;
+}
+
+.btn-assign {
+    background: #0d6efd;
+    color: #ffffff;
+    border-color: #0d6efd;
+}
+
+.btn-assign:hover {
+    background: #0b5ed7;
+    border-color: #0b5ed7;
+}
+
+.btn-view {
+    background: #ffffff;
+    color: #1a1d29;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #6d7380;
+}
+
+/* ==============================
+   RECENT ACTIVITY
+================================ */
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    background: #fafbfc;
+    transition: background 0.2s ease;
+}
+
+.activity-item:hover {
+    background: #f5f7fa;
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.125rem;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-text {
+    font-size: 0.9rem;
+    color: #1a1d29;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.activity-time {
+    font-size: 0.75rem;
+    color: #6d7380;
+}
+
+/* ==============================
+   RESPONSIVE
+================================ */
+
+@media (max-width: 1199px) {
+    .kpi-summary-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 767px) {
+    .agent-dashboard-page {
+        padding: 0;
+    }
+
+    .dashboard-header {
+        flex-direction: column;
+    }
+
+    .kpi-summary-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .kpi-card {
+        padding: 1.25rem;
+    }
+
+    .kpi-icon {
+        font-size: 1.5rem;
+    }
+
+    .kpi-value {
+        font-size: 1.5rem;
+    }
+
+    .queue-table {
+        display: block;
+    }
+
+    .queue-table thead {
+        display: none;
+    }
+
+    .queue-table tbody tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #eef0f4;
+        border-radius: 8px;
+        padding: 1rem;
+        background: #ffffff;
+    }
+
+    .queue-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f5f7fa;
+    }
+
+    .queue-table tbody td:last-child {
+        border-bottom: none;
+    }
+
+    .queue-table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #6d7380;
+        margin-right: 1rem;
+    }
+
+    .action-buttons {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .btn-action {
+        flex: 1;
+        justify-content: center;
+        min-height: 44px;
+    }
+
+    .operational-queue-card,
+    .recent-activity-card {
+        padding: 1rem;
+    }
+}
+

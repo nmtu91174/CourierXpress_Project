@@ -47,10 +47,11 @@ $offset = ($page - 1) * $limit;
 
 // ==========================
 // BASE SQL (Enterprise - Join invoices)
+// Note: For list query, we use full JOIN in $sqlList
+// For count, we only need orders table
 // ==========================
 $baseSql = "
     FROM orders o
-    LEFT JOIN invoices inv ON o.id = inv.order_id
 ";
 
 // ==========================
@@ -66,9 +67,17 @@ switch ($role) {
         break;
 
     case "agent":
-        $where[] = "o.agent_id = ?";
-        $params[] = $userId;
-        $types   .= "i";
+        // Agent có thể xem orders trong team scope (đơn của mình, đơn chưa có agent, đơn của agent khác để điều phối)
+        // Nếu có filter agent_id cụ thể, dùng filter đó
+        // Nếu không, agent thấy tất cả để điều phối (backend sẽ check quyền action khi thao tác)
+        $agentFilter = $_GET["agent_id"] ?? null;
+        if ($agentFilter && $agentFilter !== "all") {
+            // Filter cụ thể theo agent_id từ frontend
+            $where[] = "o.agent_id = ?";
+            $params[] = (int)$agentFilter;
+            $types   .= "i";
+        }
+        // Nếu không có filter agent_id, agent thấy tất cả orders (team scope) - không thêm WHERE clause
         break;
 
     case "shipper":
@@ -234,7 +243,7 @@ $total = (int)$resultCount->fetch_assoc()["total"];
 $stmtCount->close();
 
 // ==========================
-// LIST (Enterprise - Include invoice info)
+// LIST (Enterprise - Include invoice info + JOIN names)
 // ==========================
 $sqlList = "
     SELECT 
@@ -255,9 +264,25 @@ $sqlList = "
         o.total_shipping_fee,
         o.notes,
         o.payment_method_id,
+        o.previous_status,
+        o.cancelled_at,
+        o.cancelled_by,
+        o.weight,
+        o.service_type,
         inv.invoice_number,
-        inv.status AS invoice_status
-    " . $baseSql . $whereClause . "
+        inv.status AS invoice_status,
+        pm.name AS payment_method_name,
+        pm.code AS payment_method_code,
+        u_agent.name AS agent_name,
+        u_shipper.name AS shipper_name,
+        st.name AS service_type_name
+    FROM orders o
+    LEFT JOIN invoices inv ON o.id = inv.order_id
+    LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id
+    LEFT JOIN users u_agent ON o.agent_id = u_agent.id
+    LEFT JOIN users u_shipper ON o.shipper_id = u_shipper.id
+    LEFT JOIN service_types st ON o.service_type = st.id
+    " . $whereClause . "
     ORDER BY o.created_at DESC
     LIMIT ? OFFSET ?
 ";
@@ -283,6 +308,77 @@ $res = $stmt->get_result();
 if ($res) {
 while ($row = $res->fetch_assoc()) {
     $row["status"] = (int)$row["status"];
+    if (isset($row["weight"])) {
+        $row["weight"] = (int)$row["weight"]; // Ensure weight is integer (grams)
+    }
+    
+    // ==========================
+    // CALCULATE PERMISSION FLAGS (Enterprise - State-driven actions)
+    // ==========================
+    $currentStatus = (int)$row["status"];
+    $previousStatus = isset($row["previous_status"]) ? (int)$row["previous_status"] : null;
+    $hasAgent = !empty($row["agent_id"]) && (int)$row["agent_id"] > 0;
+    $hasShipper = !empty($row["shipper_id"]) && (int)$row["shipper_id"] > 0;
+    
+    // Check if order has been picked up: status >= 4 means already picked up
+    $hasBeenPickedUp = $currentStatus >= 4;
+    
+    // Enterprise Action Matrix (State-driven)
+    $permissions = [
+        "can_assign_agent" => false,
+        "can_assign_shipper" => false,
+        "can_reassign_shipper" => false,
+        "can_edit" => false,
+        "can_cancel" => false,
+        "can_reopen" => false,
+    ];
+    
+    // BOOKED (1): Can assign agent, cannot assign shipper
+    if ($currentStatus === 1) {
+        $permissions["can_assign_agent"] = !$hasAgent;
+        $permissions["can_edit"] = true;
+        $permissions["can_cancel"] = true;
+    }
+    
+    // APPROVED (2): Can assign agent and shipper (if not picked up)
+    if ($currentStatus === 2) {
+        if (!$hasBeenPickedUp) {
+            $permissions["can_assign_agent"] = !$hasAgent;
+            $permissions["can_assign_shipper"] = !$hasShipper;
+        }
+        $permissions["can_edit"] = true;
+        $permissions["can_cancel"] = true;
+    }
+    
+    // ASSIGNED (3): Can reassign shipper only if not picked up
+    if ($currentStatus === 3) {
+        if (!$hasBeenPickedUp) {
+            $permissions["can_reassign_shipper"] = true;
+        }
+        $permissions["can_edit"] = true;
+        $permissions["can_cancel"] = true;
+    }
+    
+    // IN_PROGRESS (4): No assign actions allowed
+    if ($currentStatus === 4) {
+        $permissions["can_edit"] = false;
+        $permissions["can_cancel"] = false;
+    }
+    
+    // DELIVERED (5) / FAILED (6): No actions allowed
+    if ($currentStatus === 5 || $currentStatus === 6) {
+        $permissions["can_edit"] = false;
+        $permissions["can_cancel"] = false;
+    }
+    
+    // CANCELLED (7): Can reopen if soft cancel (previous_status = BOOKED or APPROVED)
+    if ($currentStatus === 7) {
+        if ($previousStatus === 1 || $previousStatus === 2) {
+            $permissions["can_reopen"] = true;
+        }
+    }
+    
+    $row["permissions"] = $permissions; // Add permission flags
     $data[] = $row;
     }
 }
