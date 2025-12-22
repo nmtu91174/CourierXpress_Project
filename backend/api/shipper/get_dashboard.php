@@ -50,14 +50,14 @@ try {
     // =====================================================
     // 1️⃣ STATISTICS (CHO DASHBOARD CARD)
     // =====================================================
-    // waiting_accept : status = 2
-    // active         : status = 3,4
-    // completed      : status = 5
+    // waiting_accept : status = 3 (ASSIGNED - đã gán, chưa pickup)
+    // active         : status = 4 (PICKED - đã lấy hàng, đang giao)
+    // completed      : status = 5 (DELIVERED)
 
     $sqlStats = "
         SELECT
-            SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS waiting_accept,
-            SUM(CASE WHEN status IN (3,4) THEN 1 ELSE 0 END) AS active,
+            SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) AS waiting_accept,
+            SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) AS active,
             SUM(CASE WHEN status = 5 THEN 1 ELSE 0 END) AS completed
         FROM orders
         WHERE shipper_id = ?
@@ -76,8 +76,9 @@ try {
     ];
 
     // =====================================================
-    // 2️⃣ WAITING ORDERS (STATUS = 2)
+    // 2️⃣ WAITING ORDERS (STATUS = 3 - ASSIGNED)
     // =====================================================
+    // Status 3 = ASSIGNED: Đã được admin gán cho shipper, chưa pickup
     $sqlWaiting = "
         SELECT
             id,
@@ -88,7 +89,7 @@ try {
             shipper_id
         FROM orders
         WHERE shipper_id = ?
-          AND status = 2
+          AND status = 3
         ORDER BY created_at DESC
         LIMIT 5
     ";
@@ -108,8 +109,9 @@ try {
     }
 
     // =====================================================
-    // 3️⃣ ACTIVE ORDERS (STATUS = 3,4)
+    // 3️⃣ ACTIVE ORDERS (STATUS = 4 - PICKED/IN TRANSIT)
     // =====================================================
+    // Status 4 = PICKED: Shipper đã lấy hàng, đang giao
     $sqlActive = "
         SELECT
             id,
@@ -120,7 +122,7 @@ try {
             shipper_id
         FROM orders
         WHERE shipper_id = ?
-          AND status IN (3,4)
+          AND status = 4
         ORDER BY created_at DESC
         LIMIT 10
     ";

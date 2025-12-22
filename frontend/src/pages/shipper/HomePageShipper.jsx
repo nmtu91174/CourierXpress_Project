@@ -18,9 +18,9 @@ const ShipperHome = () => {
   // [FIX] State mapping theo workflow mới
   // Backend trả về:
   // stats: { waiting_accept, active, completed }
-  // waiting_orders  -> status = 2
-  // active_orders   -> status = 3,4
-  // completed_orders-> status = 5
+  // waiting_orders  -> status = 3 (ASSIGNED - đã gán, chưa pickup)
+  // active_orders   -> status = 4 (PICKED - đã lấy hàng, đang giao)
+  // completed_orders-> status = 5 (DELIVERED)
   // ================================
 
   const [loading, setLoading] = useState(true);
@@ -34,9 +34,9 @@ const ShipperHome = () => {
   });
 
   // [FIX] đổi tên biến cho đúng ngữ nghĩa workflow
-  const [waitingOrders, setWaitingOrders] = useState([]);     // Status 2
-  const [activeOrders, setActiveOrders] = useState([]);       // Status 3,4
-  const [completedOrders, setCompletedOrders] = useState([]); // Status 5
+  const [waitingOrders, setWaitingOrders] = useState([]);     // Status 3 (ASSIGNED)
+  const [activeOrders, setActiveOrders] = useState([]);       // Status 4 (PICKED)
+  const [completedOrders, setCompletedOrders] = useState([]); // Status 5 (DELIVERED)
 
   // [NEW] Fetch Dashboard Data
   useEffect(() => {
@@ -149,7 +149,7 @@ const ShipperHome = () => {
         </Row>
 
         {/* ================================
-            ASSIGNED ORDERS (Status 2)
+            ASSIGNED ORDERS (Status 3 - ASSIGNED)
             ================================ */}
         <Card className="p-4 shadow-sm mb-4 border-primary border-2">
           <h5 className="fw-bold mb-3 text-primary">
