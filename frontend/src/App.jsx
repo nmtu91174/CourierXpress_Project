@@ -33,6 +33,12 @@ import Dashboard from './pages/admin/Dashboard';
 import OrderManagement from './pages/admin/OrderManagement.jsx';
 import AgentsManagement from './pages/admin/AgentsManagement.jsx';
 import Reports from './pages/admin/Reports.jsx';
+import ServiceTypesManagement from "./pages/admin/ServiceTypesManagement";
+import PaymentMethodsManagement from "./pages/admin/PaymentMethodsManagement.jsx";
+import ItemCategoriesManagement from "./pages/admin/ItemCategoriesManagement.jsx";
+import FeesManagement from "./pages/admin/FeesManagement.jsx";
+
+
 
 // Shipper pages
 import HomePageShipper from './pages/shipper/HomePageShipper.jsx';
@@ -41,7 +47,8 @@ import ContactShipper from './pages/shipper/ContactShipper.jsx';
 import OrderDetailShipper from './pages/shipper/OrderDetailShipper.jsx';
 import EditOrderShipper from "./pages/shipper/EditOrderShipper.jsx";
 import OrderHistoryShipper from "./pages/shipper/OrderHistoryShipper.jsx";
-
+import ShipperProfileEdit from "./pages/shipper/ShipperProfileEdit";
+import ShipperProfile from './pages/shipper/ShipperProfile.jsx';
 
 
 // ================= LAYOUT =================
@@ -174,21 +181,27 @@ export default function App() {
 
       {/* ================= ADMIN + AGENT ================= */}
 
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute allowed={['admin', 'agent']}>
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="orders" element={<OrderManagement />} />
-        <Route path="agents" element={<AgentsManagement />} />
-        <Route path="reports" element={<Reports />} />
-      </Route>
+  <Route
+    path="/admin"
+    element={
+      <ProtectedRoute allowed={['admin', 'agent']}>
+        <AdminLayout />
+      </ProtectedRoute>
+    }
+  >
+    <Route index element={<Navigate to="dashboard" replace />} />
 
+    <Route path="dashboard" element={<Dashboard />} />
+    <Route path="orders" element={<OrderManagement />} />
+    <Route path="agents" element={<AgentsManagement />} />
+    <Route path="reports" element={<Reports />} />
+
+    {/* MASTER DATA */}
+    <Route path="service-types" element={<ServiceTypesManagement />} />
+    <Route path="payment-methods" element={<PaymentMethodsManagement />} />
+    <Route path="item-categories" element={<ItemCategoriesManagement />} />
+    <Route path="fees" element={<FeesManagement />} />
+</Route>
       {/* ================= SHIPPER ================= */}
 
       <Route
@@ -201,7 +214,29 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-
+      <Route
+        path="/shipper/profile/edit"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout>
+              <ShipperProfileEdit />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+        
+      />
+      
+    <Route
+        path="/shipper/profile"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout>
+              <ShipperProfile />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+        
+      />
       <Route
         path="/shipper/about"
         element={

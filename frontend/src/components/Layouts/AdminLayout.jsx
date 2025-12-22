@@ -72,6 +72,38 @@ const AdminLayout = () => {
                         >
                             <FaChartBar /> <span>Báo cáo</span>
                         </Link>
+                        {/* MASTER DATA */}
+                        <div className="sidebar-section-title">
+                        </div>
+
+                        <Link
+                        to="/admin/service-types"
+                        className={`sidebar-link ${isActive("/admin/service-types")}`}
+                        >
+                        <FaBoxOpen /> <span>Service Types</span>
+                        </Link>
+
+                        <Link
+                        to="/admin/payment-methods"
+                        className={`sidebar-link ${isActive("/admin/payment-methods")}`}
+                        >
+                        <FaBoxOpen /> <span>Payment Methods</span>
+                        </Link>
+
+                        <Link
+                        to="/admin/item-categories"
+                        className={`sidebar-link ${isActive("/admin/item-categories")}`}
+                        >
+                        <FaBoxOpen /> <span>Item Categories</span>
+                        </Link>
+
+                        <Link
+                        to="/admin/fees"
+                        className={`sidebar-link ${isActive("/admin/fees")}`}
+                        >
+                        <FaBoxOpen /> <span>Fees</span>
+                        </Link>
+
                     </nav>
                 </div>
 
