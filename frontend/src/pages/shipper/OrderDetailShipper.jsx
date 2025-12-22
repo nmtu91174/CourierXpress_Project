@@ -61,6 +61,7 @@ const OrderDetailShipper = () => {
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [deliveryImage, setDeliveryImage] = useState(null);
 
+    // Tạo URL preview cho ảnh pickup và delivery
     const pickupPreviewUrl = pickupImage
         ? URL.createObjectURL(pickupImage)
         : null;
@@ -68,6 +69,7 @@ const OrderDetailShipper = () => {
     const deliveryPreviewUrl = deliveryImage
         ? URL.createObjectURL(deliveryImage)
         : null;
+
     // GPS when confirming delivery
     const [deliveryLocation, setDeliveryLocation] = useState(null);
     const [gpsError, setGpsError] = useState(null);
