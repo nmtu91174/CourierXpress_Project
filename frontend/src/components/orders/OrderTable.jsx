@@ -1,11 +1,12 @@
 import React from "react";
 import { Table, Spinner, Button } from "react-bootstrap";
-import { FaSearch, FaUserCog, FaEdit, FaTrash, FaUserTie } from "react-icons/fa";
+import { FaSearch, FaUserCog, FaEdit, FaTimesCircle, FaRedo, FaClone, FaLevelUpAlt, FaUserTie, FaStop } from "react-icons/fa";
 
 import StatusBadge from "../common/StatusBadge";
-import { canAdminAssignShipper, canAdminAssignAgent, isTerminalStatus } from "../../constants/orderStatus";
+import { canAdminAssignShipper, canAdminAssignAgent, isTerminalStatus, ORDER_STATUS } from "../../constants/orderStatus";
 
 import "../../assets/styles/order-table.css";
+import "../../assets/styles/order-table-agent.css";
 import "../../assets/styles/order.css";
 
 /**
@@ -21,13 +22,18 @@ export default function OrderTable({
   loading = false,
   orders = [],
   userRole = "admin",
+  showAgentColumn = false, // For agent dashboard to show "Assigned Agent" column
 
   onRowClick,
   onViewDetail,
   onAssignShipper,
   onAssignAgent,
   onEditOrder,
-  onDeleteOrder,
+  onCancelOrder,
+  onTerminateWorkflow,
+  onReopenOrder,
+  onCloneOrder,
+  onCreateFollowupOrder,
 }) {
   /* ================================
    * HANDLERS
@@ -56,9 +62,29 @@ export default function OrderTable({
     if (typeof onEditOrder === "function") onEditOrder(order);
   };
 
-  const handleDelete = (e, order) => {
+  const handleCancel = (e, order) => {
     e.stopPropagation();
-    if (typeof onDeleteOrder === "function") onDeleteOrder(order);
+    if (typeof onCancelOrder === "function") onCancelOrder(order);
+  };
+
+  const handleTerminateWorkflow = (e, order) => {
+    e.stopPropagation();
+    if (typeof onTerminateWorkflow === "function") onTerminateWorkflow(order);
+  };
+
+  const handleReopen = (e, order) => {
+    e.stopPropagation();
+    if (typeof onReopenOrder === "function") onReopenOrder(order);
+  };
+
+  const handleClone = (e, order) => {
+    e.stopPropagation();
+    if (typeof onCloneOrder === "function") onCloneOrder(order);
+  };
+
+  const handleCreateFollowup = (e, order) => {
+    e.stopPropagation();
+    if (typeof onCreateFollowupOrder === "function") onCreateFollowupOrder(order);
   };
 
   /* ================================
@@ -80,26 +106,182 @@ export default function OrderTable({
     );
   };
 
+  // Enterprise: State-driven actions using backend permission flags
+  // Separate logic for "Assign Shipper" (first time) vs "Reassign Shipper"
   const canAssign = (order) => {
-    if (userRole !== "admin") return false;
-    return canAdminAssignShipper(order);
+    // Use backend permission flags if available (enterprise-safe)
+    if (order.permissions) {
+      // Only show "Assign Shipper" if can_assign_shipper (APPROVED + no shipper)
+      // Do NOT show for can_reassign_shipper (that's a different action)
+      if (userRole === "admin" || userRole === "agent") {
+        return order.permissions.can_assign_shipper === true;
+      }
+      return false;
+    }
+    
+    // Fallback to legacy logic (backward compatibility)
+    if (userRole === "admin") {
+      return canAdminAssignShipper(order);
+    }
+    // Agent can assign shipper if APPROVED and no shipper
+    if (userRole === "agent") {
+      return (
+        Number(order.status) === ORDER_STATUS.APPROVED &&
+        (order.shipper_id === null ||
+          order.shipper_id === undefined ||
+          Number(order.shipper_id) === 0)
+      );
+    }
+    return false;
+  };
+
+  // Reassign Shipper: Only for ASSIGNED status (before pickup)
+  const canReassign = (order) => {
+    if (userRole !== "admin" && userRole !== "agent") return false;
+    
+    // Use backend permission flags if available
+    if (order.permissions) {
+      return order.permissions.can_reassign_shipper === true;
+    }
+    
+    // Fallback: ASSIGNED (3) with shipper but not picked up
+    const status = Number(order.status);
+    const hasShipper = order.shipper_id !== null && order.shipper_id !== undefined && Number(order.shipper_id) !== 0;
+    
+    return status === ORDER_STATUS.ASSIGNED && hasShipper;
   };
 
   const canAssignAgent = (order) => {
     if (userRole !== "admin") return false;
+    
+    // Use backend permission flags if available (enterprise-safe)
+    if (order.permissions) {
+      return order.permissions.can_assign_agent;
+    }
+    
+    // Fallback to legacy logic
     return canAdminAssignAgent(order);
   };
 
-  // Admin có thể edit/delete khi không phải terminal status
+  // Admin có thể edit khi không phải terminal status
   const canEdit = (order) => {
     if (userRole !== "admin") return false;
+    
+    // Use backend permission flags if available
+    if (order.permissions) {
+      return order.permissions.can_edit;
+    }
+    
+    // Fallback to legacy logic
     return !isTerminalStatus(order.status);
   };
 
-  const canDelete = (order) => {
-    if (userRole !== "admin") return false;
-    // Có thể delete bất kỳ status nào (soft delete)
-    return true;
+  // Enterprise: Cancel Order - Admin/Agent can cancel non-terminal orders
+  const canCancel = (order) => {
+    if (userRole !== "admin" && userRole !== "agent") return false;
+    
+    // Use backend permission flags if available
+    if (order.permissions) {
+      return order.permissions.can_cancel;
+    }
+    
+    // Fallback to legacy logic
+    const status = Number(order.status);
+    return !isTerminalStatus(status);
+  };
+
+  // Enterprise: Reopen Order - Only soft-cancelled orders (status < ASSIGNED before cancel)
+  const canReopen = (order) => {
+    if (userRole !== "admin" && userRole !== "agent") return false;
+    
+    // Use backend permission flags if available
+    if (order.permissions) {
+      return order.permissions.can_reopen === true;
+    }
+    
+    // Fallback to legacy logic
+    const status = Number(order.status);
+    const previousStatus = order.previous_status ? Number(order.previous_status) : null;
+    
+    // Only CANCELLED (7) orders with previous_status < ASSIGNED (3) can be reopened
+    if (status !== ORDER_STATUS.CANCELLED) return false;
+    if (previousStatus !== null && previousStatus < 3) return true;
+    
+    return false;
+  };
+
+  // Enterprise: Clone Order - Only cancelled at ASSIGNED (previous_status = 3, chưa pickup)
+  // Enterprise Rule: Clone only when assigned but not yet picked up
+  const canClone = (order) => {
+    if (userRole !== "admin" && userRole !== "agent") return false;
+    
+    // Use backend permission flags if available (enterprise-safe)
+    if (order.permissions) {
+      return order.permissions.can_clone === true;
+    }
+    
+    // Fallback to legacy logic
+    const status = Number(order.status);
+    const previousStatus = order.previous_status ? Number(order.previous_status) : null;
+    
+    // Only CANCELLED (7) at ASSIGNED (previous_status = 3) can be cloned
+    if (status !== ORDER_STATUS.CANCELLED) return false;
+    if (previousStatus !== null && previousStatus === ORDER_STATUS.ASSIGNED) return true;
+    
+    return false;
+  };
+
+  // Enterprise: Terminate Workflow - Only from ASSIGNED (3) onward
+  // Enterprise Rule: Workflow Termination (internal close) is separate from Business Cancellation
+  // Allowed if:
+  // - Current status = ASSIGNED (3) OR IN_PROGRESS (4)
+  // - NOT allowed for BOOKED/APPROVED (use Cancel instead)
+  // - NOT allowed for terminal statuses
+  const canTerminateWorkflow = (order) => {
+    if (userRole !== "admin" && userRole !== "agent") return false;
+    
+    // Use backend permission flags if available (enterprise-safe)
+    if (order.permissions) {
+      return order.permissions.can_terminate_workflow === true;
+    }
+    
+    // Fallback to legacy logic
+    const status = Number(order.status);
+    
+    // Only ASSIGNED (3) or IN_PROGRESS (4) can be terminated
+    return status === ORDER_STATUS.ASSIGNED || status === ORDER_STATUS.IN_PROGRESS;
+  };
+
+  // Enterprise: Create Follow-up Order - Only after pickup
+  // Enterprise Rule: Follow-up only when real-world operation occurred
+  // Allowed if:
+  // - Current status >= IN_PROGRESS (4), OR
+  // - Current status = CANCELLED (7) AND previous_status >= IN_PROGRESS (4), OR
+  // - Current status = FAILED (6) (typically after pickup)
+  const canCreateFollowup = (order) => {
+    if (userRole !== "admin" && userRole !== "agent") return false;
+    
+    // Use backend permission flags if available (enterprise-safe)
+    if (order.permissions) {
+      return order.permissions.can_create_followup === true;
+    }
+    
+    // Fallback to legacy logic
+    const status = Number(order.status);
+    const previousStatus = order.previous_status ? Number(order.previous_status) : null;
+    
+    // Current status >= IN_PROGRESS (already picked up)
+    if (status >= ORDER_STATUS.IN_PROGRESS) return true;
+    
+    // CANCELLED after pickup (previous_status >= IN_PROGRESS)
+    if (status === ORDER_STATUS.CANCELLED && previousStatus !== null && previousStatus >= ORDER_STATUS.IN_PROGRESS) {
+      return true;
+    }
+    
+    // FAILED (typically after pickup)
+    if (status === ORDER_STATUS.FAILED) return true;
+    
+    return false;
   };
 
   /* ================================
@@ -108,15 +290,16 @@ export default function OrderTable({
   return (
     <div className="card-lux mb-4">
       <div className="lux-table-wrapper">
-        <Table hover responsive className="lux-table align-middle mb-0">
+        <Table hover responsive className={`lux-table align-middle mb-0 ${showAgentColumn ? 'agent-table-with-agent-column' : ''}`}>
           <thead>
             <tr>
-              <th>Mã vận đơn</th>
-              <th>Người gửi</th>
-              <th>Người nhận</th>
-              <th>Ngày tạo</th>
-              <th>Trạng thái</th>
-              <th className="text-start">Hành động</th>
+              <th>Order Code</th>
+              <th>Sender</th>
+              <th>Receiver</th>
+              {showAgentColumn && <th>Assigned Agent</th>}
+              <th>Created Date</th>
+              <th>Status</th>
+              <th className="text-start">Actions</th>
             </tr>
           </thead>
 
@@ -124,9 +307,9 @@ export default function OrderTable({
             {/* ================= Loading ================= */}
             {loading && (
               <tr>
-                <td colSpan={6} className="text-center py-4">
+                <td colSpan={showAgentColumn ? 7 : 6} className="text-center py-4">
                   <Spinner animation="border" size="sm" className="me-2" />
-                  Đang tải dữ liệu đơn hàng...
+                  Loading orders...
                 </td>
               </tr>
             )}
@@ -134,8 +317,8 @@ export default function OrderTable({
             {/* ================= Empty ================= */}
             {!loading && orders.length === 0 && (
               <tr>
-                <td colSpan={6} className="text-center text-muted py-4">
-                  Không có đơn hàng phù hợp.
+                <td colSpan={showAgentColumn ? 7 : 6} className="text-center text-muted py-4">
+                  No orders found.
                 </td>
               </tr>
             )}
@@ -149,17 +332,17 @@ export default function OrderTable({
                   onClick={() => handleRowClick(o)}
                 >
                   {/* Order code */}
-                  <td className="fw-semibold text-primary">
-                    {o.order_code || o.code}
+                  <td className="fw-semibold text-primary" data-label="">
+                    <span className="order-code">{o.order_code || o.code}</span>
                   </td>
 
                   {/* Sender */}
-                  <td>
+                  <td data-label="Sender">
                     <div className="fw-bold">
                       {o.sender_name || o.sender || "-"}
                     </div>
                     <div className="order-meta-line">
-                      {o.sender_phone || "Chưa có SĐT"}
+                      {o.sender_phone || "No phone"}
                     </div>
                     <div className="order-meta-line text-muted small">
                       {o.sender_address || "-"}
@@ -167,23 +350,39 @@ export default function OrderTable({
                   </td>
 
                   {/* Receiver */}
-                  <td>
+                  <td data-label="Receiver">
                     <div className="fw-bold">
                       {o.receiver_name || o.receiver || "-"}
                     </div>
                     <div className="order-meta-line">
-                      {o.receiver_phone || "Chưa có SĐT"}
+                      {o.receiver_phone || "No phone"}
                     </div>
                     <div className="order-meta-line text-muted small">
                       {o.receiver_address || "-"}
                     </div>
                   </td>
 
+                  {/* Assigned Agent (only shown if showAgentColumn is true) */}
+                  {showAgentColumn && (
+                    <td data-label="Assigned Agent">
+                      {o.agent_name ? (
+                        <div>
+                          <div className="fw-semibold">{o.agent_name}</div>
+                          {o.agent_id && (
+                            <small className="text-muted">ID: {o.agent_id}</small>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted small">Unassigned</span>
+                      )}
+                    </td>
+                  )}
+
                   {/* Created */}
-                  <td>{formatDateTime(o.created_at)}</td>
+                  <td data-label="Created">{formatDateTime(o.created_at)}</td>
 
                   {/* Status */}
-                  <td>
+                  <td data-label="Status">
                     <StatusBadge status={o.status} />
                   </td>
 
@@ -195,7 +394,7 @@ export default function OrderTable({
                         size="sm"
                         variant="outline-primary"
                         className="order-action-btn"
-                        title="Xem chi tiết"
+                        title="View Details"
                         onClick={(e) => handleView(e, o)}
                       >
                         <FaSearch />
@@ -207,23 +406,75 @@ export default function OrderTable({
                           size="sm"
                           variant="outline-primary"
                           className="order-action-btn"
-                          title="Sửa đơn hàng"
+                          title="Edit Order"
                           onClick={(e) => handleEdit(e, o)}
                         >
                           <FaEdit />
                         </Button>
                       )}
 
-                      {/* Delete – admin only */}
-                      {canDelete(o) && onDeleteOrder && (
+                      {/* Cancel – admin/agent only, BOOKED/APPROVED only */}
+                      {canCancel(o) && onCancelOrder && (
                         <Button
                           size="sm"
                           variant="outline-danger"
                           className="order-action-btn"
-                          title="Xóa đơn hàng"
-                          onClick={(e) => handleDelete(e, o)}
+                          title="Cancel Order (Business Cancellation - only for BOOKED or APPROVED orders)"
+                          onClick={(e) => handleCancel(e, o)}
                         >
-                          <FaTrash />
+                          <FaTimesCircle />
+                        </Button>
+                      )}
+
+                      {/* Terminate Workflow – admin/agent only, ASSIGNED/IN_PROGRESS only */}
+                      {canTerminateWorkflow(o) && onTerminateWorkflow && (
+                        <Button
+                          size="sm"
+                          variant="outline-secondary"
+                          className="order-action-btn"
+                          title="Terminate Workflow (Internal Close - only for ASSIGNED or IN_PROGRESS orders, enables clone/follow-up)"
+                          onClick={(e) => handleTerminateWorkflow(e, o)}
+                        >
+                          <FaStop />
+                        </Button>
+                      )}
+
+                      {/* Reopen – admin/agent only, soft-cancelled orders (previous_status < ASSIGNED) */}
+                      {canReopen(o) && onReopenOrder && (
+                        <Button
+                          size="sm"
+                          variant="outline-success"
+                          className="order-action-btn"
+                          title="Reopen Order (revive soft-cancelled order, restore to previous status)"
+                          onClick={(e) => handleReopen(e, o)}
+                        >
+                          <FaRedo />
+                        </Button>
+                      )}
+
+                      {/* Clone Order – admin/agent only, cancelled at ASSIGNED (chưa pickup) */}
+                      {canClone(o) && onCloneOrder && (
+                        <Button
+                          size="sm"
+                          variant="outline-info"
+                          className="order-action-btn"
+                          title="Clone Order (only for orders cancelled at ASSIGNED, before pickup - creates new order to restart)"
+                          onClick={(e) => handleClone(e, o)}
+                        >
+                          <FaClone />
+                        </Button>
+                      )}
+
+                      {/* Create Follow-up Order – admin/agent only, after pickup (cancelled/failed after IN_PROGRESS) */}
+                      {canCreateFollowup(o) && onCreateFollowupOrder && (
+                        <Button
+                          size="sm"
+                          variant="outline-warning"
+                          className="order-action-btn"
+                          title="Create Follow-up Order (only for orders cancelled/failed after pickup - continue real shipment)"
+                          onClick={(e) => handleCreateFollowup(e, o)}
+                        >
+                          <FaLevelUpAlt />
                         </Button>
                       )}
 
@@ -233,25 +484,41 @@ export default function OrderTable({
                           size="sm"
                           variant="outline-danger"
                           className="order-action-btn"
-                          title="Phân công agent (chỉ khi status=BOOKED/APPROVED và chưa có agent)"
+                          title="Assign Agent (only when status=BOOKED/APPROVED and no agent assigned)"
                           onClick={(e) => handleAssignAgent(e, o)}
                         >
                           <FaUserTie />
                         </Button>
                       )}
 
-                      {/* Assign shipper – admin only, status=APPROVED && !shipper_id */}
+                      {/* Assign shipper – ONLY when APPROVED and no shipper */}
                       {canAssign(o) && onAssignShipper && (
                         <Button
                           size="sm"
                           variant="outline-warning"
                           className="order-action-btn"
-                          title="Phân công shipper (chỉ khi status=APPROVED và chưa có shipper)"
+                          title="Assign Shipper (only when status=APPROVED and no shipper assigned)"
                           onClick={(e) => handleAssign(e, o)}
                         >
                           <FaUserCog />
                         </Button>
                       )}
+                      
+                      {/* Reassign shipper – ONLY when ASSIGNED and not picked up (optional - can be hidden) */}
+                      {/* Note: Reassign is typically done via Edit modal or separate flow, not table action */}
+                      {/* Uncomment if you want to show Reassign button in table:
+                      {canReassign(o) && onAssignShipper && (
+                        <Button
+                          size="sm"
+                          variant="outline-info"
+                          className="order-action-btn"
+                          title="Reassign Shipper (only when status=ASSIGNED and not picked up)"
+                          onClick={(e) => handleAssign(e, o)}
+                        >
+                          <FaUserCog /> Reassign
+                        </Button>
+                      )}
+                      */}
                     </div>
                   </td>
                 </tr>

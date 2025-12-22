@@ -1,6 +1,4 @@
 // frontend/src/pages/admin/Reports.jsx
-"use client";
-
 import React, { useMemo, useState, useEffect } from "react";
 import { Card, Row, Col, Button, Table } from "react-bootstrap";
 import {

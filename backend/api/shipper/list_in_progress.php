@@ -73,7 +73,8 @@ $orders = [];
 
 while ($row = $result->fetch_assoc()) {
     $row["id"]         = (int)$row["id"];
-    $row["weight"]     = (float)$row["weight"];
+    // [FIX] Weight is now in GRAMS (INT) in database
+    $row["weight"]     = (int)$row["weight"];
     $row["cod_amount"] = (float)$row["cod_amount"];
     $row["created_at"] = date("Y-m-d H:i", strtotime($row["created_at"]));
     $orders[] = $row;

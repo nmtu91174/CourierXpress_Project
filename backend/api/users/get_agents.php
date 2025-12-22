@@ -24,21 +24,24 @@ require_once __DIR__ . "/../../middleware/require_role.php";
 // AUTH
 // ==========================
 require_login();
-require_role(["admin"]);
+require_role(["admin", "agent"]); // Agent cần xem danh sách agents để filter orders trong team scope
 
 // ==========================
-// QUERY
+// QUERY - Include active_orders_count
 // ==========================
 $stmt = $conn->prepare("
     SELECT 
-        id,
-        name,
-        email,
-        phone,
-        status
-    FROM users
-    WHERE role = 'agent'
-    ORDER BY name ASC
+        u.id,
+        u.name,
+        u.email,
+        u.phone,
+        u.status,
+        COUNT(DISTINCT CASE WHEN o.status IN (1, 2, 3, 4) THEN o.id ELSE NULL END) AS active_orders_count
+    FROM users u
+    LEFT JOIN orders o ON o.agent_id = u.id
+    WHERE u.role = 'agent'
+    GROUP BY u.id, u.name, u.email, u.phone, u.status
+    ORDER BY u.name ASC
 ");
 
 $stmt->execute();
@@ -47,6 +50,7 @@ $result = $stmt->get_result();
 $agents = [];
 while ($row = $result->fetch_assoc()) {
     $row["id"] = (int)$row["id"];
+    $row["active_orders_count"] = (int)$row["active_orders_count"];
     $agents[] = $row;
 }
 

@@ -1,0 +1,343 @@
+/* ==============================
+   AGENT PORTAL LAYOUT (DQN STYLE)
+   EXACT COPY OF ADMIN LAYOUT - Only branding changes
+================================ */
+
+/* BRAND COLOR SYSTEM (SCOPED) */
+.agent-wrapper {
+    --sidebar-bg: #1a1d21;
+    --sidebar-text: #9da5b1;
+    --primary-color: #ff4d24;
+    --secondary-color: #0d6efd;
+    --success-color: #36c689;
+    --warning-color: #ffc107;
+    --danger-color: #ff4d6d;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --glass-bg: rgba(255, 255, 255, 0.06);
+    --font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+/* ==============================
+   RESET (SCOPED, NO GLOBAL IMPACT)
+================================ */
+
+.agent-wrapper * {
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* ==============================
+   LAYOUT
+================================ */
+
+.agent-wrapper {
+    display: flex;
+    min-height: 100vh;
+    background: #f4f6f9;
+    overflow: hidden;
+    font-family: var(--font-family);
+}
+
+/* ==============================
+   SIDEBAR (LUXURY STYLE) - SAME AS ADMIN
+================================ */
+
+.agent-wrapper .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--sidebar-bg);
+    color: #fff;
+    border-right: 1px solid var(--border-color);
+    backdrop-filter: blur(8px);
+    box-shadow: 8px 0 16px rgba(0, 0, 0, 0.24);
+}
+
+/* HEADER */
+.agent-wrapper .sidebar-header {
+    padding: 24px 20px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: .2px;
+}
+
+/* NAVIGATION LIST */
+.agent-wrapper .sidebar-menu {
+    margin: 0;
+    padding: 18px 0;
+    list-style: none;
+}
+
+/* LINK */
+.agent-wrapper .sidebar-link {
+    display: flex;
+    align-items: center;
+    padding: 12px 22px;
+    color: var(--sidebar-text);
+    font-size: .95rem;
+    font-weight: 500;
+    text-decoration: none;
+    letter-spacing: .15px;
+    position: relative;
+    transition: background .25s ease, color .2s ease, transform .25s ease;
+    border-left: 3px solid transparent;
+}
+
+/* ICON */
+.agent-wrapper .sidebar-link svg {
+    font-size: 1.18rem;
+    margin-right: 14px;
+    opacity: .9;
+}
+
+/* HOVER + ACTIVE - EXACT SAME AS ADMIN */
+.agent-wrapper .sidebar-link:hover,
+.agent-wrapper .sidebar-link.active {
+    color: #fff !important;
+    background: linear-gradient( 90deg, rgba(255, 77, 36, 0.9) 0%, rgba(255, 77, 36, 0.6) 60%, rgba(255, 77, 36, 0.2) 100%);
+    transform: translateX(4px);
+}
+
+/* ACTIVE BAR - EXACT SAME AS ADMIN */
+.agent-wrapper .sidebar-link.active::before {
+    content: "";
+    width: 4px;
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 0 4px 4px 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+/* ==============================
+   CONTENT AREA - SAME AS ADMIN
+================================ */
+
+.agent-wrapper .agent-content {
+    flex: 1;
+    margin-left: 260px;
+    padding: 32px;
+    height: 100vh;
+    overflow-y: auto;
+    background: #f5f7fa;
+    width: calc(100% - 260px); /* Ensure content takes remaining width */
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* HEADER - EXACT SAME AS ADMIN */
+.agent-wrapper .agent-content > header {
+    /* Desktop: Normal positioning */
+    position: relative;
+    padding: 0;
+    margin-bottom: 1.5rem;
+}
+
+.agent-wrapper .agent-content > header h5 {
+    font-size: clamp(0.8125rem, 1.5vw + 0.5rem, 1rem);
+    font-weight: 500;
+    color: #374151;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Hamburger menu icon styling - SAME AS ADMIN */
+.agent-wrapper .sidebar-toggle-mobile {
+    display: none;
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #374151;
+    margin-right: 1rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    transition: background-color 0.15s ease;
+}
+
+.agent-wrapper .sidebar-toggle-mobile:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.agent-wrapper .sidebar-toggle-mobile:focus {
+    outline: none;
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.agent-wrapper .sidebar-toggle-mobile svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2;
+}
+
+/* ==============================
+   RESPONSIVE - EXACT SAME AS ADMIN
+================================ */
+
+/* TABLET (768px - 1199px) - Icon-only sidebar with tooltip */
+@media (max-width: 1199px) and (min-width: 768px) {
+    .agent-wrapper .sidebar {
+        width: 72px;
+    }
+    .agent-wrapper .agent-content {
+        margin-left: 72px;
+    }
+    .agent-wrapper .sidebar-header small,
+    .agent-wrapper .sidebar-header h4 span,
+    .agent-wrapper .sidebar-header h4 {
+        font-size: 0;
+        /* hidden but keeps space */
+    }
+    .agent-wrapper .sidebar-link {
+        position: relative;
+    }
+    .agent-wrapper .sidebar-link span {
+        display: none;
+    }
+    .agent-wrapper .sidebar-link svg {
+        margin: 0 auto;
+        font-size: 1.35rem;
+    }
+    
+    /* Tooltip on hover for tablet */
+    .agent-wrapper .sidebar-link::after {
+        content: attr(data-title);
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        margin-left: 12px;
+        padding: 6px 12px;
+        background: rgba(26, 29, 33, 0.95);
+        color: #fff;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        white-space: nowrap;
+        border-radius: 6px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 10000;
+    }
+    
+    .agent-wrapper .sidebar-link:hover::after {
+        opacity: 1;
+    }
+}
+
+/* ======================================
+   MOBILE — SIDEBAR DRAWER
+   Slide-in drawer from left
+====================================== */
+
+/* Mobile sidebar overlay */
+.agent-wrapper .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9998;
+    display: none;
+}
+
+@media (max-width: 767px) {
+    /* Show overlay when sidebar is open */
+    .agent-wrapper .sidebar-overlay {
+        display: block;
+    }
+    
+    /* Show hamburger menu on mobile */
+    .agent-wrapper .sidebar-toggle-mobile {
+        display: flex;
+    }
+    
+    /* Header sticky on mobile only - bám sát top và bao hết màn hình */
+    .agent-wrapper .agent-content {
+        margin-left: 0 !important; /* Remove margin on mobile */
+        padding-top: 0 !important; /* Remove top padding to allow header to stick to top */
+        position: relative;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        padding-bottom: 0 !important;
+        width: 100% !important; /* Full width on mobile */
+        max-width: 100% !important;
+    }
+    
+    .agent-wrapper .agent-content > header {
+        position: sticky;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: #ffffff;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 1rem;
+        margin: 0;
+        width: 100vw; /* Full viewport width */
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        box-sizing: border-box;
+        margin-bottom: 1rem;
+    }
+    
+    /* Adjust admin-page padding to compensate */
+    .agent-wrapper .agent-content .admin-page {
+        padding-top: 0;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    /* Sidebar hidden by default on mobile */
+    .agent-wrapper .sidebar {
+        position: fixed;
+        top: 0;
+        left: -260px;
+        width: 260px;
+        height: 100vh;
+        z-index: 9999;
+        transition: left 0.3s ease;
+        flex-direction: column;
+    }
+    
+    /* Sidebar open state */
+    .agent-wrapper .sidebar.sidebar-open {
+        left: 0;
+    }
+    
+    .agent-wrapper .sidebar-header {
+        display: block;
+    }
+    
+    .agent-wrapper .sidebar-link span {
+        display: inline !important;
+    }
+    
+    .agent-wrapper .sidebar-link svg {
+        margin-right: 14px;
+        font-size: 1.18rem;
+    }
+    
+    /* Ensure no margin-left on mobile */
+    .agent-wrapper .agent-content > * {
+        margin-left: 0 !important;
+    }
+}
+

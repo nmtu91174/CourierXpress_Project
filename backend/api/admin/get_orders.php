@@ -47,10 +47,11 @@ $offset = ($page - 1) * $limit;
 
 // ==========================
 // BASE SQL (Enterprise - Join invoices)
+// Note: For list query, we use full JOIN in $sqlList
+// For count, we only need orders table
 // ==========================
 $baseSql = "
     FROM orders o
-    LEFT JOIN invoices inv ON o.id = inv.order_id
 ";
 
 // ==========================
@@ -66,7 +67,11 @@ switch ($role) {
         break;
 
     case "agent":
-        $where[] = "o.agent_id = ?";
+        // [RBAC] Agent can view orders if:
+        // - orders.agent_id IS NULL (unassigned orders)
+        // - OR orders.agent_id = current_agent_id (their own orders)
+        // NOTE: Agent cannot view orders assigned to other agents (no team scope)
+        $where[] = "(o.agent_id IS NULL OR o.agent_id = ?)";
         $params[] = $userId;
         $types   .= "i";
         break;
@@ -234,7 +239,7 @@ $total = (int)$resultCount->fetch_assoc()["total"];
 $stmtCount->close();
 
 // ==========================
-// LIST (Enterprise - Include invoice info)
+// LIST (Enterprise - Include invoice info + JOIN names)
 // ==========================
 $sqlList = "
     SELECT 
@@ -255,9 +260,25 @@ $sqlList = "
         o.total_shipping_fee,
         o.notes,
         o.payment_method_id,
+        o.previous_status,
+        o.cancelled_at,
+        o.cancelled_by,
+        o.weight,
+        o.service_type,
         inv.invoice_number,
-        inv.status AS invoice_status
-    " . $baseSql . $whereClause . "
+        inv.status AS invoice_status,
+        pm.name AS payment_method_name,
+        pm.code AS payment_method_code,
+        u_agent.name AS agent_name,
+        u_shipper.name AS shipper_name,
+        st.name AS service_type_name
+    FROM orders o
+    LEFT JOIN invoices inv ON o.id = inv.order_id
+    LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id
+    LEFT JOIN users u_agent ON o.agent_id = u_agent.id
+    LEFT JOIN users u_shipper ON o.shipper_id = u_shipper.id
+    LEFT JOIN service_types st ON o.service_type = st.id
+    " . $whereClause . "
     ORDER BY o.created_at DESC
     LIMIT ? OFFSET ?
 ";
@@ -283,6 +304,108 @@ $res = $stmt->get_result();
 if ($res) {
 while ($row = $res->fetch_assoc()) {
     $row["status"] = (int)$row["status"];
+    if (isset($row["weight"])) {
+        $row["weight"] = (int)$row["weight"]; // Ensure weight is integer (grams)
+    }
+    
+    // ==========================
+    // CALCULATE PERMISSION FLAGS (Enterprise - State-driven actions)
+    // ==========================
+    $currentStatus = (int)$row["status"];
+    $previousStatus = isset($row["previous_status"]) ? (int)$row["previous_status"] : null;
+    $hasAgent = !empty($row["agent_id"]) && (int)$row["agent_id"] > 0;
+    $hasShipper = !empty($row["shipper_id"]) && (int)$row["shipper_id"] > 0;
+    
+    // Check if order has been picked up: status >= 4 means already picked up
+    $hasBeenPickedUp = $currentStatus >= 4;
+    
+    // Enterprise Action Matrix (State-driven)
+    $permissions = [
+        "can_assign_agent" => false,
+        "can_assign_shipper" => false,
+        "can_reassign_shipper" => false,
+        "can_edit" => false,
+        "can_cancel" => false,
+        "can_terminate_workflow" => false, // NEW: Workflow Termination (from ASSIGNED onward)
+        "can_reopen" => false,
+        "can_clone" => false,
+        "can_create_followup" => false,
+    ];
+    
+    // BOOKED (1): Can assign agent, cannot assign shipper
+    if ($currentStatus === 1) {
+        $permissions["can_assign_agent"] = !$hasAgent;
+        $permissions["can_edit"] = true;
+        $permissions["can_cancel"] = true;
+    }
+    
+    // APPROVED (2): Can assign agent and shipper (if not picked up)
+    if ($currentStatus === 2) {
+        if (!$hasBeenPickedUp) {
+            $permissions["can_assign_agent"] = !$hasAgent;
+            $permissions["can_assign_shipper"] = !$hasShipper;
+        }
+        $permissions["can_edit"] = true;
+        $permissions["can_cancel"] = true;
+    }
+    
+    // ASSIGNED (3): Can reassign shipper only if not picked up
+    // IMPORTANT: Do NOT set can_assign_shipper for ASSIGNED status
+    // can_assign_shipper is ONLY for APPROVED (2) status
+    if ($currentStatus === 3) {
+        if (!$hasBeenPickedUp) {
+            $permissions["can_reassign_shipper"] = true; // Separate action from can_assign_shipper
+        }
+        // Do NOT set can_assign_shipper = true here (that's only for APPROVED)
+        $permissions["can_edit"] = true;
+        // Enterprise: Cannot cancel ASSIGNED orders (only BOOKED/APPROVED)
+        $permissions["can_cancel"] = false;
+        // Enterprise: Can terminate workflow (internal close) from ASSIGNED onward
+        $permissions["can_terminate_workflow"] = true;
+    }
+    
+    // IN_PROGRESS (4): No assign actions allowed, but can terminate workflow
+    if ($currentStatus === 4) {
+        $permissions["can_edit"] = false;
+        $permissions["can_cancel"] = false;
+        // Enterprise: Can terminate workflow (internal close) from ASSIGNED onward
+        $permissions["can_terminate_workflow"] = true;
+    }
+    
+    // DELIVERED (5) / FAILED (6): No actions allowed
+    if ($currentStatus === 5 || $currentStatus === 6) {
+        $permissions["can_edit"] = false;
+        $permissions["can_cancel"] = false;
+    }
+    
+    // CANCELLED (7): Action depends on previous_status
+    if ($currentStatus === 7) {
+        // Reopen: Only if cancelled at BOOKED/APPROVED (previous_status < ASSIGNED = 3)
+        // Enterprise Rule: Reopen only before assignment
+        if ($previousStatus !== null && $previousStatus < 3) {
+            $permissions["can_reopen"] = true;
+        }
+        // Clone: Only if cancelled at ASSIGNED (previous_status = ASSIGNED = 3) and NOT picked up
+        // Enterprise Rule: Clone only when assigned but not yet picked up
+        if ($previousStatus !== null && $previousStatus === 3) {
+            $permissions["can_clone"] = true;
+        }
+        // Follow-up: Only if cancelled AFTER pickup (previous_status >= IN_PROGRESS = 4)
+        // Enterprise Rule: Follow-up only after real-world operation occurred
+        if ($previousStatus !== null && $previousStatus >= 4) {
+            $permissions["can_create_followup"] = true;
+        }
+    }
+    
+    // FAILED (6): Only follow-up allowed (no reopen, no clone)
+    // Enterprise Rule: Failed = operational failure, must continue via follow-up
+    if ($currentStatus === 6) {
+        // Follow-up: Only if failed after pickup (check from order_history or assume IN_PROGRESS+)
+        // Since FAILED typically occurs after pickup, allow follow-up
+        $permissions["can_create_followup"] = true;
+    }
+    
+    $row["permissions"] = $permissions; // Add permission flags
     $data[] = $row;
     }
 }

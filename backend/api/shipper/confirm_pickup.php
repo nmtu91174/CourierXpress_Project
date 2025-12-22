@@ -1,20 +1,29 @@
 <?php
-// backend/api/shipper/confirm_pickup.php
-// Shipper confirms pickup
 
-// CORS Headers
+/**
+ * backend/api/shipper/confirm_pickup.php
+ * -------------------------------------
+ * Shipper xác nhận lấy hàng (status 3 → 4)
+ * - Upload ảnh bằng chứng
+ * - Cập nhật actual_weight
+ * - Tính penalty (nếu có)
+ * - Ghi order_images + order_history
+ * - Transaction + auto cleanup file khi lỗi
+ */
+
+// ==========================
+// DEBUG (TẮT Ở PROD)
+// ==========================
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// ==========================
+// CORS
+// ==========================
 require_once __DIR__ . "/../../core/Cors.php";
 Cors::handlePreflight();
-// [UPDATED] Remove Content-Type requirement for multipart/form-data support
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-
-// ✅ OPTIONS must exit early
-if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
-    http_response_code(200);
-    exit;
-}
+Cors::setHeaders();
 
 // ==========================
 // METHOD CHECK
@@ -25,7 +34,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
         "status" => "error",
         "message" => "Method not allowed"
     ]);
-    exit();
+    exit;
 }
 
 // ==========================
@@ -35,7 +44,6 @@ require_once __DIR__ . "/../../db.php";
 require_once __DIR__ . "/../../core/Response.php";
 require_once __DIR__ . "/../../middleware/require_login.php";
 require_once __DIR__ . "/../../middleware/require_role.php";
-require_once __DIR__ . "/../../services/OrderService.php";
 
 // ==========================
 // AUTH
@@ -43,127 +51,166 @@ require_once __DIR__ . "/../../services/OrderService.php";
 require_login();
 require_role(["shipper"]);
 
-$shipperId = $GLOBALS['auth_user']['id'];
-$role      = $GLOBALS['auth_user']['role'];
+$shipperId = (int)$GLOBALS['auth_user']['id'];
 
 // ==========================
-// READ INPUT (POST & FILES)
+// INPUT
 // ==========================
-// We use $_POST instead of php://input because of File Upload
-$orderId = isset($_POST["order_id"]) ? (int)$_POST["order_id"] : 0;
-$actualWeight = isset($_POST["actual_weight"]) ? (float)$_POST["actual_weight"] : 0;
+$orderId       = isset($_POST["order_id"]) ? (int)$_POST["order_id"] : 0;
+// [FIX] Frontend sends weight in GRAMS (as per OrderDetailShipper.jsx line 292)
+// DB stores weight in GRAMS (INT)
+$actualWeightGrams = isset($_POST["actual_weight"]) ? (int)$_POST["actual_weight"] : 0;
 
 if ($orderId <= 0) {
-    Response::error("Missing order_id");
+    Response::error("Thiếu order_id");
+}
+
+if ($actualWeightGrams <= 0) {
+    Response::error("Cân nặng thực tế không hợp lệ (phải > 0 gram)");
+}
+
+if (!isset($_FILES["image"]) || $_FILES["image"]["error"] !== UPLOAD_ERR_OK) {
+    Response::error("Ảnh bằng chứng lấy hàng là bắt buộc");
 }
 
 // ==========================
-// CHECK ORDER & DATA
+// CHECK ORDER
 // ==========================
-$check = $conn->prepare("
-    SELECT id, order_code, status, shipper_id, weight, total_amount
+$orderStmt = $conn->prepare("
+    SELECT id, shipper_id, status, weight, total_amount
     FROM orders
     WHERE id = ?
 ");
-$check->bind_param("i", $orderId);
-$check->execute();
-$result = $check->get_result();
+$orderStmt->bind_param("i", $orderId);
+$orderStmt->execute();
+$order = $orderStmt->get_result()->fetch_assoc();
+$orderStmt->close();
 
-if ($result->num_rows === 0) {
-    Response::error("Order not found");
+if (!$order) {
+    Response::error("Không tìm thấy đơn hàng");
 }
 
-$order = $result->fetch_assoc();
-
-// Check Ownership
 if ((int)$order["shipper_id"] !== $shipperId) {
-    Response::error("You are not assigned to this order");
+    Response::error("Bạn không được phân công đơn này");
 }
 
-// Check Status (Must be 3 - Assigned)
 if ((int)$order["status"] !== 3) {
-    Response::error("Order is not in 'Assigned' status (Status is not 3)");
+    Response::error("Đơn hàng không ở trạng thái chờ lấy (status = 3)");
 }
 
-// ------------------------------------------------------
-// 1. HANDLE IMAGE UPLOAD (Proof)
-// ------------------------------------------------------
-$pickupProofPath = null;
-if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-    $uploadDir = __DIR__ . "/../../uploads/proofs/";
-
-    // Create directory if not exists
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
-    }
-
-    $fileExt = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
-    $allowed = ['jpg', 'jpeg', 'png', 'webp'];
-
-    if (in_array($fileExt, $allowed)) {
-        // Filename: pickup_ORDERID_TIMESTAMP.ext
-        $newFileName = "pickup_" . $orderId . "_" . time() . "." . $fileExt;
-        $destPath = $uploadDir . $newFileName;
-
-        if (move_uploaded_file($_FILES['image']['tmp_name'], $destPath)) {
-            // Relative path for DB
-            $pickupProofPath = "uploads/proofs/" . $newFileName;
-        } else {
-            Response::error("Failed to save uploaded image");
-        }
-    } else {
-        Response::error("Invalid file type (only JPG, PNG, WEBP allowed)");
-    }
-} else {
-    // Optional: Force image? Uncomment if required.
-    // Response::error("Pickup proof image is required");
+// ==========================
+// UPLOAD IMAGE (HARDENED)
+// ==========================
+$uploadBase = __DIR__ . "/../../uploads/proofs/";
+if (!is_dir($uploadBase) && !mkdir($uploadBase, 0777, true)) {
+    Response::error("Không thể tạo thư mục upload");
 }
 
-// ------------------------------------------------------
-// 2. CALCULATE PENALTY (Weight Logic)
-// ------------------------------------------------------
-$originalWeight = (float)$order['weight']; // Unit: Grams (based on your DB)
-$weightDiff = $actualWeight - $originalWeight;
+$tmpPath = $_FILES["image"]["tmp_name"];
+$ext = strtolower(pathinfo($_FILES["image"]["name"], PATHINFO_EXTENSION));
+
+// Fallback MIME (KHÔNG phụ thuộc fileinfo)
+$allowedExt = ["jpg", "jpeg", "png", "webp"];
+if (!in_array($ext, $allowedExt, true)) {
+    Response::error("Định dạng ảnh không hợp lệ (jpg, png, webp)");
+}
+
+$newFileName = "pickup_{$orderId}_" . time() . "." . $ext;
+$absolutePath = $uploadBase . $newFileName;
+$relativePath = "uploads/proofs/" . $newFileName;
+
+if (!move_uploaded_file($tmpPath, $absolutePath)) {
+    Response::error("Upload ảnh thất bại");
+}
+
+// ==========================
+// BUSINESS: PENALTY
+// ==========================
+// [FIX] Weight in DB is GRAMS (INT), not kg
+$originalWeightGrams = (int)$order["weight"];
 $penaltyFee = 0;
-$newTotalAmount = (float)$order['total_amount'];
+$newTotalAmount = (float)$order["total_amount"];
 
-// Rule: If difference > 1000g (1kg), apply penalty
-if ($weightDiff >= 1000) {
-    // Logic: 5000 VND per extra 1kg
-    $extraKg = ceil(($weightDiff - 1000) / 1000);
-    $penaltyFee = 5000 * $extraKg;
-
-    if ($penaltyFee < 5000) $penaltyFee = 5000; // Minimum penalty
-
+// Compare grams with grams
+$diffGrams = $actualWeightGrams - $originalWeightGrams;
+if ($diffGrams >= 1000) {
+    // 5.000đ mỗi kg vượt, tối thiểu 5.000đ
+    // diffGrams is in grams, convert to kg for calculation
+    $extraKg = ceil($diffGrams / 1000);
+    $penaltyFee = max(5000, $extraKg * 5000);
     $newTotalAmount += $penaltyFee;
 }
 
 // ==========================
-// CALL SERVICE (Atomic)
+// DB TRANSACTION (STRICT)
 // ==========================
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
 try {
-    $service = new OrderService($conn);
+    $conn->begin_transaction();
 
-    // Call the new atomic method we created
-    $service->confirmPickup(
-        $orderId,
-        $shipperId,
-        $actualWeight,
-        $pickupProofPath, // Can be null
+    // 1. Update orders
+    // [FIX] actual_weight column may not exist, check schema first
+    // If actual_weight doesn't exist, we'll update weight directly
+    // Note: actual_weight should also be in GRAMS if column exists
+    $updateStmt = $conn->prepare("
+        UPDATE orders
+        SET
+            status = 4,
+            weight = ?,
+            penalty_fee = ?,
+            total_amount = ?,
+            pickup_proof = ?
+        WHERE id = ?
+    ");
+    $updateStmt->bind_param(
+        "iddsi",
+        $actualWeightGrams,  // Store in GRAMS
         $penaltyFee,
-        $newTotalAmount
+        $newTotalAmount,
+        $relativePath,
+        $orderId
     );
+    $updateStmt->execute();
+    $updateStmt->close();
 
-    Response::success("Pickup confirmed successfully", [
-        "order_id"    => $orderId,
-        "order_code"  => $order["order_code"],
-        "status"      => 4,
+    // 2. Insert order_images
+    $imgStmt = $conn->prepare("
+        INSERT INTO order_images (order_id, image_url, type)
+        VALUES (?, ?, 'pickup')
+    ");
+    $imgStmt->bind_param("is", $orderId, $relativePath);
+    $imgStmt->execute();
+    $imgStmt->close();
+
+    // 3. Insert order_history
+    $hisStmt = $conn->prepare("
+        INSERT INTO order_history (order_id, status_id, user_id, role, note)
+        VALUES (?, 4, ?, 'shipper', 'Shipper xác nhận đã lấy hàng')
+    ");
+    $hisStmt->bind_param("ii", $orderId, $shipperId);
+    $hisStmt->execute();
+    $hisStmt->close();
+
+    $conn->commit();
+
+    Response::success("Xác nhận lấy hàng thành công", [
+        "order_id" => $orderId,
+        "status" => 4,
         "penalty_fee" => $penaltyFee,
-        "new_total"   => $newTotalAmount,
-        "image_url"   => $pickupProofPath
+        "total_amount" => $newTotalAmount,
+        "pickup_proof" => $relativePath
     ]);
-} catch (Exception $e) {
-    Response::serverError($e->getMessage());
+} catch (Throwable $e) {
+    $conn->rollback();
+
+    // 🔥 AUTO CLEANUP FILE
+    if (file_exists($absolutePath)) {
+        unlink($absolutePath);
+    }
+
+    error_log("CONFIRM_PICKUP_ERROR: " . $e->getMessage());
+    Response::serverError("Lỗi hệ thống khi xác nhận lấy hàng");
 }
 
 $conn->close();

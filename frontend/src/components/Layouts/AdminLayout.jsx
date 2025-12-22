@@ -8,6 +8,7 @@ import {
     FaChartBar,
     FaSignOutAlt
 } from "react-icons/fa";
+import UserMenu from "../layout/UserMenu";
 
 import "../../assets/styles/admin.css";
 
@@ -15,11 +16,52 @@ const AdminLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar state
 
+    // Load user from localStorage on mount
     useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("user"));
-        if (storedUser) setUser(storedUser);
+        const loadUser = () => {
+            const storedUser = JSON.parse(localStorage.getItem("user") || "null");
+            if (storedUser) setUser(storedUser);
+        };
+        loadUser();
     }, []);
+
+    // Listen for localStorage changes (when avatar/profile is updated)
+    useEffect(() => {
+        const handleStorageChange = (e) => {
+            if (e.key === "user") {
+                const storedUser = JSON.parse(e.newValue || "null");
+                if (storedUser) setUser(storedUser);
+            }
+        };
+
+        // Listen for storage events (from other tabs/windows)
+        window.addEventListener("storage", handleStorageChange);
+
+        // Also listen for custom event (from same tab)
+        const handleCustomStorageChange = () => {
+            const storedUser = JSON.parse(localStorage.getItem("user") || "null");
+            if (storedUser) setUser(storedUser);
+        };
+        window.addEventListener("userUpdated", handleCustomStorageChange);
+
+        return () => {
+            window.removeEventListener("storage", handleStorageChange);
+            window.removeEventListener("userUpdated", handleCustomStorageChange);
+        };
+    }, []);
+
+    // Also check localStorage on route change (in case update happened in same tab)
+    useEffect(() => {
+        const storedUser = JSON.parse(localStorage.getItem("user") || "null");
+        if (storedUser) {
+            // Only update if user data actually changed (especially avatar)
+            if (!user || user.avatar !== storedUser.avatar || user.name !== storedUser.name) {
+                setUser(storedUser);
+            }
+        }
+    }, [location.pathname]);
 
     const handleLogout = () => {
         localStorage.removeItem("user");
@@ -29,10 +71,36 @@ const AdminLayout = () => {
 
     const isActive = (path) => (location.pathname === path ? "active" : "");
 
+    // Prevent body scroll when sidebar is open on mobile
+    useEffect(() => {
+        if (sidebarOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [sidebarOpen]);
+
+    // Close sidebar when route changes (mobile)
+    useEffect(() => {
+        setSidebarOpen(false);
+    }, [location.pathname]);
+
     return (
         <div className="admin-wrapper">
+            {/* Mobile sidebar overlay */}
+            {sidebarOpen && (
+                <div 
+                    className="sidebar-overlay" 
+                    onClick={() => setSidebarOpen(false)}
+                    aria-label="Close sidebar"
+                />
+            )}
+
             {/* 📌 SIDEBAR — Luôn cố định */}
-            <aside className="sidebar d-flex flex-column justify-content-between">
+            <aside className={`sidebar d-flex flex-column justify-content-between ${sidebarOpen ? 'sidebar-open' : ''}`}>
 
                 {/* LOGO / BRAND */}
                 <div>
@@ -48,6 +116,7 @@ const AdminLayout = () => {
                         <Link
                             to="/admin/dashboard"
                             className={`sidebar-link ${isActive("/admin/dashboard")}`}
+                            data-title="Dashboard"
                         >
                             <FaTachometerAlt /> <span>Dashboard</span>
                         </Link>
@@ -55,22 +124,25 @@ const AdminLayout = () => {
                         <Link
                             to="/admin/orders"
                             className={`sidebar-link ${isActive("/admin/orders")}`}
+                            data-title="Order Management"
                         >
-                            <FaBoxOpen /> <span>Quản lý Đơn hàng</span>
+                            <FaBoxOpen /> <span>Order Management</span>
                         </Link>
 
                         <Link
                             to="/admin/agents"
                             className={`sidebar-link ${isActive("/admin/agents")}`}
+                            data-title="Agent Management"
                         >
-                            <FaUsers /> <span>Quản lý Đại lý</span>
+                            <FaUsers /> <span>Agent Management</span>
                         </Link>
 
                         <Link
                             to="/admin/reports"
                             className={`sidebar-link ${isActive("/admin/reports")}`}
+                            data-title="Reports"
                         >
-                            <FaChartBar /> <span>Báo cáo</span>
+                            <FaChartBar /> <span>Reports</span>
                         </Link>
                         {/* MASTER DATA */}
                         <div className="sidebar-section-title">
@@ -107,14 +179,9 @@ const AdminLayout = () => {
                     </nav>
                 </div>
 
-                {/* LOGOUT SECTION — bottom anchor */}
+                {/* User menu is now in header - removed sidebar logout */}
                 <div className="mb-3">
-                    <button
-                        onClick={handleLogout}
-                        className="sidebar-link text-danger fw-semibold border-0 bg-transparent d-flex align-items-center"
-                    >
-                        <FaSignOutAlt /> <span className="ms-1">Đăng xuất</span>
-                    </button>
+                    {/* Logout moved to UserMenu component */}
                 </div>
             </aside>
 
@@ -123,23 +190,21 @@ const AdminLayout = () => {
 
                 {/* HEADER */}
                 <header className="d-flex justify-content-between align-items-center mb-4">
-                    <h5 className="text-secondary m-0">Hệ thống quản lý vận chuyển</h5>
+                    {/* Mobile sidebar toggle button */}
+                    <button 
+                        className="sidebar-toggle-mobile d-md-none"
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        aria-label="Toggle sidebar"
+                    >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 12h18M3 6h18M3 18h18"/>
+                        </svg>
+                    </button>
+                    <h5 className="text-secondary m-0 flex-grow-1 text-truncate">Shipping Management System</h5>
 
-                    <div className="d-flex align-items-center">
+                    <div className="d-flex align-items-center flex-shrink-0">
                         {user ? (
-                            <>
-                                <span className="me-2 text-muted small">Xin chào,</span>
-                                <span className="fw-bold">{user.name}</span>
-
-                                <div
-                                    className="rounded-circle ms-2"
-                                    style={{
-                                        width: 35,
-                                        height: 35,
-                                        background: "linear-gradient(135deg, #ff4d24, #ff824d)"
-                                    }}
-                                ></div>
-                            </>
+                            <UserMenu user={user} />
                         ) : (
                             <span className="fw-bold text-muted">Administrator</span>
                         )}

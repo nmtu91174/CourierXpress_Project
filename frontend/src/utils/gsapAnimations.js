@@ -42,6 +42,9 @@ export const animateKPICards = (selector = ".kpi-item") => {
  * @param {string} selector - CSS selector for quick action items (default: ".quick-action")
  */
 export const animateQuickActions = (selector = ".quick-action") => {
+  const elements = document.querySelectorAll(selector);
+  if (elements.length === 0) return null;
+
   gsap.set(selector, {
     willChange: "transform, opacity",
   });
@@ -62,6 +65,9 @@ export const animateQuickActions = (selector = ".quick-action") => {
  * @param {string} selector - CSS selector for chart wrappers (default: ".chart-wrapper")
  */
 export const animateCharts = (selector = ".chart-wrapper") => {
+  const elements = document.querySelectorAll(selector);
+  if (elements.length === 0) return null;
+
   gsap.set(selector, {
     willChange: "opacity",
   });
@@ -79,6 +85,9 @@ export const animateCharts = (selector = ".chart-wrapper") => {
  * @param {string} selector - CSS selector for fade sections (default: ".fade-section")
  */
 export const animateFadeSections = (selector = ".fade-section") => {
+  const elements = document.querySelectorAll(selector);
+  if (elements.length === 0) return null;
+
   gsap.set(selector, {
     willChange: "transform, opacity",
   });

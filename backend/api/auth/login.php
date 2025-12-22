@@ -69,7 +69,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 // QUERY USER
 // =====================================================
 $stmt = $conn->prepare("
-    SELECT id, name, email, password, role, phone, status
+    SELECT id, name, email, password, role, phone, status, avatar
     FROM users
     WHERE email = ?
     LIMIT 1
@@ -104,6 +104,9 @@ if (!password_verify($password, $user["password"])) {
 if ($user["status"] !== "active") {
     Response::error("Tài khoản đã bị khóa!");
 }
+
+// 🔒 HARDEN SESSION (PREVENT FIXATION)
+session_regenerate_id(true);
 
 // =====================================================
 // UPDATE LAST LOGIN
@@ -140,6 +143,7 @@ Response::success("Đăng nhập thành công!", [
     "role"   => $user["role"],
     "phone"  => $user["phone"],
     "status" => $user["status"],
+    "avatar" => $user["avatar"] ?? null,
 ]);
 
 $conn->close();

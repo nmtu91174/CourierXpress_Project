@@ -51,7 +51,8 @@ class OrderService extends BaseService
             }
 
             /* ---------- 3. PACKAGE INFO ---------- */
-            $weight = (float)($data["weight"] ?? 0);
+            // Weight is now in GRAMS (INT) instead of KG (FLOAT)
+            $weight = (int)($data["weight"] ?? 0);
             if ($weight <= 0) throw new Exception("weight is required");
 
             $length = (float)($data["length"] ?? 0);
@@ -125,7 +126,7 @@ class OrderService extends BaseService
             ]);
 
             $shippingFee = (float)$feeResult["shipping_fee"];
-            $totalAmount = (float)$feeResult["total_fee"];
+            $totalAmount = (float)($feeResult["total_with_cod"] ?? $feeResult["shipping_fee"]);
 
             /* ---------- 5. SENDER / RECEIVER ---------- */
             $senderName    = trim($data["sender_name"] ?? "");
@@ -145,6 +146,13 @@ class OrderService extends BaseService
 
             $notes = (string)($data["notes"] ?? "");
 
+            /* ---------- 3.5. PAYER TYPE ---------- */
+            // payer_type: 1 = Người gửi trả, 2 = Người nhận trả
+            $payerType = (int)($data["payer_type"] ?? 1);
+            if (!in_array($payerType, [1, 2], true)) {
+                throw new Exception("payer_type phải là 1 (Người gửi trả) hoặc 2 (Người nhận trả)");
+            }
+
             /* ---------- 6. INSERT ORDER ---------- */
             $stmt = $this->prepare("
                 INSERT INTO orders (
@@ -153,7 +161,7 @@ class OrderService extends BaseService
                     receiver_name, receiver_phone, receiver_address,
                     category_id,
                     weight, length, width, height,
-                    service_type, notes,
+                    service_type, notes, payer_type,
                     status,
                     total_amount, cod_amount, total_shipping_fee,
                     payment_method_id
@@ -163,19 +171,41 @@ class OrderService extends BaseService
                     ?, ?, ?,
                     ?,
                     ?, ?, ?, ?,
-                    ?, ?,
+                    ?, ?, ?,
                     ?,
                     ?, ?, ?,
                     ?
                 )
             ");
 
+            // Type string: 23 parameters - đếm cẩn thận
+            // 1-3: customer_id(i), agent_id(i), shipper_id(i) = iii
+            // 4-10: order_code(s), sender_name(s), sender_phone(s), sender_address(s), receiver_name(s), receiver_phone(s), receiver_address(s) = sssssss
+            // 11: category_id(i) = i
+            // 12-15: weight(d), length(d), width(d), height(d) = dddd (weight là DECIMAL trong DB)
+            // 16: service_type(i) = i
+            // 17: notes(s) = s
+            // 18: payer_type(i) = i
+            // 19: status(i) = i
+            // 20-22: total_amount(d), cod_amount(d), total_shipping_fee(d) = ddd
+            // 23: payment_method_id(i) = i
+            // Tổng: iii(3) + sssssss(7) + i(1) + dddd(4) + i(1) + s(1) + i(1) + i(1) + ddd(3) + i(1) = 23
+            // Type string: "iiisssssssiddddissidddi" = 23 ký tự
+            // Xử lý NULL cho category_id, agent_id, shipper_id
             $categoryIdParam = $categoryId;
-            $stmt->bind_param(
-                "iiisssssssiddddisidddi",
+            $agentIdParam = $agentId;
+            $shipperIdParam = $shipperId;
+            
+            // Convert weight to float for binding (DB accepts DECIMAL)
+            $weightFloat = (float)$weight;
+            
+            $typeString = "iiisssssssiddddissidddi";
+            
+            $bindResult = $stmt->bind_param(
+                $typeString,
                 $customerId,
-                $agentId,
-                $shipperId,
+                $agentIdParam,
+                $shipperIdParam,
                 $orderCode,
                 $senderName,
                 $senderPhone,
@@ -184,18 +214,24 @@ class OrderService extends BaseService
                 $receiverPhone,
                 $receiverAddress,
                 $categoryIdParam,
-                $weight,
+                $weightFloat,
                 $length,
                 $width,
                 $height,
                 $serviceType,
                 $notes,
+                $payerType,
                 $status,
                 $totalAmount,
                 $codAmount,
                 $shippingFee,
                 $paymentId
             );
+            
+            if (!$bindResult) {
+                $typeStrLen = strlen($typeString);
+                throw new Exception("bind_param failed: " . $stmt->error . " | Type string: '{$typeString}' | Length: {$typeStrLen} | Expected: 23 params");
+            }
 
             $stmt->execute();
             $orderId = (int)$this->conn->insert_id;
@@ -256,21 +292,68 @@ class OrderService extends BaseService
     {
         return $this->transaction(function () use ($orderId, $newStatus, $actorId, $actorRole, $note) {
 
-            $this->ensureOrderExists($orderId);
+            // Get current order state
+            $currentOrder = $this->prepare("SELECT status, agent_id, shipper_id FROM orders WHERE id = ?");
+            $currentOrder->bind_param("i", $orderId);
+            $currentOrder->execute();
+            $orderData = $currentOrder->get_result()->fetch_assoc();
+            
+            if (!$orderData) {
+                $currentOrder->close();
+                throw new Exception("Order not found");
+            }
+            
+            $currentStatus = (int)$orderData["status"];
+            $currentOrder->close();
 
             $checkStatus = $this->prepare("SELECT id FROM statuses WHERE id = ?");
             $checkStatus->bind_param("i", $newStatus);
             $checkStatus->execute();
             if ($checkStatus->get_result()->num_rows === 0) {
                 $checkStatus->close();
-                throw new Exception("Status {$newStatus} not found. Allowed: 1..6");
+                throw new Exception("Status {$newStatus} not found. Allowed: 1..7");
             }
             $checkStatus->close();
 
-            // [LƯU Ý QUAN TRỌNG] Cột trong DB là 'status', không phải 'status_id'
-            $stmt = $this->prepare("UPDATE orders SET status = ? WHERE id = ?");
-            $stmt->bind_param("ii", $newStatus, $orderId);
+            // Enterprise: Reset agent_id/shipper_id when rolling back to earlier statuses
+            // Rollback APPROVED → BOOKED: Reset agent_id
+            // Rollback ASSIGNED → APPROVED: Reset shipper_id
+            $resetAgentId = false;
+            $resetShipperId = false;
+            
+            // If rolling back from APPROVED (2) to BOOKED (1), reset agent_id
+            if ($currentStatus === self::STATUS_APPROVED && $newStatus === self::STATUS_BOOKED) {
+                $resetAgentId = true;
+            }
+            
+            // If rolling back from ASSIGNED (3) to APPROVED (2) or BOOKED (1), reset shipper_id
+            if ($currentStatus === self::STATUS_ASSIGNED && ($newStatus === self::STATUS_APPROVED || $newStatus === self::STATUS_BOOKED)) {
+                $resetShipperId = true;
+            }
+            
+            // If rolling back from any status to BOOKED (1), reset both
+            if ($newStatus === self::STATUS_BOOKED && $currentStatus > self::STATUS_BOOKED) {
+                $resetAgentId = true;
+                $resetShipperId = true;
+            }
+
+            // Build UPDATE query with conditional resets
+            if ($resetAgentId && $resetShipperId) {
+                $stmt = $this->prepare("UPDATE orders SET status = ?, agent_id = NULL, shipper_id = NULL WHERE id = ?");
+                $stmt->bind_param("ii", $newStatus, $orderId);
+            } elseif ($resetAgentId) {
+                $stmt = $this->prepare("UPDATE orders SET status = ?, agent_id = NULL WHERE id = ?");
+                $stmt->bind_param("ii", $newStatus, $orderId);
+            } elseif ($resetShipperId) {
+                $stmt = $this->prepare("UPDATE orders SET status = ?, shipper_id = NULL WHERE id = ?");
+                $stmt->bind_param("ii", $newStatus, $orderId);
+            } else {
+                $stmt = $this->prepare("UPDATE orders SET status = ? WHERE id = ?");
+                $stmt->bind_param("ii", $newStatus, $orderId);
+            }
+            
             $stmt->execute();
+            $stmt->close();
 
             $this->logHistory($orderId, $newStatus, $actorId, $actorRole, $note);
 
@@ -313,8 +396,7 @@ class OrderService extends BaseService
                     pickup_proof = ?, 
                     penalty_fee = ?, 
                     total_amount = ?, 
-                    status = ?, 
-                    updated_at = NOW() 
+                    status = ?
                 WHERE id = ?
             ");
 
@@ -393,18 +475,15 @@ class OrderService extends BaseService
                 throw new Exception("Order not belong to agent");
             }
 
-            // [SỬA ĐOẠN NÀY]
-            // Cập nhật shipper_id nhưng GIỮ NGUYÊN STATUS LÀ 2 (Approved)
-            // Để Shipper thấy đơn ở Dashboard và bấm "Nhận đơn" (chuyển sang 3)
+            // Enterprise: Assign shipper automatically bumps status to ASSIGNED (3)
+            // This ensures proper workflow: APPROVED (2) → ASSIGNED (3) when shipper is assigned
             $stmt = $this->prepare("
                 UPDATE orders SET shipper_id = ?, status = ?
                 WHERE id = ? AND shipper_id IS NULL
             ");
 
-            // [THAY ĐỔI QUAN TRỌNG] 
-            // Cũ: $statusAssigned = self::STATUS_ASSIGNED; (Là 3 - Sai luồng)
-            // Mới: $statusAssigned = self::STATUS_APPROVED; (Là 2 - Đúng luồng)
-            $statusAssigned = self::STATUS_APPROVED;
+            // Enterprise workflow: Assign shipper → Status becomes ASSIGNED (3)
+            $statusAssigned = self::STATUS_ASSIGNED; // 3
 
             $stmt->bind_param("iii", $shipperId, $statusAssigned, $orderId);
             $stmt->execute();
@@ -413,8 +492,8 @@ class OrderService extends BaseService
                 throw new Exception("Order already has shipper or update failed");
             }
 
-            // Ghi log
-            $this->logHistory($orderId, self::STATUS_APPROVED, $actorId, $role, $note);
+            // Ghi log với status mới (ASSIGNED)
+            $this->logHistory($orderId, self::STATUS_ASSIGNED, $actorId, $role, $note);
 
             if (method_exists($this, 'logAudit')) {
                 $this->logAudit($actorId, $role, "ASSIGN_SHIPPER", $orderId, "shipper={$shipperId}");
@@ -502,7 +581,7 @@ class OrderService extends BaseService
 
         try {
             // [FIXED] 'status_id' -> 'status' (Khớp với SQL eproject.sql)
-            $sqlOrder = "UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?";
+            $sqlOrder = "UPDATE orders SET status = ? WHERE id = ?";
 
             $stmtOrder = $conn->prepare($sqlOrder);
             if (!$stmtOrder) {
@@ -564,8 +643,7 @@ class OrderService extends BaseService
             $stmt = $this->prepare("
                 UPDATE orders SET 
                     status = ?, 
-                    delivery_proof = ?, 
-                    updated_at = NOW() 
+                    delivery_proof = ?
                 WHERE id = ?
             ");
 

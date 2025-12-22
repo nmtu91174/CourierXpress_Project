@@ -1,22 +1,58 @@
-# Dependencies
+#######################################
+# DEPENDENCIES
+#######################################
 node_modules/
 
-# Build output
+#######################################
+# BUILD OUTPUT
+#######################################
 dist/
 build/
 
-# Env
+#######################################
+# ENVIRONMENT VARIABLES
+#######################################
 .env
 .env.local
-.env.*
+.env.* 
 !.env.example
 
-# Logs
+#######################################
+# FRONTEND TOOLING LOGS
+#######################################
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Editor
+#######################################
+# BACKEND LOGS (PHP / APP)
+#######################################
+backend/logs/
+*.log
+
+#######################################
+# BACKEND UPLOADS (RUNTIME DATA - NEVER COMMIT)
+#######################################
+backend/uploads/
+backend/uploads/**
+backend/uploads/order_images/
+backend/uploads/user_avatars/
+
+#######################################
+# CACHE / TEMP
+#######################################
+.cache/
+.tmp/
+
+#######################################
+# OS / EDITOR
+#######################################
 .vscode/
 .DS_Store
+Thumbs.db
+
+#######################################
+# OPTIONAL (IF EVER USED)
+#######################################
+coverage/

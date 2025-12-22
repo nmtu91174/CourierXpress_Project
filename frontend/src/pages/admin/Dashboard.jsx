@@ -9,7 +9,10 @@ import {
   Row,
   Col,
   ListGroup,
+  Button,
+  Form,
 } from "react-bootstrap";
+import Swal from "sweetalert2";
 
 import ReactECharts from "echarts-for-react";
 import * as echarts from "echarts";
@@ -25,6 +28,11 @@ import {
   FaUserTie,
   FaHistory,
   FaInfoCircle,
+  FaMapMarkerAlt,
+  FaWeight,
+  FaRoute,
+  FaCreditCard,
+  FaCalendarAlt,
 } from "react-icons/fa";
 
 import { initPageAnimations } from "../../utils/gsapAnimations";
@@ -33,6 +41,7 @@ import { initPageAnimations } from "../../utils/gsapAnimations";
 import OrderFilterBar from "../../components/orders/OrderFilterBar";
 import OrderTable from "../../components/orders/OrderTable";
 import OrderDetailPanel from "../../components/orders/OrderDetailPanel";
+import StatusBadge from "../../components/common/StatusBadge";
 import { getStatusesInGroup } from "../../constants/orderStatusGroups";
 
 import "../../assets/styles/dashboard.css";
@@ -83,7 +92,6 @@ export default function Dashboard() {
   // =============================
   // 3. FETCH TẤT CẢ ĐƠN HÀNG
   // =============================
-useEffect(() => {
   const fetchOrders = async () => {
     try {
       const user = JSON.parse(localStorage.getItem("user")) || {};
@@ -127,7 +135,7 @@ useEffect(() => {
         // ===== KPI =====
         const total = data.length;
         const delivered = data.filter(o => Number(o.status) === 5).length;
-        const failed = data.filter(o => Number(o.status) === 6).length; // Status 6 = Failed (thay vì cancelled status 7)
+        const cancelled = data.filter(o => Number(o.status) === 7).length; // Status 7 = Cancelled
 
         setTotalOrders(total);
 
@@ -144,7 +152,7 @@ useEffect(() => {
         );
 
         setSuccessRate(total ? Math.round((delivered / total) * 100) + "%" : "0%");
-        setCancelRate(total ? Math.round((failed / total) * 100) + "%" : "0%");
+        setCancelRate(total ? Math.round((cancelled / total) * 100) + "%" : "0%");
       } else {
         setLoadingOrders(false);
       }
@@ -154,8 +162,9 @@ useEffect(() => {
     }
   };
 
-  fetchOrders();
-}, []); // Chỉ fetch một lần khi mount, không phụ thuộc vào filter
+  useEffect(() => {
+    fetchOrders();
+  }, []); // Chỉ fetch một lần khi mount, không phụ thuộc vào filter
 
   // =============================
   // 3.1. FETCH AGENTS & SHIPPERS
@@ -248,16 +257,16 @@ useEffect(() => {
                 }
                 
                 // Get role display name
-                const roleDisplay = role === "admin" ? "Admin" : role === "agent" ? "Đại lý" : role === "shipper" ? "Shipper" : "Người dùng";
+                const roleDisplay = role === "admin" ? "Admin" : role === "agent" ? "Agent" : role === "shipper" ? "Shipper" : "User";
                 
                 // Map action thành message thân thiện với format mới
                 let message = "";
                 switch (action) {
                   case "CREATE_ORDER":
-                    message = orderCode ? `${roleDisplay} đã tạo đơn hàng #${orderCode}` : `${roleDisplay} đã tạo đơn hàng`;
+                    message = orderCode ? `${roleDisplay} created order #${orderCode}` : `${roleDisplay} created order`;
                     break;
                   case "UPDATE_STATUS":
-                    message = orderCode ? `${roleDisplay} đã cập nhật trạng thái đơn hàng #${orderCode}` : `${roleDisplay} đã cập nhật trạng thái đơn hàng`;
+                    message = orderCode ? `${roleDisplay} updated order status #${orderCode}` : `${roleDisplay} updated order status`;
                     break;
                   case "ASSIGN_AGENT":
                     const agentMatch = note.match(/agent=(\d+)/);
@@ -265,9 +274,9 @@ useEffect(() => {
                       const agentId = parseInt(agentMatch[1]);
                       const agent = agents.find(a => a.id === agentId);
                       const agentName = agent ? agent.name : `Agent #${agentId}`;
-                      message = orderCode ? `${roleDisplay} đã phân công đại lý ${agentName} cho đơn hàng #${orderCode}` : `${roleDisplay} đã phân công đại lý ${agentName}`;
+                      message = orderCode ? `${roleDisplay} assigned agent ${agentName} to order #${orderCode}` : `${roleDisplay} assigned agent ${agentName}`;
                     } else {
-                      message = orderCode ? `${roleDisplay} đã phân công đại lý cho đơn hàng #${orderCode}` : `${roleDisplay} đã phân công đại lý`;
+                      message = orderCode ? `${roleDisplay} assigned agent to order #${orderCode}` : `${roleDisplay} assigned agent`;
                     }
                     break;
                   case "ASSIGN_SHIPPER":
@@ -276,34 +285,34 @@ useEffect(() => {
                       const shipperId = parseInt(shipperMatch[1]);
                       const shipper = shippers.find(s => s.id === shipperId);
                       const shipperName = shipper ? shipper.name : `Shipper #${shipperId}`;
-                      message = orderCode ? `${roleDisplay} đã phân công shipper ${shipperName} cho đơn hàng #${orderCode}` : `${roleDisplay} đã phân công shipper ${shipperName}`;
+                      message = orderCode ? `${roleDisplay} assigned shipper ${shipperName} to order #${orderCode}` : `${roleDisplay} assigned shipper ${shipperName}`;
                     } else {
-                      message = orderCode ? `${roleDisplay} đã phân công shipper cho đơn hàng #${orderCode}` : `${roleDisplay} đã phân công shipper`;
+                      message = orderCode ? `${roleDisplay} assigned shipper to order #${orderCode}` : `${roleDisplay} assigned shipper`;
                     }
                     break;
                   case "DELETE_ORDER":
-                    message = orderCode ? `${roleDisplay} đã xóa đơn hàng #${orderCode}` : `${roleDisplay} đã xóa đơn hàng`;
+                    message = orderCode ? `${roleDisplay} deleted order #${orderCode}` : `${roleDisplay} deleted order`;
                     break;
                   case "LOGIN":
-                    message = `${roleDisplay} đã đăng nhập`;
+                    message = `${roleDisplay} logged in`;
                     break;
                   case "REGISTER":
-                    message = `${roleDisplay} đã tạo tài khoản`;
+                    message = `${roleDisplay} registered`;
                     break;
                   case "RESET_PASSWORD":
-                    message = `${roleDisplay} đã reset mật khẩu`;
+                    message = `${roleDisplay} reset password`;
                     break;
                   case "UPDATE_USER":
-                    message = `${roleDisplay} đã cập nhật thông tin người dùng`;
+                    message = `${roleDisplay} updated user information`;
                     break;
                   case "CONFIRM_PICKUP":
-                    message = orderCode ? `Shipper đã xác nhận lấy hàng đơn #${orderCode}` : "Shipper đã xác nhận lấy hàng";
+                    message = orderCode ? `Shipper confirmed pickup for order #${orderCode}` : "Shipper confirmed pickup";
                     break;
                   case "CONFIRM_DELIVERY":
-                    message = orderCode ? `Shipper đã giao hàng thành công đơn #${orderCode}` : "Shipper đã giao hàng thành công";
+                    message = orderCode ? `Shipper delivered order #${orderCode} successfully` : "Shipper delivered order successfully";
                     break;
                   default:
-                    message = note || action || "Hành động hệ thống";
+                    message = note || action || "System action";
                 }
                 
                 return {
@@ -388,22 +397,22 @@ useEffect(() => {
     
     // Business errors - map sang message thân thiện
     if (msg.includes("thiếu cấu hình đơn giá") || msg.includes("thiếu cấu hình")) {
-      return "Hệ thống chưa sẵn sàng xử lý đơn. Vui lòng liên hệ quản trị viên để cấu hình phí vận chuyển.";
+      return "System is not ready to process orders. Please contact administrator to configure shipping fees.";
     }
     if (msg.includes("không thể phân công") || msg.includes("assign")) {
-      return "Không thể phân công shipper. Vui lòng kiểm tra lại trạng thái đơn hàng.";
+      return "Cannot assign shipper. Please check order status.";
     }
     if (msg.includes("foreign key") || msg.includes("constraint")) {
-      return "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đơn hàng.";
+      return "Invalid data. Please check order information.";
     }
     if (msg.includes("không tồn tại") || msg.includes("not found")) {
-      return "Không tìm thấy dữ liệu yêu cầu. Vui lòng thử lại.";
+      return "Requested data not found. Please try again.";
     }
     if (msg.includes("không có quyền") || msg.includes("permission")) {
-      return "Bạn không có quyền thực hiện thao tác này.";
+      return "You do not have permission to perform this action.";
     }
     if (msg.includes("đã tồn tại") || msg.includes("already exists")) {
-      return "Dữ liệu đã tồn tại trong hệ thống.";
+      return "Data already exists in the system.";
     }
     
     // Technical errors - giữ nguyên (sẽ hiển thị ở system logs)
@@ -558,6 +567,184 @@ useEffect(() => {
   const closePanel = () => setShowPanel(false);
 
   // =============================
+  // 6.1. ASSIGN MODAL STATES
+  // =============================
+  const [showAssignAgentModal, setShowAssignAgentModal] = useState(false);
+  const [showAssignShipperModal, setShowAssignShipperModal] = useState(false);
+  const [selectedOrderForAssign, setSelectedOrderForAssign] = useState(null);
+  const [assignAgentData, setAssignAgentData] = useState({ order_id: "", agent_id: "", note: "" });
+  const [assignShipperData, setAssignShipperData] = useState({ order_id: "", shipper_id: "", note: "" });
+  const [confirmAssignAgent, setConfirmAssignAgent] = useState(false);
+  const [confirmAssignShipper, setConfirmAssignShipper] = useState(false);
+
+  // Calculate workload for agents and shippers from allOrders
+  const agentsWithWorkload = useMemo(() => {
+    return agents.map(agent => {
+      const activeOrders = allOrders.filter(o => 
+        Number(o.agent_id) === Number(agent.id) && 
+        [1, 2, 3, 4].includes(Number(o.status)) // Non-terminal statuses
+      ).length;
+      return { ...agent, active_orders_count: activeOrders };
+    });
+  }, [agents, allOrders]);
+
+  const shippersWithWorkload = useMemo(() => {
+    return shippers.map(shipper => {
+      const activeOrders = allOrders.filter(o => 
+        Number(o.shipper_id) === Number(shipper.id) && 
+        [1, 2, 3, 4].includes(Number(o.status)) // Non-terminal statuses
+      ).length;
+      return { ...shipper, active_orders_count: activeOrders };
+    });
+  }, [shippers, allOrders]);
+
+  // Get orders available for assignment (for dropdown)
+  // Enterprise: Only show orders eligible for agent assignment (agent_id IS NULL)
+  const ordersForAgentAssignment = useMemo(() => {
+    return allOrders.filter(o => {
+      const status = Number(o.status);
+      const hasAgent = o.agent_id !== null && o.agent_id !== undefined && Number(o.agent_id) !== 0;
+      
+      // Only BOOKED (1) orders without agent are eligible for assignment
+      // Exclude terminal statuses (CANCELLED=7, FAILED=6, DELIVERED=5)
+      return status === 1 && !hasAgent && status !== 5 && status !== 6 && status !== 7;
+    });
+  }, [allOrders]);
+
+  const ordersForShipperAssignment = useMemo(() => {
+    // Only orders that are APPROVED (status=2) and don't have shipper yet
+    return allOrders.filter(o => Number(o.status) === 2 && (!o.shipper_id || Number(o.shipper_id) === 0));
+  }, [allOrders]);
+
+  // OrderInfoDisplay component (reusable)
+  const OrderInfoDisplay = ({ order, iconColor = "text-warning" }) => {
+    if (!order) return null;
+    
+    const getArea = (address) => {
+      if (!address) return "N/A";
+      return address.split(",").pop()?.trim() || address;
+    };
+
+    return (
+      <div className="luxury-order-info mb-4 p-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+        <div className="d-flex align-items-center mb-3">
+          <FaInfoCircle className={`me-2 ${iconColor}`} />
+          <h6 className="fw-bold mb-0">Order Summary (Read-Only)</h6>
+        </div>
+        <Row className="g-3">
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaBox className="me-1" /> Order Code</small><div className="fw-bold text-primary">{order.order_code || order.code || "N/A"}</div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaCalendarAlt className="me-1" /> Created Date</small><div className="fw-bold">{order.created_at ? new Date(order.created_at).toLocaleString("en-US") : "N/A"}</div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-block mb-1">Status</small><div style={{ display: "inline-block" }}><StatusBadge status={order.status} /></div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaRoute className="me-1" /> Service Type</small><div className="fw-bold">{order.service_type_name || "Standard"}</div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Pickup Area</small><div className="small fw-semibold">{getArea(order.sender_address || order.senderAddress)}</div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Delivery Area</small><div className="small fw-semibold">{getArea(order.receiver_address || order.receiverAddress)}</div></div></Col>
+          {order.weight && (
+            <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaWeight className="me-1" /> Weight</small><div className="fw-bold">{Number(order.weight).toLocaleString("en-US")} grams</div></div></Col>
+          )}
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaCreditCard className="me-1" /> Payment Method</small><div className="fw-bold">{order.payment_method_name || (order.payment_method_id === 1 ? "Cash" : order.payment_method_id === 2 ? "Bank Transfer" : order.payment_method_id === 3 ? "MoMo Wallet" : "Not specified")}</div></div></Col>
+        </Row>
+      </div>
+    );
+  };
+
+  // Handlers
+  const openAssignAgentModal = () => {
+    setSelectedOrderForAssign(null);
+    setAssignAgentData({ order_id: "", agent_id: "", note: "" });
+    setConfirmAssignAgent(false);
+    setShowAssignAgentModal(true);
+  };
+
+  const openAssignShipperModal = () => {
+    setSelectedOrderForAssign(null);
+    setAssignShipperData({ order_id: "", shipper_id: "", note: "" });
+    setConfirmAssignShipper(false);
+    setShowAssignShipperModal(true);
+  };
+
+  const handleAssignAgentSubmit = async () => {
+    if (!assignAgentData.order_id) {
+      return Swal.fire("Warning", "Please select an order", "warning");
+    }
+    if (!assignAgentData.agent_id) {
+      return Swal.fire("Warning", "Please select an agent", "warning");
+    }
+    if (!confirmAssignAgent) {
+      return Swal.fire("Warning", "Please confirm the assignment", "warning");
+    }
+    
+    try {
+      const res = await fetch("http://localhost:8888/api/admin/assign_agent.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          order_id: Number(assignAgentData.order_id),
+          agent_id: Number(assignAgentData.agent_id),
+          note: assignAgentData.note || "Assign agent via Dashboard quick action",
+        }),
+      });
+      
+      const data = await res.json();
+      if (data.status === "success") {
+        Swal.fire("Success", "Agent assigned successfully!", "success");
+        setShowAssignAgentModal(false);
+        setConfirmAssignAgent(false);
+        setAssignAgentData({ order_id: "", agent_id: "", note: "" });
+        setSelectedOrderForAssign(null);
+        
+        // Refresh orders
+        await fetchOrders();
+      } else {
+        Swal.fire("Error", data.message || "Cannot assign agent", "error");
+      }
+    } catch (error) {
+      Swal.fire("Error", "Server connection error", "error");
+    }
+  };
+
+  const handleAssignShipperSubmit = async () => {
+    if (!assignShipperData.order_id) {
+      return Swal.fire("Warning", "Please select an order", "warning");
+    }
+    if (!assignShipperData.shipper_id) {
+      return Swal.fire("Warning", "Please select a shipper", "warning");
+    }
+    if (!confirmAssignShipper) {
+      return Swal.fire("Warning", "Please confirm the assignment", "warning");
+    }
+    
+    try {
+      const res = await fetch("http://localhost:8888/api/admin/assign_shipper.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          order_id: Number(assignShipperData.order_id),
+          shipper_id: Number(assignShipperData.shipper_id),
+          note: assignShipperData.note || "Assign shipper via Dashboard quick action",
+        }),
+      });
+      
+      const data = await res.json();
+      if (data.status === "success") {
+        Swal.fire("Success", "Shipper assigned successfully!", "success");
+        setShowAssignShipperModal(false);
+        setConfirmAssignShipper(false);
+        setAssignShipperData({ order_id: "", shipper_id: "", note: "" });
+        setSelectedOrderForAssign(null);
+        
+        // Refresh orders
+        await fetchOrders();
+      } else {
+        Swal.fire("Error", data.message || "Cannot assign shipper", "error");
+      }
+    } catch (error) {
+      Swal.fire("Error", "Server connection error", "error");
+    }
+  };
+
+  // =============================
   // 7. CHART DATA (ECharts) – TÍNH TỪ allOrders
   // =============================
 
@@ -622,7 +809,7 @@ useEffect(() => {
     },
     series: [
       {
-        name: "Trạng thái",
+        name: "Status",
         type: "pie",
         radius: ["40%", "70%"],
         center: ["50%", "45%"],
@@ -708,7 +895,7 @@ useEffect(() => {
     },
     series: [
       {
-        name: "Đơn theo ngày",
+        name: "Daily Orders",
         type: "line",
         data: last7Days.values,
         smooth: true,
@@ -735,7 +922,7 @@ useEffect(() => {
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <p className="m-0 opacity-75 small">Tổng đơn (năm)</p>
+                  <p className="m-0 opacity-75 small">Total Orders (Year)</p>
                   <h2 className="fw-bold my-1">{totalOrders}</h2>
                 </div>
                 <FaBox className="fs-1 opacity-50" />
@@ -752,7 +939,7 @@ useEffect(() => {
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <p className="m-0 opacity-75 small">Tổng doanh thu (ước tính)</p>
+                  <p className="m-0 opacity-75 small">Total Revenue (Est.)</p>
                   <h2 className="fw-bold my-1">{totalRevenue}</h2>
                 </div>
                 <FaChartBar className="fs-1 opacity-50" />
@@ -769,7 +956,7 @@ useEffect(() => {
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <p className="m-0 opacity-75 small">Tỷ lệ giao thành công</p>
+                  <p className="m-0 opacity-75 small">Success Rate</p>
                   <h2 className="fw-bold my-1">{successRate}</h2>
                 </div>
                 <FaCheckCircle className="fs-1 opacity-50" />
@@ -786,7 +973,7 @@ useEffect(() => {
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <p className="m-0 opacity-75 small">Tỷ lệ huỷ</p>
+                  <p className="m-0 opacity-75 small">Cancel Rate</p>
                   <h2 className="fw-bold my-1">{cancelRate}</h2>
                 </div>
                 <FaExclamationTriangle className="fs-1 opacity-50" />
@@ -799,7 +986,7 @@ useEffect(() => {
       {/* ================= QUICK ACTION ================= */}
       <Card className="card-lux mb-4">
         <Card.Body>
-          <h5 className="fw-bold mb-3">Tác vụ nhanh</h5>
+          <h5 className="fw-bold mb-3">Quick Actions</h5>
 
           <div className="d-flex gap-3 flex-wrap">
             <Link
@@ -807,30 +994,32 @@ useEffect(() => {
               state={{ action: "create" }}
               className="quick-action btn btn-sm btn-lux-primary-blue btn-hover-scale"
             >
-              <FaClipboardList className="me-2" /> Tạo vận đơn
+              <FaClipboardList className="me-2" /> Create Order
             </Link>
 
-            <Link
-              to="/admin/orders"
-              state={{ action: "assign_agent" }}
+            <Button
+              onClick={openAssignAgentModal}
+              disabled={userRole !== "admin"}
               className="quick-action btn btn-sm btn-lux-primary-red btn-hover-scale"
+              title={userRole !== "admin" ? "Only admin can assign agents" : "Assign Agent to Order"}
             >
-              <FaUserTie className="me-2" /> Phân công agent
-            </Link>
+              <FaUserTie className="me-2" /> Assign Agent
+            </Button>
 
-            <Link
-              to="/admin/orders"
-              state={{ action: "assign" }}
+            <Button
+              onClick={openAssignShipperModal}
+              disabled={userRole !== "admin" && userRole !== "agent"}
               className="quick-action btn btn-sm btn-lux-primary-yellow btn-hover-scale"
+              title={userRole !== "admin" && userRole !== "agent" ? "Only admin/agent can assign shippers" : "Assign Shipper to Order"}
             >
-              <FaShippingFast className="me-2" /> Phân công shipper
-            </Link>
+              <FaShippingFast className="me-2" /> Assign Shipper
+            </Button>
 
             <Link
               to="/admin/reports"
               className="quick-action btn btn-sm btn-lux-primary-green btn-hover-scale"
             >
-              <FaChartBar className="me-2" /> Xem báo cáo
+              <FaChartBar className="me-2" /> View Reports
             </Link>
           </div>
         </Card.Body>
@@ -840,7 +1029,7 @@ useEffect(() => {
       <Row className="g-4 mb-4">
         <Col md={6} className="chart-wrapper">
           <Card className="card-lux p-3" style={{ minHeight: '450px' }}>
-            <h6 className="fw-bold mb-3">Tỷ lệ trạng thái đơn hàng</h6>
+            <h6 className="fw-bold mb-3">Order Status Distribution</h6>
             <div style={{ height: 380, marginTop: '10px' }}>
               <ReactECharts
                 option={optionOrderStatusPie}
@@ -853,7 +1042,7 @@ useEffect(() => {
 
         <Col md={6} className="chart-wrapper">
           <Card className="card-lux p-3" style={{ minHeight: '450px' }}>
-            <h6 className="fw-bold mb-3">7 ngày gần nhất</h6>
+            <h6 className="fw-bold mb-3">Last 7 Days</h6>
             <div style={{ height: 380, marginTop: '10px' }}>
               <ReactECharts
                 option={optionOrders7Days}
@@ -916,6 +1105,7 @@ useEffect(() => {
         loading={loadingOrders}
         orders={filteredOrders}
         onRowClick={openPanel}
+        onViewDetail={openPanel}
         onAssignShipper={(order) => {
           // Handle assign shipper - sẽ implement modal sau
           console.log("Assign shipper for order:", order);
@@ -932,7 +1122,7 @@ useEffect(() => {
             <Card.Body>
               <h6 className="fw-bold mb-3 d-flex align-items-center">
                 <FaBell className="me-2 text-warning" style={{ fontSize: "1.1rem" }} />
-                Thông báo gần đây
+                Recent Notifications
               </h6>
               <ListGroup variant="flush">
                 {notifications.length > 0 ? (
@@ -978,7 +1168,7 @@ useEffect(() => {
                   })
                 ) : (
                   <ListGroup.Item className="text-muted">
-                    Chưa có thông báo
+                    No notifications
                   </ListGroup.Item>
                 )}
               </ListGroup>
@@ -991,7 +1181,7 @@ useEffect(() => {
             <Card.Body>
               <h6 className="fw-bold mb-3 d-flex align-items-center">
                 <FaHistory className="me-2 text-primary" style={{ fontSize: "1.1rem" }} />
-                Nhật ký nghiệp vụ
+                Business Logs
               </h6>
               <ListGroup variant="flush">
                 {businessLogs.length > 0 ? (
@@ -1026,7 +1216,7 @@ useEffect(() => {
                         <FaExclamationTriangle className="me-2 mt-1" style={{ fontSize: "0.85rem", flexShrink: 0 }} />
                         <div className="flex-grow-1">
                           <div className="small">
-                            <span className="fw-semibold">[CẢNH BÁO]</span> {log.businessMessage}
+                            <span className="fw-semibold">[WARNING]</span> {log.businessMessage}
                           </div>
                           {timeStr && (
                             <div className="text-muted" style={{ fontSize: "0.75rem", marginTop: "2px" }}>
@@ -1039,7 +1229,7 @@ useEffect(() => {
                   })
                 ) : (
                   <ListGroup.Item className="text-muted">
-                    Không có cảnh báo nghiệp vụ
+                    No business warnings
                   </ListGroup.Item>
                 )}
               </ListGroup>
@@ -1060,6 +1250,316 @@ useEffect(() => {
         }}
         userRole={userRole}
       />
+
+      {/* ================= MODAL ASSIGN AGENT ================= */}
+      {showAssignAgentModal && (
+        <div className="dqn-modal-overlay">
+          <div className="dqn-modal">
+            <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #e53935, #ff5252)" }}>
+              <div className="dqn-modal-title">
+                <FaUserTie /> Assign Agent
+              </div>
+              <button
+                className="dqn-modal-close"
+                onClick={() => {
+                  setShowAssignAgentModal(false);
+                  setSelectedOrderForAssign(null);
+                  setAssignAgentData({ order_id: "", agent_id: "", note: "" });
+                  setConfirmAssignAgent(false);
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="dqn-modal-body">
+              <Form>
+                {/* Order Selector */}
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold d-flex align-items-center">
+                    <FaBox className="me-2 text-primary" /> Select Order <span className="text-danger ms-1">*</span>
+                  </Form.Label>
+                  <Form.Select 
+                    value={assignAgentData.order_id} 
+                    onChange={(e) => {
+                      const orderId = e.target.value;
+                      setAssignAgentData({ ...assignAgentData, order_id: orderId });
+                      const order = ordersForAgentAssignment.find(o => String(o.id) === orderId);
+                      setSelectedOrderForAssign(order || null);
+                    }} 
+                    size="lg" 
+                    className="luxury-select"
+                  >
+                    <option value="">-- Select Order --</option>
+                    {ordersForAgentAssignment.map(o => (
+                      <option key={o.id} value={o.id}>
+                        {o.order_code || o.code} - {o.sender_name || "N/A"} → {o.receiver_name || "N/A"} ({o.status === 1 ? "Booked" : o.status === 2 ? "Approved" : "Other"})
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+
+                {/* Order Summary (Read-only) */}
+                {selectedOrderForAssign && <OrderInfoDisplay order={selectedOrderForAssign} iconColor="text-danger" />}
+
+                {/* Agent Selector */}
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold d-flex align-items-center">
+                    <FaUserTie className="me-2 text-danger" /> Select Agent <span className="text-danger ms-1">*</span>
+                  </Form.Label>
+                  <Form.Select 
+                    value={assignAgentData.agent_id} 
+                    onChange={(e) => setAssignAgentData({ ...assignAgentData, agent_id: e.target.value })} 
+                    size="lg" 
+                    className="luxury-select"
+                  >
+                    <option value="">-- Select Agent --</option>
+                    {agentsWithWorkload.map(a => {
+                      const workload = a.active_orders_count || 0;
+                      const workloadLabel = workload === 0 ? "Available" : workload < 5 ? "Low" : workload < 10 ? "Medium" : "High";
+                      return (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.email}) - {workload} active orders ({workloadLabel}) {a.status === "active" ? "✓" : ""}
+                        </option>
+                      );
+                    })}
+                  </Form.Select>
+                  {assignAgentData.agent_id && (() => {
+                    const selected = agentsWithWorkload.find(a => a.id === Number(assignAgentData.agent_id));
+                    if (!selected) return null;
+                    const workload = selected.active_orders_count || 0;
+                    const afterAssign = workload + 1;
+                    return (
+                      <div className="mt-2 p-2 bg-light rounded">
+                        <small className="text-muted d-block mb-1">Estimated Workload:</small>
+                        <div className="d-flex justify-content-between">
+                          <span>Current active orders: <strong>{workload}</strong></span>
+                          <span>After assign: <strong className="text-primary">{afterAssign}</strong></span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </Form.Group>
+
+                {/* Assignment Note */}
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold">
+                    Assignment Note <span className="text-muted small fw-normal">(Optional)</span>
+                  </Form.Label>
+                  <Form.Control 
+                    as="textarea" 
+                    rows={3} 
+                    placeholder="e.g., Urgent order - process today, VIP customer..." 
+                    value={assignAgentData.note} 
+                    onChange={(e) => setAssignAgentData({ ...assignAgentData, note: e.target.value })} 
+                    className="luxury-textarea" 
+                  />
+                </Form.Group>
+
+                {/* Confirmation Block */}
+                <div className="mb-3 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded">
+                  <div className="d-flex align-items-start mb-2">
+                    <FaExclamationTriangle className="me-2 text-danger mt-1" />
+                    <div className="flex-grow-1">
+                      <strong className="d-block mb-1">Warning</strong>
+                      <small className="text-muted">This action will assign the order to the selected agent.</small>
+                    </div>
+                  </div>
+                  <Form.Check
+                    type="checkbox"
+                    id="confirm-assign-agent"
+                    label="I confirm this assignment"
+                    checked={confirmAssignAgent}
+                    onChange={(e) => setConfirmAssignAgent(e.target.checked)}
+                    className="mt-2"
+                  />
+                </div>
+              </Form>
+            </div>
+
+            <div className="dqn-modal-footer">
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setShowAssignAgentModal(false);
+                  setSelectedOrderForAssign(null);
+                  setAssignAgentData({ order_id: "", agent_id: "", note: "" });
+                  setConfirmAssignAgent(false);
+                }} 
+                className="btn-lux-outline-secondary"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="danger" 
+                onClick={handleAssignAgentSubmit} 
+                disabled={!assignAgentData.order_id || !assignAgentData.agent_id || !confirmAssignAgent} 
+                className="btn-lux-primary-red"
+              >
+                <FaUserTie className="me-2" /> Confirm Assignment
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL ASSIGN SHIPPER ================= */}
+      {showAssignShipperModal && (
+        <div className="dqn-modal-overlay">
+          <div className="dqn-modal">
+            <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #ffc107, #ffde59)" }}>
+              <div className="dqn-modal-title">
+                <FaShippingFast /> Assign Shipper
+              </div>
+              <button
+                className="dqn-modal-close"
+                onClick={() => {
+                  setShowAssignShipperModal(false);
+                  setSelectedOrderForAssign(null);
+                  setAssignShipperData({ order_id: "", shipper_id: "", note: "" });
+                  setConfirmAssignShipper(false);
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="dqn-modal-body">
+              <Form>
+                {/* Order Selector */}
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold d-flex align-items-center">
+                    <FaBox className="me-2 text-primary" /> Select Order <span className="text-danger ms-1">*</span>
+                  </Form.Label>
+                  <Form.Select 
+                    value={assignShipperData.order_id} 
+                    onChange={(e) => {
+                      const orderId = e.target.value;
+                      setAssignShipperData({ ...assignShipperData, order_id: orderId });
+                      const order = ordersForShipperAssignment.find(o => String(o.id) === orderId);
+                      setSelectedOrderForAssign(order || null);
+                    }} 
+                    size="lg" 
+                    className="luxury-select"
+                  >
+                    <option value="">-- Select Order (Approved orders only) --</option>
+                    {ordersForShipperAssignment.map(o => (
+                      <option key={o.id} value={o.id}>
+                        {o.order_code || o.code} - {o.sender_name || "N/A"} → {o.receiver_name || "N/A"}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  {ordersForShipperAssignment.length === 0 && (
+                    <Form.Text className="text-warning d-block mt-1">
+                      No approved orders available for shipper assignment.
+                    </Form.Text>
+                  )}
+                </Form.Group>
+
+                {/* Order Summary (Read-only) */}
+                {selectedOrderForAssign && <OrderInfoDisplay order={selectedOrderForAssign} iconColor="text-warning" />}
+
+                {/* Shipper Selector */}
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold d-flex align-items-center">
+                    <FaShippingFast className="me-2 text-warning" /> Select Shipper <span className="text-danger ms-1">*</span>
+                  </Form.Label>
+                  <Form.Select 
+                    value={assignShipperData.shipper_id} 
+                    onChange={(e) => setAssignShipperData({ ...assignShipperData, shipper_id: e.target.value })} 
+                    size="lg" 
+                    className="luxury-select"
+                  >
+                    <option value="">-- Select Shipper --</option>
+                    {shippersWithWorkload.map(s => {
+                      const workload = s.active_orders_count || 0;
+                      const workloadLabel = workload === 0 ? "Available" : workload < 5 ? "Low" : workload < 10 ? "Medium" : "High";
+                      const workloadColor = workload === 0 ? "text-success" : workload < 5 ? "text-info" : workload < 10 ? "text-warning" : "text-danger";
+                      return (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.email}) - {workload} active orders ({workloadLabel}) ✓
+                        </option>
+                      );
+                    })}
+                  </Form.Select>
+                  {assignShipperData.shipper_id && (() => {
+                    const selected = shippersWithWorkload.find(s => s.id === Number(assignShipperData.shipper_id));
+                    if (!selected) return null;
+                    const workload = selected.active_orders_count || 0;
+                    const afterAssign = workload + 1;
+                    return (
+                      <div className="mt-2 p-2 bg-light rounded">
+                        <small className="text-muted d-block mb-1">Estimated Load:</small>
+                        <div className="d-flex justify-content-between">
+                          <span>Current active orders: <strong>{workload}</strong></span>
+                          <span>After assign: <strong className="text-primary">{afterAssign}</strong></span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </Form.Group>
+
+                {/* Assignment Note */}
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold">
+                    Assignment Note <span className="text-muted small fw-normal">(Optional)</span>
+                  </Form.Label>
+                  <Form.Control 
+                    as="textarea" 
+                    rows={3} 
+                    placeholder="e.g., Urgent order - deliver today, VIP customer..." 
+                    value={assignShipperData.note} 
+                    onChange={(e) => setAssignShipperData({ ...assignShipperData, note: e.target.value })} 
+                    className="luxury-textarea" 
+                  />
+                </Form.Group>
+
+                {/* Confirmation Block */}
+                <div className="mb-3 p-3 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded">
+                  <div className="d-flex align-items-start mb-2">
+                    <FaExclamationTriangle className="me-2 text-warning mt-1" />
+                    <div className="flex-grow-1">
+                      <strong className="d-block mb-1">Warning</strong>
+                      <small className="text-muted">This action will assign the order to the selected shipper.</small>
+                    </div>
+                  </div>
+                  <Form.Check
+                    type="checkbox"
+                    id="confirm-assign-shipper"
+                    label="I confirm this assignment"
+                    checked={confirmAssignShipper}
+                    onChange={(e) => setConfirmAssignShipper(e.target.checked)}
+                    className="mt-2"
+                  />
+                </div>
+              </Form>
+            </div>
+
+            <div className="dqn-modal-footer">
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setShowAssignShipperModal(false);
+                  setSelectedOrderForAssign(null);
+                  setAssignShipperData({ order_id: "", shipper_id: "", note: "" });
+                  setConfirmAssignShipper(false);
+                }} 
+                className="btn-lux-outline-secondary"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="warning" 
+                onClick={handleAssignShipperSubmit} 
+                disabled={!assignShipperData.order_id || !assignShipperData.shipper_id || !confirmAssignShipper} 
+                className="btn-lux-primary-yellow"
+              >
+                <FaShippingFast className="me-2" /> Confirm Assignment
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

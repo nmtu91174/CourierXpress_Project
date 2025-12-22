@@ -54,9 +54,12 @@ $stmt = $conn->prepare("
         name,
         email,
         phone,
+        address,
+        avatar,
         role,
         status,
-        created_at
+        created_at,
+        last_login
     FROM users
     WHERE id = ?
     LIMIT 1

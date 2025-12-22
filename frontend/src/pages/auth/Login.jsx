@@ -99,28 +99,29 @@ const Login = () => {
                     title: data.message || "Đăng nhập thành công!"
                 });
 
-                // API mới trả về user trong data.data 
-                const userData = data.data || {};
+            // API mới trả về user trong data.data 
+            const userData = data.data || {};
+            localStorage.setItem("user", JSON.stringify(userData));
 
-                if (!userData.id || !userData.role) {
-                    console.error("Invalid user data:", userData);
-                    return Toast.fire({
-                        icon: "error",
-                        title: "Dữ liệu user không hợp lệ!"
-                    });
+            if (!userData.id || !userData.role) {
+                console.error("Invalid user data:", userData);
+                return Toast.fire({
+                    icon: "error",
+                    title: "Dữ liệu user không hợp lệ!"
+                });
+            }
+
+            setTimeout(() => {
+                if (userData.role === "admin") {
+                    navigate("/admin");
+                } else if (userData.role === "agent") {
+                    navigate("/agent/dashboard");
+                } else if (userData.role === "shipper") {
+                    navigate("/shipper/home");
+                } else {
+                    navigate("/");
                 }
-
-                localStorage.setItem("user", JSON.stringify(userData));
-
-                setTimeout(() => {
-                    if (userData.role === "admin") {
-                        navigate("/admin");
-                    } else if (userData.role === "shipper") {
-                        navigate("/shipper/home");
-                    } else {
-                        navigate("/");
-                    }
-                }, 1500);
+            }, 800);
 
             } else {
                 Toast.fire({

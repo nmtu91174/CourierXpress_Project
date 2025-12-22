@@ -21,11 +21,12 @@ import NoPermission from "./pages/auth/NoPermission.jsx";
 
 // Customer pages
 import CreateOrder from './pages/user/CreateOrder.jsx';
-import UserOrdersPage from './pages/shipper/UserOrdersPage.jsx';
 import UserProfilePage from './pages/shipper/UserProfilePage.jsx';
+import UserIdentityDashboard from './pages/admin/UserIdentityDashboard.jsx';
+import AccountSettingsPage from './pages/admin/AccountSettingsPage.jsx';
+import NotificationsPage from './pages/admin/NotificationsPage.jsx';
 import OrderDetail from './pages/user/OrderDetail.jsx';
 import Orders from './pages/user/Orders.jsx';
-import DeliveryInProgress from './pages/shipper/DeliveryInProgress.jsx';
 
 // Admin pages
 import AdminLayout from './components/Layouts/AdminLayout.jsx';
@@ -38,7 +39,12 @@ import PaymentMethodsManagement from "./pages/admin/PaymentMethodsManagement.jsx
 import ItemCategoriesManagement from "./pages/admin/ItemCategoriesManagement.jsx";
 import FeesManagement from "./pages/admin/FeesManagement.jsx";
 
-
+// Agent pages
+import AgentLayout from './components/Layouts/AgentLayout.jsx';
+import AgentDashboard from './pages/agent/AgentDashboard.jsx';
+import MyOrders from './pages/agent/MyOrders.jsx';
+import AssignShipper from './pages/agent/AssignShipper.jsx';
+import RequireRole from './components/guards/RequireRole.jsx';
 
 // Shipper pages
 import HomePageShipper from './pages/shipper/HomePageShipper.jsx';
@@ -47,13 +53,12 @@ import ContactShipper from './pages/shipper/ContactShipper.jsx';
 import OrderDetailShipper from './pages/shipper/OrderDetailShipper.jsx';
 import EditOrderShipper from "./pages/shipper/EditOrderShipper.jsx";
 import OrderHistoryShipper from "./pages/shipper/OrderHistoryShipper.jsx";
+import DeliveryInProgress from './pages/shipper/DeliveryInProgress.jsx';
 import ShipperProfileEdit from "./pages/shipper/ShipperProfileEdit";
 import ShipperProfile from './pages/shipper/ShipperProfile.jsx';
 
-
 // ================= LAYOUT =================
 
-// Layout cho các trang public (có Header + Footer)
 const PublicLayout = ({ children }) => (
   <>
     <Header />
@@ -64,7 +69,6 @@ const PublicLayout = ({ children }) => (
   </>
 );
 
-// Layout cho login / register / option / create order
 const AuthLayout = ({ children }) => (
   <main style={{ minHeight: '100vh', backgroundColor: '#fff' }}>
     {children}
@@ -74,143 +78,111 @@ const AuthLayout = ({ children }) => (
 export default function App() {
   return (
     <Routes>
-
       {/* ================= PUBLIC ================= */}
-
-      <Route
-        path="/"
-        element={
-          <PublicLayout>
-            <HomePageCostumer />
-          </PublicLayout>
-        }
-      />
-
-      <Route
-        path="/tracking"
-        element={
-          <PublicLayout>
-            <Tracking />
-          </PublicLayout>
-        }
-      />
-
-      <Route
-        path="/tracking/:id"
-        element={
-          <PublicLayout>
-            <TrackingResult />
-          </PublicLayout>
-        }
-      />
+      <Route path="/" element={<PublicLayout><HomePageCostumer /></PublicLayout>} />
+      <Route path="/tracking" element={<PublicLayout><Tracking /></PublicLayout>} />
+      <Route path="/tracking/:id" element={<PublicLayout><TrackingResult /></PublicLayout>} />
 
       {/* ================= AUTH ================= */}
-
-      <Route
-        path="/login"
-        element={
-          <AuthLayout>
-            <Login />
-          </AuthLayout>
-        }
-      />
-
-      <Route
-        path="/register"
-        element={
-          <AuthLayout>
-            <Register />
-          </AuthLayout>
-        }
-      />
-
-      <Route
-        path="/option"
-        element={
-          <AuthLayout>
-            <Option />
-          </AuthLayout>
-        }
-      />
+      <Route path="/login" element={<AuthLayout><Login /></AuthLayout>} />
+      <Route path="/register" element={<AuthLayout><Register /></AuthLayout>} />
+      <Route path="/option" element={<AuthLayout><Option /></AuthLayout>} />
 
       {/* ================= CREATE ORDER ================= */}
-      {/* Trang tạo đơn dùng chung cho khách vãng lai và user đã đăng nhập */}
       <Route
         path="/createorder"
         element={
           <AuthLayout>
+            <Header />
             <CreateOrder />
+            <Footer />
           </AuthLayout>
         }
       />
 
       {/* ================= CUSTOMER (LOGIN) ================= */}
-
       <Route
         path="/user/profile"
         element={
-          <ProtectedRoute allowed={['customer']}>
-            <PublicLayout>
-              <UserProfilePage />
-            </PublicLayout>
+          <ProtectedRoute allowed={['customer', 'shipper']}>
+            <PublicLayout><UserProfilePage /></PublicLayout>
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/orders"
         element={
           <ProtectedRoute allowed={['customer']}>
-            <PublicLayout>
-              <Orders />
-            </PublicLayout>
+            <PublicLayout><Orders /></PublicLayout>
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/user/orders/:id"
         element={
           <ProtectedRoute allowed={['customer']}>
-            <PublicLayout>
-              <OrderDetail />
-            </PublicLayout>
+            <PublicLayout><OrderDetail /></PublicLayout>
           </ProtectedRoute>
         }
       />
 
-      {/* ================= ADMIN + AGENT ================= */}
+      {/* ================= ADMIN PORTAL ================= */}
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowed={['admin', 'agent']}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="orders" element={<OrderManagement />} />
+        <Route path="agents" element={<AgentsManagement />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="profile" element={<UserIdentityDashboard />} />
+        <Route path="account-settings" element={<AccountSettingsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+        
+        {/* MASTER DATA */}
+        <Route path="service-types" element={<ServiceTypesManagement />} />
+        <Route path="payment-methods" element={<PaymentMethodsManagement />} />
+        <Route path="item-categories" element={<ItemCategoriesManagement />} />
+        <Route path="fees" element={<FeesManagement />} />
+      </Route>
 
-  <Route
-    path="/admin"
-    element={
-      <ProtectedRoute allowed={['admin', 'agent']}>
-        <AdminLayout />
-      </ProtectedRoute>
-    }
-  >
-    <Route index element={<Navigate to="dashboard" replace />} />
+      {/* ================= AGENT PORTAL ================= */}
+      <Route
+        path="/agent"
+        element={
+          <RequireRole allowedRoles={['agent', 'admin']}>
+            <AgentLayout />
+          </RequireRole>
+        }
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<AgentDashboard />} />
+        <Route path="orders" element={<MyOrders />} />
+        <Route path="assign-shipper" element={<AssignShipper />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="profile" element={<UserIdentityDashboard />} />
+        <Route path="account-settings" element={<AccountSettingsPage />} />
+      </Route>
 
-    <Route path="dashboard" element={<Dashboard />} />
-    <Route path="orders" element={<OrderManagement />} />
-    <Route path="agents" element={<AgentsManagement />} />
-    <Route path="reports" element={<Reports />} />
-
-    {/* MASTER DATA */}
-    <Route path="service-types" element={<ServiceTypesManagement />} />
-    <Route path="payment-methods" element={<PaymentMethodsManagement />} />
-    <Route path="item-categories" element={<ItemCategoriesManagement />} />
-    <Route path="fees" element={<FeesManagement />} />
-</Route>
       {/* ================= SHIPPER ================= */}
-
       <Route
         path="/shipper/home"
         element={
           <ProtectedRoute allowed={['shipper']}>
-            <PublicLayout>
-              <HomePageShipper />
-            </PublicLayout>
+            <PublicLayout><HomePageShipper /></PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/shipper/profile"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout><ShipperProfile /></PublicLayout>
           </ProtectedRoute>
         }
       />
@@ -218,95 +190,62 @@ export default function App() {
         path="/shipper/profile/edit"
         element={
           <ProtectedRoute allowed={['shipper']}>
-            <PublicLayout>
-              <ShipperProfileEdit />
-            </PublicLayout>
+            <PublicLayout><ShipperProfileEdit /></PublicLayout>
           </ProtectedRoute>
         }
-        
-      />
-      
-    <Route
-        path="/shipper/profile"
-        element={
-          <ProtectedRoute allowed={['shipper']}>
-            <PublicLayout>
-              <ShipperProfile />
-            </PublicLayout>
-          </ProtectedRoute>
-        }
-        
       />
       <Route
         path="/shipper/about"
         element={
           <ProtectedRoute allowed={['shipper']}>
-            <PublicLayout>
-              <AboutUsShipper />
-            </PublicLayout>
+            <PublicLayout><AboutUsShipper /></PublicLayout>
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/shipper/contact"
         element={
           <ProtectedRoute allowed={['shipper']}>
-            <PublicLayout>
-              <ContactShipper />
-            </PublicLayout>
+            <PublicLayout><ContactShipper /></PublicLayout>
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/shipper/order/:id"
         element={
           <ProtectedRoute allowed={['shipper']}>
-            <PublicLayout>
-              <OrderDetailShipper />
-            </PublicLayout>
+            <PublicLayout><OrderDetailShipper /></PublicLayout>
           </ProtectedRoute>
         }
       />
-        <Route
-          path="/shipper/on-the-way"
-          element={
-            <ProtectedRoute allowed={['shipper']}>
-              <PublicLayout>
-                <DeliveryInProgress />
-              </PublicLayout>
-            </ProtectedRoute>
-          }
-        />
-              <Route
+      <Route
+        path="/shipper/on-the-way"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout><DeliveryInProgress /></PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/shipper/edit-order/:id"
         element={
           <ProtectedRoute allowed={['shipper']}>
-            <PublicLayout>
-              <EditOrderShipper />
-            </PublicLayout>
+            <PublicLayout><EditOrderShipper /></PublicLayout>
           </ProtectedRoute>
         }
       />
-            <Route
+      <Route
         path="/shipper/order-history"
         element={
           <ProtectedRoute allowed={['shipper']}>
-            <PublicLayout>
-              <OrderHistoryShipper />
-            </PublicLayout>
+            <PublicLayout><OrderHistoryShipper /></PublicLayout>
           </ProtectedRoute>
         }
       />
 
-
-
       {/* ================= FALLBACK ================= */}
-
       <Route path="/no-permission" element={<NoPermission />} />
       <Route path="*" element={<Navigate to="/" replace />} />
-
     </Routes>
   );
 }

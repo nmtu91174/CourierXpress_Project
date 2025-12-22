@@ -9,6 +9,26 @@
   padding: 2.25rem;
   background: linear-gradient(180deg, #f7f8fb 0%, #ffffff 100%);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Mobile: Consistent container width */
+@media (max-width: 767px) {
+  .admin-page {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .admin-page .card-lux {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 
 /* ===============================
@@ -117,15 +137,16 @@
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.04),
     0 12px 32px rgba(15, 23, 42, 0.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
+/* Card hover - only shadow, no transform to avoid conflict with table row hover */
 .card-lux:hover {
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.06),
     0 16px 48px rgba(15, 23, 42, 0.12);
-  transform: translateY(-2px);
+  /* Removed transform to prevent conflict with table row hover */
 }
 
 .card-lux h6 {
@@ -187,25 +208,26 @@
 }
 
 /* ===============================
-   TABLE - LUXURY ENTERPRISE
+   TABLE - LUXURY ENTERPRISE (SCOPED TO REPORTS PAGE ONLY)
+   NOTE: These styles should NOT affect .lux-table from order-table.css
    =============================== */
-.card-lux table,
-.table-luxury {
+.admin-page .card-lux table,
+.admin-page .table-luxury {
   margin-bottom: 0;
   border-collapse: separate;
   border-spacing: 0;
 }
 
-.card-lux table thead,
-.table-luxury thead {
+.admin-page .card-lux table thead,
+.admin-page .table-luxury thead {
   background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
-.card-lux table thead th,
-.table-luxury thead th {
+.admin-page .card-lux table thead th,
+.admin-page .table-luxury thead th {
   font-weight: 700;
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -217,8 +239,8 @@
   background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
 }
 
-.card-lux table tbody td,
-.table-luxury tbody td {
+.admin-page .card-lux table tbody td,
+.admin-page .table-luxury tbody td {
   padding: 14px 18px;
   font-size: 0.9rem;
   color: #1a1d29;
@@ -227,38 +249,38 @@
   transition: all 0.2s ease;
 }
 
-.card-lux table tbody tr,
-.table-luxury tbody tr {
+.admin-page .card-lux table tbody tr,
+.admin-page .table-luxury tbody tr {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   background: #ffffff;
 }
 
-.card-lux table tbody tr:hover,
-.table-luxury tbody tr:hover {
+.admin-page .card-lux table tbody tr:hover,
+.admin-page .table-luxury tbody tr:hover {
   background: linear-gradient(90deg, rgba(0, 123, 255, 0.06) 0%, rgba(0, 123, 255, 0.03) 100%);
   transform: translateX(2px);
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
 }
 
-.card-lux table tbody tr:hover td,
-.table-luxury tbody tr:hover td {
+.admin-page .card-lux table tbody tr:hover td,
+.admin-page .table-luxury tbody tr:hover td {
   color: #007bff;
   font-weight: 500;
 }
 
-.card-lux table tbody tr:last-child td,
-.table-luxury tbody tr:last-child td {
+.admin-page .card-lux table tbody tr:last-child td,
+.admin-page .table-luxury tbody tr:last-child td {
   border-bottom: none;
 }
 
 /* Alternating row colors for better readability */
-.card-lux table tbody tr:nth-child(even),
-.table-luxury tbody tr:nth-child(even) {
+.admin-page .card-lux table tbody tr:nth-child(even),
+.admin-page .table-luxury tbody tr:nth-child(even) {
   background: rgba(248, 249, 250, 0.5);
 }
 
-.card-lux table tbody tr:nth-child(even):hover,
-.table-luxury tbody tr:nth-child(even):hover {
+.admin-page .card-lux table tbody tr:nth-child(even):hover,
+.admin-page .table-luxury tbody tr:nth-child(even):hover {
   background: linear-gradient(90deg, rgba(0, 123, 255, 0.08) 0%, rgba(0, 123, 255, 0.04) 100%);
 }
 

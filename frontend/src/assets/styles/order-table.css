@@ -28,6 +28,7 @@
   border-radius: 14px;
   overflow: hidden;
   border-collapse: separate;
+    table-layout: fixed;
 }
 
 /* HEADER */
@@ -41,6 +42,49 @@
   border-bottom: 1px solid #eef0f4 !important;
   padding: 14px 12px;
 }
+  
+  /* Column widths - optimized for content */
+  /* Cột 1: Mã vận đơn - compact */
+  .lux-table thead th:nth-child(1),
+  .lux-table tbody td:nth-child(1) {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+  }
+  
+  /* Cột 2, 3: Người gửi/Người nhận - wider for addresses */
+  .lux-table thead th:nth-child(2),
+  .lux-table thead th:nth-child(3),
+  .lux-table tbody td:nth-child(2),
+  .lux-table tbody td:nth-child(3) {
+    width: 300px;
+    min-width: 300px;
+    max-width: 300px;
+  }
+  
+  /* Cột 4: Ngày tạo - compact */
+  .lux-table thead th:nth-child(4),
+  .lux-table tbody td:nth-child(4) {
+    width: 140px;
+    min-width: 140px;
+    max-width: 140px;
+  }
+  
+  /* Cột 5: Trạng thái - compact */
+  .lux-table thead th:nth-child(5),
+  .lux-table tbody td:nth-child(5) {
+    width: 130px;
+    min-width: 130px;
+    max-width: 130px;
+  }
+  
+  /* Cột 6: Hành động - compact */
+  .lux-table thead th:nth-child(6),
+  .lux-table tbody td:nth-child(6) {
+    width: 160px;
+    min-width: 160px;
+    max-width: 160px;
+  }
 
 /* BODY */
 .lux-table tbody td {
@@ -49,23 +93,31 @@
   color: #333;
   border-top: 1px solid #f1f3f7;
   vertical-align: middle;
+    transform: none !important;
+    transition: background-color 0.05s linear;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-wrap: break-word;
+    background-color: transparent;
 }
 
-/* HOVER */
-.lux-table tbody tr {
-  transition: 0.18s ease;
-  position: relative;
-}
-
-.lux-table tbody tr:hover {
-  background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(13, 110, 253, 0.08);
-  transform: translateY(-1px);
-}
-
-.lux-table tbody tr:hover td {
-  border-color: rgba(13, 110, 253, 0.1);
+  /* Prevent all transforms and size changes on any child elements */
+  .lux-table tbody td * {
+    transform: none !important;
+    transition: none !important;
+    font-size: inherit !important;
+    line-height: inherit !important;
+  }
+  
+  .lux-table tbody td *:hover {
+    transform: none !important;
+    font-size: inherit !important;
+  }
+  
+  /* NO HOVER EFFECTS - Clean, static, enterprise-style */
+  .lux-table tbody tr {
+    cursor: pointer;
+    /* Removed all hover effects */
 }
 
 /* ORDER CODE */
@@ -80,6 +132,27 @@
   color: #7a7f8a;
   line-height: 1.25;
 }
+  
+  /* Address line (last order-meta-line in sender/receiver columns) - single line with ellipsis on desktop/tablet only */
+  .lux-table tbody td:nth-child(2) .order-meta-line:last-child,
+  .lux-table tbody td:nth-child(3) .order-meta-line:last-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+  }
+  
+  /* On mobile, allow wrapping - no ellipsis */
+  @media (max-width: 767px) {
+    .lux-table tbody td:nth-child(2) .order-meta-line:last-child,
+    .lux-table tbody td:nth-child(3) .order-meta-line:last-child {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      word-wrap: break-word;
+      display: block;
+    }
+  }
 
 .order-meta-line i {
   font-size: 0.75rem;
@@ -101,13 +174,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: 0.15s ease;
+    transition: background-color 0.1s linear, box-shadow 0.1s linear;
+    transform: none !important;
 }
 
 .btn-icon-soft:hover {
   background: #e9edf5 !important;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
-  transform: translateY(-1px);
+    transform: none !important;
 }
 
 .btn-icon-soft svg {
@@ -131,23 +205,296 @@
   height: 12px !important;
 }
 
-/* Responsive mode: mobile collapse table */
-@media (max-width: 575px) {
+/* ================== RESPONSIVE ================== */
+
+/* TABLET (768px - 1199px) */
+@media (max-width: 1199px) and (min-width: 768px) {
+  /* Hide low-priority columns: Notes, Internal IDs */
+  /* Keep: Order code, Status, Sender/Receiver (compact), Actions */
+  
+  /* Adjust column widths for tablet */
+  .lux-table thead th:nth-child(4),
+  .lux-table tbody td:nth-child(4) {
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+  }
+  
+  .lux-table thead th:nth-child(2),
+  .lux-table thead th:nth-child(3),
+  .lux-table tbody td:nth-child(2),
+  .lux-table tbody td:nth-child(3) {
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
+  }
+  
+  /* Reduce font sizes slightly */
+  .lux-table tbody td {
+    font-size: 0.875rem;
+    padding: 12px 10px;
+  }
+  
+  .order-meta-line {
+    font-size: 0.75rem;
+  }
+}
+
+/* MOBILE (<768px) - Card layout */
+@media (max-width: 767px) {
+  .lux-table-wrapper {
+    overflow-x: visible;
+  }
+  
+  .lux-table {
+    border: none;
+    background: transparent;
+  }
+  
+  /* Hide table header */
   .lux-table thead {
     display: none;
   }
-
-  .lux-table tbody td {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px;
-    font-size: 0.88rem;
+  
+  /* Convert rows to cards - NO HOVER EFFECTS */
+  .lux-table tbody tr {
+    display: block;
+    background: #ffffff;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    /* No hover effects */
   }
-
-  .lux-table tbody td::before {
-    content: attr(data-label);
+  
+  /* Convert cells to card sections */
+  .lux-table tbody td {
+    display: block;
+    padding: 0.75rem 0;
+    border: none;
+    border-bottom: 1px solid #f1f3f7;
+    font-size: 0.9375rem; /* Minimum 14px readable */
+    overflow: visible; /* Allow full content on mobile */
+    text-overflow: clip; /* No ellipsis on mobile */
+    white-space: normal; /* Allow wrapping on mobile */
+    word-wrap: break-word; /* Break long words */
+  }
+  
+  .lux-table tbody td:last-child {
+    border-bottom: none;
+    padding-top: 0.75rem;
+  }
+  
+  /* Order Code as card title */
+  .lux-table tbody td:first-child {
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .lux-table tbody td:first-child .order-code {
+    font-size: 1.125rem;
     font-weight: 700;
+  }
+  
+  /* Add labels before content */
+  .lux-table tbody td[data-label]:not(:first-child):not(:last-child)::before {
+    content: attr(data-label) ":";
+    font-weight: 600;
     color: #6d7380;
-    margin-right: 12px;
+    display: block;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Status badge styling in card - ensure it's visible and not clipped */
+  .lux-table tbody td[data-label="Status"] {
+    display: flex;
+    align-items: flex-start; /* Align to top to prevent clipping */
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: wrap; /* Allow wrapping if needed */
+  }
+  
+  /* Ensure status badge is fully visible */
+  .lux-table tbody td[data-label="Status"] .status-badge-lux,
+  .lux-table tbody td[data-label="Status"] .badge {
+    flex-shrink: 0; /* Don't shrink badge */
+    white-space: nowrap; /* Badge text should not wrap */
+    display: inline-block;
+  }
+  
+  /* Actions section styling */
+  .lux-table tbody td:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-start;
+  }
+  
+  .lux-table tbody td:last-child::before {
+    content: "Actions:";
+    font-weight: 600;
+    color: #6d7380;
+    display: block;
+    width: 100%;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Make action buttons touch-friendly */
+  .lux-table tbody td:last-child .order-action-btn {
+    min-width: 44px;
+    height: 44px;
+    padding: 0.5rem !important;
+    font-size: 1rem !important;
+  }
+  
+  .lux-table tbody td:last-child .order-action-btn svg {
+    font-size: 1rem !important;
+    width: 1rem !important;
+    height: 1rem !important;
+  }
+  
+  /* Compact sender/receiver info - allow full text display on mobile */
+  .order-meta-line {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    white-space: normal; /* Allow wrapping on mobile */
+    overflow: visible;
+    text-overflow: clip;
+    word-wrap: break-word;
+  }
+  
+  /* Address lines should wrap fully on mobile */
+  .lux-table tbody td .order-meta-line:last-child {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    display: block !important;
+    word-wrap: break-word !important;
+  }
+  
+  /* Ensure no horizontal scroll - full width cards */
+  .lux-table-wrapper {
+    width: 100%;
+    overflow-x: visible;
+    margin-left: 0;
+    margin-right: 0;
+  }
+  
+  /* Card wrapper should be full width */
+  .card-lux {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+/* ================== AGENT TABLE RESPONSIVE ================== */
+/* Shared responsive styles for agent table (uses lux-table class) */
+
+/* TABLET (768px - 1199px) - Hide email column */
+@media (max-width: 1199px) and (min-width: 768px) {
+  /* Agent table: Hide phone, email (shown in name cell), reduce column widths */
+  .lux-table tbody td {
+    font-size: 0.875rem;
+    padding: 12px 10px;
+  }
+}
+
+/* MOBILE (<768px) - Card layout for agent table */
+@media (max-width: 767px) {
+  /* Agent table card layout - same as order table */
+  .lux-table tbody tr {
+    display: block;
+    background: #ffffff;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+  }
+  
+  .lux-table tbody tr:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.08);
+  }
+  
+  .lux-table tbody tr:hover td {
+    background: transparent;
+  }
+  
+  .lux-table tbody td {
+    display: block;
+    padding: 0.75rem 0;
+    border: none;
+    border-bottom: 1px solid #f1f3f7;
+    font-size: 0.9375rem;
+    text-align: left !important;
+  }
+  
+  .lux-table tbody td:last-child {
+    border-bottom: none;
+    padding-top: 0.75rem;
+  }
+  
+  /* Agent name as card title */
+  .lux-table tbody td:first-child {
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .lux-table tbody td:first-child .fw-bold {
+    font-size: 1.125rem;
+  }
+  
+  /* Add labels */
+  .lux-table tbody td[data-label]:not(:first-child):not(:last-child)::before {
+    content: attr(data-label) ":";
+    font-weight: 600;
+    color: #6d7380;
+    display: block;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Actions section */
+  .lux-table tbody td:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-start;
+  }
+  
+  .lux-table tbody td:last-child::before {
+    content: "Actions:";
+    font-weight: 600;
+    color: #6d7380;
+    display: block;
+    width: 100%;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Touch-friendly buttons */
+  .lux-table tbody td:last-child .btn {
+    min-width: 44px;
+    height: 44px;
+    padding: 0.5rem !important;
+  }
+  
+  .lux-table tbody td:last-child .btn svg {
+    font-size: 1rem;
   }
 }
