@@ -69,6 +69,7 @@ const OrderDetailShipper = () => {
     // ==========================
 
     // [FIX] Hàm lấy vị trí GPS (Quan trọng: Đã được thêm vào)
+    // [FIX] Hàm lấy vị trí GPS (Đã tinh chỉnh để tránh Timeout)
     const getCurrentLocation = () => {
         return new Promise((resolve, reject) => {
             if (!navigator.geolocation) {
@@ -85,13 +86,18 @@ const OrderDetailShipper = () => {
                     (error) => {
                         let msg = "Unknown GPS error";
                         switch (error.code) {
-                            case error.PERMISSION_DENIED: msg = "User denied the request for Geolocation."; break;
-                            case error.POSITION_UNAVAILABLE: msg = "Location information is unavailable."; break;
-                            case error.TIMEOUT: msg = "The request to get user location timed out."; break;
+                            case error.PERMISSION_DENIED: msg = "Bạn đã từ chối cấp quyền vị trí."; break;
+                            case error.POSITION_UNAVAILABLE: msg = "Không thể xác định vị trí hiện tại."; break;
+                            case error.TIMEOUT: msg = "Hết thời gian chờ lấy vị trí (Timeout)."; break;
                         }
                         reject(new Error(msg));
                     },
-                    { enableHighAccuracy: true, timeout: 10000 }
+                    // 👇 CẤU HÌNH QUAN TRỌNG ĐỂ KHẮC PHỤC LỖI:
+                    {
+                        enableHighAccuracy: false, // Đặt là FALSE để dùng định vị qua Wi-Fi/Network (Nhanh hơn, không cần ra ngoài trời)
+                        timeout: 20000,            // Tăng thời gian chờ lên 20 giây
+                        maximumAge: 5000           // Chấp nhận vị trí lưu đệm (cache) trong 5 giây gần nhất
+                    }
                 );
             }
         });
