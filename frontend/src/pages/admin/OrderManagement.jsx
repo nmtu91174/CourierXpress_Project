@@ -649,14 +649,19 @@ export default function OrderManagement() {
       return options; // Terminal states cannot be changed
     }
     
+    // Enterprise workflow mapping (correct status progression):
+    // BOOKED (1) → APPROVED (2) → ASSIGNED (3) → IN_PROGRESS (4) → DELIVERED (5)
     // Get next status in workflow
     const nextStatus = status + 1;
     
     // Add next status (if exists and not terminal)
+    // Note: ASSIGNED (3) → IN_PROGRESS (4) is correct workflow
+    // Label "Picked Up" is correct for status 4 (IN_PROGRESS)
     if (nextStatus <= ORDER_STATUS.DELIVERED) {
+      const statusLabel = ORDER_STATUS_LABEL[nextStatus] || "Unknown";
       options.push({
         value: nextStatus,
-        label: `${nextStatus} - ${ORDER_STATUS_LABEL[nextStatus] || "Unknown"}`
+        label: `${nextStatus} - ${statusLabel}${status === ORDER_STATUS.ASSIGNED && nextStatus === ORDER_STATUS.IN_PROGRESS ? " (Shipper must confirm pickup)" : ""}`
       });
     }
     
@@ -768,9 +773,7 @@ export default function OrderManagement() {
           Swal.fire({
             icon: 'success',
             title: 'Order Cancelled',
-            text: cancelType === 'soft' 
-              ? 'Order cancelled. It can be reopened later.' 
-              : 'Order cancelled (operational). Cannot be reopened.',
+            text: 'Order cancelled successfully. You can clone or create a follow-up order if needed.',
           });
           fetchOrders();
           fetchKPIStats();
@@ -783,12 +786,106 @@ export default function OrderManagement() {
     }
   };
 
-  // Enterprise: Reopen Order (only for soft-cancelled orders)
+  // Enterprise: Terminate Workflow (Internal Close) - separates from Business Cancellation
+  // Allowed from ASSIGNED (3) onward, used to enable clone/follow-up
+  const handleTerminateWorkflow = async (order) => {
+    const { value: terminationReason } = await Swal.fire({
+      title: 'Terminate Workflow?',
+      html: `
+        <p>This will <strong>terminate the workflow</strong> (internal close) for this order.</p>
+        <p class="text-muted small"><strong>Enterprise Rule:</strong> Workflow Termination is separate from Business Cancellation. This action is only available for ASSIGNED or IN_PROGRESS orders. After termination, you can create a Clone (if ASSIGNED) or Follow-up (if IN_PROGRESS) order.</p>
+        <p class="text-warning small"><strong>Note:</strong> This action cannot be undone. The order will be marked as CANCELLED but with workflow termination context (not business cancellation).</p>
+        <input id="termination-reason" class="swal2-input" placeholder="Termination reason (required)" required>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#6c757d',
+      confirmButtonText: 'Terminate Workflow',
+      cancelButtonText: 'Keep Active',
+      preConfirm: () => {
+        const reason = document.getElementById('termination-reason')?.value;
+        if (!reason || reason.trim() === '') {
+          Swal.showValidationMessage('Please provide a termination reason');
+          return false;
+        }
+        return reason;
+      }
+    });
+    
+    if (terminationReason !== undefined) {
+      try {
+        const res = await fetch(`${API_BASE}/terminate_workflow.php`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ 
+            order_id: order.id,
+            termination_reason: terminationReason
+          }),
+        });
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          try {
+            const errorData = JSON.parse(errorText);
+            return Swal.fire('Error', errorData.message || `Server error (${res.status})`, 'error');
+          } catch {
+            return Swal.fire('Error', `Server error (${res.status})`, 'error');
+          }
+        }
+        
+        const data = await res.json();
+        if (data.status === "success") {
+          const canClone = data.data?.can_clone || false;
+          const canCreateFollowup = data.data?.can_create_followup || false;
+          
+          let followupMessage = 'Workflow terminated successfully.';
+          if (canClone) {
+            followupMessage += ' You can now clone this order to restart from scratch.';
+          } else if (canCreateFollowup) {
+            followupMessage += ' You can now create a follow-up order to continue the shipment.';
+          }
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Workflow Terminated',
+            text: followupMessage,
+          });
+          fetchOrders();
+          fetchKPIStats();
+          
+          // If detail panel is open for this order, fetch updated order detail
+          if (showDetailPanel && selectedOrder && selectedOrder.id === order.id) {
+            try {
+              const detailRes = await fetch(`${API_BASE}/get_order_detail.php?order_id=${order.id}`, {
+                method: "GET",
+                credentials: "include",
+              });
+              if (detailRes.ok) {
+                const detailData = await detailRes.json();
+                if (detailData.status === "success" && detailData.data) {
+                  setSelectedOrder(detailData.data);
+                }
+              }
+            } catch (error) {
+              console.error("Error fetching order detail:", error);
+            }
+          }
+        } else {
+          Swal.fire('Error', data.message || 'Cannot terminate workflow', 'error');
+        }
+      } catch (error) {
+        Swal.fire('Error', `Server connection error: ${error.message}`, 'error');
+      }
+    }
+  };
+
+  // Enterprise: Reopen Order (revives soft-cancelled order, restores to previous status)
   const handleReopen = async (order) => {
     const { value: reopenReason } = await Swal.fire({
       title: 'Reopen Order?',
       html: `
-        <p>This will restore the order to its previous status.</p>
+        <p>This will <strong>revive</strong> the soft-cancelled order and restore it to its previous status.</p>
         <p class="text-muted small">Only soft-cancelled orders (before assignment) can be reopened.</p>
         <input id="reopen-reason" class="swal2-input" placeholder="Reopen reason (optional)">
       `,
@@ -835,6 +932,129 @@ export default function OrderManagement() {
           fetchKPIStats();
         } else {
           Swal.fire('Error', data.message || 'Cannot reopen order', 'error');
+        }
+      } catch (error) {
+        Swal.fire('Error', `Server connection error: ${error.message}`, 'error');
+      }
+    }
+  };
+
+  // Enterprise: Clone Order (creates NEW order from cancelled/failed order)
+  const handleClone = async (order) => {
+    const { value: cloneReason } = await Swal.fire({
+      title: 'Clone Order?',
+      html: `
+        <p>This will create a <strong>new order</strong> with the same data to restart from scratch.</p>
+        <p class="text-muted small"><strong>Enterprise Rule:</strong> Clone is only available for orders cancelled at ASSIGNED (before pickup). Use Reopen for orders cancelled at BOOKED/APPROVED, or Follow-up for orders cancelled after pickup.</p>
+        <input id="clone-reason" class="swal2-input" placeholder="Clone reason (optional)">
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#17a2b8',
+      confirmButtonText: 'Clone Order',
+      cancelButtonText: 'Cancel',
+      preConfirm: () => {
+        return document.getElementById('clone-reason')?.value || 'Order cloned by admin';
+      }
+    });
+    
+    if (cloneReason !== undefined) {
+      try {
+        const res = await fetch(`${API_BASE}/clone_order.php`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ 
+            order_id: order.id,
+            clone_reason: cloneReason
+          }),
+        });
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          try {
+            const errorData = JSON.parse(errorText);
+            return Swal.fire('Error', errorData.message || `Server error (${res.status})`, 'error');
+          } catch {
+            return Swal.fire('Error', `Server error (${res.status})`, 'error');
+          }
+        }
+        
+        const data = await res.json();
+        if (data.status === "success") {
+          Swal.fire({
+            icon: 'success',
+            title: 'Order Cloned',
+            text: `New order created: ${data.data?.new_order_code || 'N/A'}`,
+          });
+          fetchOrders();
+          fetchKPIStats();
+        } else {
+          Swal.fire('Error', data.message || 'Cannot clone order', 'error');
+        }
+      } catch (error) {
+        Swal.fire('Error', `Server connection error: ${error.message}`, 'error');
+      }
+    }
+  };
+
+  // Enterprise: Create Follow-up Order (creates NEW order to continue shipment after pickup)
+  const handleCreateFollowup = async (order) => {
+    const { value: followupReason } = await Swal.fire({
+      title: 'Create Follow-up Order?',
+      html: `
+        <p>This will create a <strong>new order</strong> to continue the shipment.</p>
+        <p class="text-muted small"><strong>Enterprise Rule:</strong> Follow-up is only available for orders that were cancelled or failed AFTER pickup (real-world operation occurred). Use Clone for orders cancelled at ASSIGNED (before pickup), or Reopen for orders cancelled at BOOKED/APPROVED.</p>
+        <input id="followup-reason" class="swal2-input" placeholder="Follow-up reason (required)" required>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#ffc107',
+      confirmButtonText: 'Create Follow-up',
+      cancelButtonText: 'Cancel',
+      preConfirm: () => {
+        const reason = document.getElementById('followup-reason')?.value;
+        if (!reason || reason.trim() === '') {
+          Swal.showValidationMessage('Please provide a follow-up reason');
+          return false;
+        }
+        return reason;
+      }
+    });
+    
+    if (followupReason !== undefined) {
+      try {
+        const res = await fetch(`${API_BASE}/create_followup_order.php`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ 
+            order_id: order.id,
+            followup_reason: followupReason
+          }),
+        });
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          try {
+            const errorData = JSON.parse(errorText);
+            return Swal.fire('Error', errorData.message || `Server error (${res.status})`, 'error');
+          } catch {
+            return Swal.fire('Error', `Server error (${res.status})`, 'error');
+          }
+        }
+        
+        const data = await res.json();
+        if (data.status === "success") {
+          Swal.fire({
+            icon: 'success',
+            title: 'Follow-up Order Created',
+            text: `New order created: ${data.data?.new_order_code || 'N/A'}`,
+          });
+          fetchOrders();
+          fetchKPIStats();
+        } else {
+          Swal.fire('Error', data.message || 'Cannot create follow-up order', 'error');
         }
       } catch (error) {
         Swal.fire('Error', `Server connection error: ${error.message}`, 'error');
@@ -1164,7 +1384,10 @@ export default function OrderManagement() {
         onAssignShipper={openAssignModal}
         onEditOrder={openEditModal}
         onCancelOrder={handleCancel}
+        onTerminateWorkflow={handleTerminateWorkflow}
         onReopenOrder={handleReopen}
+        onCloneOrder={handleClone}
+        onCreateFollowupOrder={handleCreateFollowup}
       />
 
       <OrderDetailPanel

@@ -136,16 +136,13 @@ export default function MyOrders() {
     fetchShippers();
   }, []);
 
-  // Calculate workload for shippers
+  // Use active_orders_count from backend API (consistent with Dashboard)
   const shippersWithWorkload = useMemo(() => {
-    return shippers.map(shipper => {
-      const activeOrders = allOrders.filter(o => 
-        Number(o.shipper_id) === Number(shipper.id) && 
-        [1, 2, 3, 4].includes(Number(o.status))
-      ).length;
-      return { ...shipper, active_orders_count: activeOrders };
-    });
-  }, [shippers, allOrders]);
+    return shippers.map(shipper => ({
+      ...shipper,
+      active_orders_count: shipper.active_orders_count || 0
+    }));
+  }, [shippers]);
 
   // =============================
   // 4. APPLY FILTER VÀO allOrders

@@ -330,7 +330,10 @@ while ($row = $res->fetch_assoc()) {
         "can_reassign_shipper" => false,
         "can_edit" => false,
         "can_cancel" => false,
+        "can_terminate_workflow" => false, // NEW: Workflow Termination (from ASSIGNED onward)
         "can_reopen" => false,
+        "can_clone" => false,
+        "can_create_followup" => false,
     ];
     
     // BOOKED (1): Can assign agent, cannot assign shipper
@@ -351,18 +354,26 @@ while ($row = $res->fetch_assoc()) {
     }
     
     // ASSIGNED (3): Can reassign shipper only if not picked up
+    // IMPORTANT: Do NOT set can_assign_shipper for ASSIGNED status
+    // can_assign_shipper is ONLY for APPROVED (2) status
     if ($currentStatus === 3) {
         if (!$hasBeenPickedUp) {
-            $permissions["can_reassign_shipper"] = true;
+            $permissions["can_reassign_shipper"] = true; // Separate action from can_assign_shipper
         }
+        // Do NOT set can_assign_shipper = true here (that's only for APPROVED)
         $permissions["can_edit"] = true;
-        $permissions["can_cancel"] = true;
+        // Enterprise: Cannot cancel ASSIGNED orders (only BOOKED/APPROVED)
+        $permissions["can_cancel"] = false;
+        // Enterprise: Can terminate workflow (internal close) from ASSIGNED onward
+        $permissions["can_terminate_workflow"] = true;
     }
     
-    // IN_PROGRESS (4): No assign actions allowed
+    // IN_PROGRESS (4): No assign actions allowed, but can terminate workflow
     if ($currentStatus === 4) {
         $permissions["can_edit"] = false;
         $permissions["can_cancel"] = false;
+        // Enterprise: Can terminate workflow (internal close) from ASSIGNED onward
+        $permissions["can_terminate_workflow"] = true;
     }
     
     // DELIVERED (5) / FAILED (6): No actions allowed
@@ -371,11 +382,31 @@ while ($row = $res->fetch_assoc()) {
         $permissions["can_cancel"] = false;
     }
     
-    // CANCELLED (7): Can reopen if soft cancel (previous_status = BOOKED or APPROVED)
+    // CANCELLED (7): Action depends on previous_status
     if ($currentStatus === 7) {
-        if ($previousStatus === 1 || $previousStatus === 2) {
+        // Reopen: Only if cancelled at BOOKED/APPROVED (previous_status < ASSIGNED = 3)
+        // Enterprise Rule: Reopen only before assignment
+        if ($previousStatus !== null && $previousStatus < 3) {
             $permissions["can_reopen"] = true;
         }
+        // Clone: Only if cancelled at ASSIGNED (previous_status = ASSIGNED = 3) and NOT picked up
+        // Enterprise Rule: Clone only when assigned but not yet picked up
+        if ($previousStatus !== null && $previousStatus === 3) {
+            $permissions["can_clone"] = true;
+        }
+        // Follow-up: Only if cancelled AFTER pickup (previous_status >= IN_PROGRESS = 4)
+        // Enterprise Rule: Follow-up only after real-world operation occurred
+        if ($previousStatus !== null && $previousStatus >= 4) {
+            $permissions["can_create_followup"] = true;
+        }
+    }
+    
+    // FAILED (6): Only follow-up allowed (no reopen, no clone)
+    // Enterprise Rule: Failed = operational failure, must continue via follow-up
+    if ($currentStatus === 6) {
+        // Follow-up: Only if failed after pickup (check from order_history or assume IN_PROGRESS+)
+        // Since FAILED typically occurs after pickup, allow follow-up
+        $permissions["can_create_followup"] = true;
     }
     
     $row["permissions"] = $permissions; // Add permission flags

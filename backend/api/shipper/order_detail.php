@@ -57,7 +57,7 @@ if ($orderId <= 0) {
 // BASE ORDER QUERY
 // ==========================
 // [FIX] Chỉ select field cần thiết cho Order Detail
-$sql = "
+    $sql = "
     SELECT 
         o.id,
         o.order_code,
@@ -68,7 +68,6 @@ $sql = "
         o.receiver_phone,
         o.receiver_address,
         o.weight,
-        o.actual_weight,
         o.status,
         o.cod_amount,
         o.total_amount,
@@ -130,14 +129,33 @@ $sql .= $whereClause;
 // ==========================
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
-    Response::serverError("SQL prepare failed (orders)");
+    error_log("Prepare failed (orders): " . $conn->error);
+    Response::serverError("SQL prepare failed (orders): " . $conn->error);
 }
 
-$stmt->bind_param($types, ...$params);
-$stmt->execute();
+if (!empty($params) && !empty($types)) {
+    if (!$stmt->bind_param($types, ...$params)) {
+        error_log("Bind param failed (orders): " . $stmt->error);
+        $stmt->close();
+        Response::serverError("SQL bind_param failed (orders): " . $stmt->error);
+    }
+}
+
+if (!$stmt->execute()) {
+    error_log("Execute failed (orders): " . $stmt->error);
+    $stmt->close();
+    Response::serverError("SQL execute failed (orders): " . $stmt->error);
+}
+
 $result = $stmt->get_result();
+if (!$result) {
+    error_log("Get result failed (orders): " . $stmt->error);
+    $stmt->close();
+    Response::serverError("SQL get_result failed (orders): " . $stmt->error);
+}
 
 if ($result->num_rows === 0) {
+    $stmt->close();
     Response::error("Không tìm thấy đơn hàng hoặc không có quyền");
 }
 
@@ -156,13 +174,19 @@ $imgStmt = $conn->prepare("
 ");
 
 if (!$imgStmt) {
-    Response::serverError("SQL prepare failed (order_images)");
+    error_log("Prepare failed (order_images): " . $conn->error);
+    $order["images"] = [];
+} else {
+    $imgStmt->bind_param("i", $orderId);
+    if (!$imgStmt->execute()) {
+        error_log("Execute failed (order_images): " . $imgStmt->error);
+        $order["images"] = [];
+    } else {
+        $result = $imgStmt->get_result();
+        $order["images"] = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+    $imgStmt->close();
 }
-
-$imgStmt->bind_param("i", $orderId);
-$imgStmt->execute();
-$order["images"] = $imgStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$imgStmt->close();
 
 // ==========================
 // ORDER HISTORY (TIMELINE)
@@ -184,13 +208,19 @@ $hisStmt = $conn->prepare("
 ");
 
 if (!$hisStmt) {
-    Response::serverError("SQL prepare failed (order_history)");
+    error_log("Prepare failed (order_history): " . $conn->error);
+    $order["history"] = [];
+} else {
+    $hisStmt->bind_param("i", $orderId);
+    if (!$hisStmt->execute()) {
+        error_log("Execute failed (order_history): " . $hisStmt->error);
+        $order["history"] = [];
+    } else {
+        $result = $hisStmt->get_result();
+        $order["history"] = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+    $hisStmt->close();
 }
-
-$hisStmt->bind_param("i", $orderId);
-$hisStmt->execute();
-$order["history"] = $hisStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$hisStmt->close();
 
 // ==========================
 // ORDER FEES
@@ -207,13 +237,19 @@ $feeStmt = $conn->prepare("
 ");
 
 if (!$feeStmt) {
-    Response::serverError("SQL prepare failed (order_fees)");
+    error_log("Prepare failed (order_fees): " . $conn->error);
+    $order["fees"] = [];
+} else {
+    $feeStmt->bind_param("i", $orderId);
+    if (!$feeStmt->execute()) {
+        error_log("Execute failed (order_fees): " . $feeStmt->error);
+        $order["fees"] = [];
+    } else {
+        $result = $feeStmt->get_result();
+        $order["fees"] = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+    }
+    $feeStmt->close();
 }
-
-$feeStmt->bind_param("i", $orderId);
-$feeStmt->execute();
-$order["fees"] = $feeStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$feeStmt->close();
 
 // ==========================
 // RESPONSE

@@ -1,6 +1,6 @@
 import React from "react";
 import { Table, Spinner, Button } from "react-bootstrap";
-import { FaSearch, FaUserCog, FaEdit, FaTimes, FaRedo, FaUserTie } from "react-icons/fa";
+import { FaSearch, FaUserCog, FaEdit, FaTimesCircle, FaRedo, FaClone, FaLevelUpAlt, FaUserTie, FaStop } from "react-icons/fa";
 
 import StatusBadge from "../common/StatusBadge";
 import { canAdminAssignShipper, canAdminAssignAgent, isTerminalStatus, ORDER_STATUS } from "../../constants/orderStatus";
@@ -30,7 +30,10 @@ export default function OrderTable({
   onAssignAgent,
   onEditOrder,
   onCancelOrder,
+  onTerminateWorkflow,
   onReopenOrder,
+  onCloneOrder,
+  onCreateFollowupOrder,
 }) {
   /* ================================
    * HANDLERS
@@ -64,9 +67,24 @@ export default function OrderTable({
     if (typeof onCancelOrder === "function") onCancelOrder(order);
   };
 
+  const handleTerminateWorkflow = (e, order) => {
+    e.stopPropagation();
+    if (typeof onTerminateWorkflow === "function") onTerminateWorkflow(order);
+  };
+
   const handleReopen = (e, order) => {
     e.stopPropagation();
     if (typeof onReopenOrder === "function") onReopenOrder(order);
+  };
+
+  const handleClone = (e, order) => {
+    e.stopPropagation();
+    if (typeof onCloneOrder === "function") onCloneOrder(order);
+  };
+
+  const handleCreateFollowup = (e, order) => {
+    e.stopPropagation();
+    if (typeof onCreateFollowupOrder === "function") onCreateFollowupOrder(order);
   };
 
   /* ================================
@@ -89,15 +107,14 @@ export default function OrderTable({
   };
 
   // Enterprise: State-driven actions using backend permission flags
-  // If permissions exist, use them; otherwise fallback to legacy logic
+  // Separate logic for "Assign Shipper" (first time) vs "Reassign Shipper"
   const canAssign = (order) => {
     // Use backend permission flags if available (enterprise-safe)
     if (order.permissions) {
-      if (userRole === "admin") {
-        return order.permissions.can_assign_shipper || order.permissions.can_reassign_shipper;
-      }
-      if (userRole === "agent") {
-        return order.permissions.can_assign_shipper || order.permissions.can_reassign_shipper;
+      // Only show "Assign Shipper" if can_assign_shipper (APPROVED + no shipper)
+      // Do NOT show for can_reassign_shipper (that's a different action)
+      if (userRole === "admin" || userRole === "agent") {
+        return order.permissions.can_assign_shipper === true;
       }
       return false;
     }
@@ -116,6 +133,22 @@ export default function OrderTable({
       );
     }
     return false;
+  };
+
+  // Reassign Shipper: Only for ASSIGNED status (before pickup)
+  const canReassign = (order) => {
+    if (userRole !== "admin" && userRole !== "agent") return false;
+    
+    // Use backend permission flags if available
+    if (order.permissions) {
+      return order.permissions.can_reassign_shipper === true;
+    }
+    
+    // Fallback: ASSIGNED (3) with shipper but not picked up
+    const status = Number(order.status);
+    const hasShipper = order.shipper_id !== null && order.shipper_id !== undefined && Number(order.shipper_id) !== 0;
+    
+    return status === ORDER_STATUS.ASSIGNED && hasShipper;
   };
 
   const canAssignAgent = (order) => {
@@ -157,32 +190,98 @@ export default function OrderTable({
     return !isTerminalStatus(status);
   };
 
-  // Enterprise: Reopen Order - Only soft-cancelled orders (status = CANCELLED = 7)
-  // Frontend: Check status = CANCELLED AND previous_status IN (1,2)
-  // Backend will validate: soft cancel, no shipper, previous status <= APPROVED
+  // Enterprise: Reopen Order - Only soft-cancelled orders (status < ASSIGNED before cancel)
   const canReopen = (order) => {
     if (userRole !== "admin" && userRole !== "agent") return false;
     
     // Use backend permission flags if available
     if (order.permissions) {
-      return order.permissions.can_reopen;
+      return order.permissions.can_reopen === true;
     }
     
     // Fallback to legacy logic
     const status = Number(order.status);
     const previousStatus = order.previous_status ? Number(order.previous_status) : null;
     
-    // Only CANCELLED (7) orders can be reopened
+    // Only CANCELLED (7) orders with previous_status < ASSIGNED (3) can be reopened
     if (status !== ORDER_STATUS.CANCELLED) return false;
+    if (previousStatus !== null && previousStatus < 3) return true;
     
-    // Enterprise: Only soft cancels (previous_status = BOOKED or APPROVED) can be reopened
-    // If previous_status is null, backend will validate from order_history
-    if (previousStatus !== null) {
-      return previousStatus === ORDER_STATUS.BOOKED || previousStatus === ORDER_STATUS.APPROVED;
+    return false;
+  };
+
+  // Enterprise: Clone Order - Only cancelled at ASSIGNED (previous_status = 3, chưa pickup)
+  // Enterprise Rule: Clone only when assigned but not yet picked up
+  const canClone = (order) => {
+    if (userRole !== "admin" && userRole !== "agent") return false;
+    
+    // Use backend permission flags if available (enterprise-safe)
+    if (order.permissions) {
+      return order.permissions.can_clone === true;
     }
     
-    // If previous_status is null, still show button (backend will validate)
-    return true;
+    // Fallback to legacy logic
+    const status = Number(order.status);
+    const previousStatus = order.previous_status ? Number(order.previous_status) : null;
+    
+    // Only CANCELLED (7) at ASSIGNED (previous_status = 3) can be cloned
+    if (status !== ORDER_STATUS.CANCELLED) return false;
+    if (previousStatus !== null && previousStatus === ORDER_STATUS.ASSIGNED) return true;
+    
+    return false;
+  };
+
+  // Enterprise: Terminate Workflow - Only from ASSIGNED (3) onward
+  // Enterprise Rule: Workflow Termination (internal close) is separate from Business Cancellation
+  // Allowed if:
+  // - Current status = ASSIGNED (3) OR IN_PROGRESS (4)
+  // - NOT allowed for BOOKED/APPROVED (use Cancel instead)
+  // - NOT allowed for terminal statuses
+  const canTerminateWorkflow = (order) => {
+    if (userRole !== "admin" && userRole !== "agent") return false;
+    
+    // Use backend permission flags if available (enterprise-safe)
+    if (order.permissions) {
+      return order.permissions.can_terminate_workflow === true;
+    }
+    
+    // Fallback to legacy logic
+    const status = Number(order.status);
+    
+    // Only ASSIGNED (3) or IN_PROGRESS (4) can be terminated
+    return status === ORDER_STATUS.ASSIGNED || status === ORDER_STATUS.IN_PROGRESS;
+  };
+
+  // Enterprise: Create Follow-up Order - Only after pickup
+  // Enterprise Rule: Follow-up only when real-world operation occurred
+  // Allowed if:
+  // - Current status >= IN_PROGRESS (4), OR
+  // - Current status = CANCELLED (7) AND previous_status >= IN_PROGRESS (4), OR
+  // - Current status = FAILED (6) (typically after pickup)
+  const canCreateFollowup = (order) => {
+    if (userRole !== "admin" && userRole !== "agent") return false;
+    
+    // Use backend permission flags if available (enterprise-safe)
+    if (order.permissions) {
+      return order.permissions.can_create_followup === true;
+    }
+    
+    // Fallback to legacy logic
+    const status = Number(order.status);
+    const previousStatus = order.previous_status ? Number(order.previous_status) : null;
+    
+    // Current status >= IN_PROGRESS (already picked up)
+    if (status >= ORDER_STATUS.IN_PROGRESS) return true;
+    
+    // CANCELLED after pickup (previous_status >= IN_PROGRESS)
+    if (status === ORDER_STATUS.CANCELLED && previousStatus !== null && previousStatus >= ORDER_STATUS.IN_PROGRESS) {
+      return true;
+    }
+    
+    // FAILED (typically after pickup)
+    if (status === ORDER_STATUS.FAILED) return true;
+    
+    return false;
   };
 
   /* ================================
@@ -314,29 +413,68 @@ export default function OrderTable({
                         </Button>
                       )}
 
-                      {/* Cancel – admin/agent only, non-terminal */}
+                      {/* Cancel – admin/agent only, BOOKED/APPROVED only */}
                       {canCancel(o) && onCancelOrder && (
                         <Button
                           size="sm"
                           variant="outline-danger"
                           className="order-action-btn"
-                          title="Cancel Order (Soft Cancel - can be reopened if before assignment)"
+                          title="Cancel Order (Business Cancellation - only for BOOKED or APPROVED orders)"
                           onClick={(e) => handleCancel(e, o)}
                         >
-                          <FaTimes />
+                          <FaTimesCircle />
                         </Button>
                       )}
 
-                      {/* Reopen – admin/agent only, cancelled orders */}
+                      {/* Terminate Workflow – admin/agent only, ASSIGNED/IN_PROGRESS only */}
+                      {canTerminateWorkflow(o) && onTerminateWorkflow && (
+                        <Button
+                          size="sm"
+                          variant="outline-secondary"
+                          className="order-action-btn"
+                          title="Terminate Workflow (Internal Close - only for ASSIGNED or IN_PROGRESS orders, enables clone/follow-up)"
+                          onClick={(e) => handleTerminateWorkflow(e, o)}
+                        >
+                          <FaStop />
+                        </Button>
+                      )}
+
+                      {/* Reopen – admin/agent only, soft-cancelled orders (previous_status < ASSIGNED) */}
                       {canReopen(o) && onReopenOrder && (
                         <Button
                           size="sm"
                           variant="outline-success"
                           className="order-action-btn"
-                          title="Reopen Order (only for soft-cancelled orders)"
+                          title="Reopen Order (revive soft-cancelled order, restore to previous status)"
                           onClick={(e) => handleReopen(e, o)}
                         >
                           <FaRedo />
+                        </Button>
+                      )}
+
+                      {/* Clone Order – admin/agent only, cancelled at ASSIGNED (chưa pickup) */}
+                      {canClone(o) && onCloneOrder && (
+                        <Button
+                          size="sm"
+                          variant="outline-info"
+                          className="order-action-btn"
+                          title="Clone Order (only for orders cancelled at ASSIGNED, before pickup - creates new order to restart)"
+                          onClick={(e) => handleClone(e, o)}
+                        >
+                          <FaClone />
+                        </Button>
+                      )}
+
+                      {/* Create Follow-up Order – admin/agent only, after pickup (cancelled/failed after IN_PROGRESS) */}
+                      {canCreateFollowup(o) && onCreateFollowupOrder && (
+                        <Button
+                          size="sm"
+                          variant="outline-warning"
+                          className="order-action-btn"
+                          title="Create Follow-up Order (only for orders cancelled/failed after pickup - continue real shipment)"
+                          onClick={(e) => handleCreateFollowup(e, o)}
+                        >
+                          <FaLevelUpAlt />
                         </Button>
                       )}
 
@@ -353,7 +491,7 @@ export default function OrderTable({
                         </Button>
                       )}
 
-                      {/* Assign shipper – admin only, status=APPROVED && !shipper_id */}
+                      {/* Assign shipper – ONLY when APPROVED and no shipper */}
                       {canAssign(o) && onAssignShipper && (
                         <Button
                           size="sm"
@@ -365,6 +503,22 @@ export default function OrderTable({
                           <FaUserCog />
                         </Button>
                       )}
+                      
+                      {/* Reassign shipper – ONLY when ASSIGNED and not picked up (optional - can be hidden) */}
+                      {/* Note: Reassign is typically done via Edit modal or separate flow, not table action */}
+                      {/* Uncomment if you want to show Reassign button in table:
+                      {canReassign(o) && onAssignShipper && (
+                        <Button
+                          size="sm"
+                          variant="outline-info"
+                          className="order-action-btn"
+                          title="Reassign Shipper (only when status=ASSIGNED and not picked up)"
+                          onClick={(e) => handleAssign(e, o)}
+                        >
+                          <FaUserCog /> Reassign
+                        </Button>
+                      )}
+                      */}
                     </div>
                   </td>
                 </tr>

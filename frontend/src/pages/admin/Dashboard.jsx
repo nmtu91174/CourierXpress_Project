@@ -599,9 +599,16 @@ export default function Dashboard() {
   }, [shippers, allOrders]);
 
   // Get orders available for assignment (for dropdown)
+  // Enterprise: Only show orders eligible for agent assignment (agent_id IS NULL)
   const ordersForAgentAssignment = useMemo(() => {
-    // Only orders without agent (agent_id is null/0) or can reassign
-    return allOrders.filter(o => Number(o.status) !== 7 && Number(o.status) !== 6); // Not cancelled or failed
+    return allOrders.filter(o => {
+      const status = Number(o.status);
+      const hasAgent = o.agent_id !== null && o.agent_id !== undefined && Number(o.agent_id) !== 0;
+      
+      // Only BOOKED (1) orders without agent are eligible for assignment
+      // Exclude terminal statuses (CANCELLED=7, FAILED=6, DELIVERED=5)
+      return status === 1 && !hasAgent && status !== 5 && status !== 6 && status !== 7;
+    });
   }, [allOrders]);
 
   const ordersForShipperAssignment = useMemo(() => {

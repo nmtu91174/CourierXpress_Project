@@ -292,21 +292,68 @@ class OrderService extends BaseService
     {
         return $this->transaction(function () use ($orderId, $newStatus, $actorId, $actorRole, $note) {
 
-            $this->ensureOrderExists($orderId);
+            // Get current order state
+            $currentOrder = $this->prepare("SELECT status, agent_id, shipper_id FROM orders WHERE id = ?");
+            $currentOrder->bind_param("i", $orderId);
+            $currentOrder->execute();
+            $orderData = $currentOrder->get_result()->fetch_assoc();
+            
+            if (!$orderData) {
+                $currentOrder->close();
+                throw new Exception("Order not found");
+            }
+            
+            $currentStatus = (int)$orderData["status"];
+            $currentOrder->close();
 
             $checkStatus = $this->prepare("SELECT id FROM statuses WHERE id = ?");
             $checkStatus->bind_param("i", $newStatus);
             $checkStatus->execute();
             if ($checkStatus->get_result()->num_rows === 0) {
                 $checkStatus->close();
-                throw new Exception("Status {$newStatus} not found. Allowed: 1..6");
+                throw new Exception("Status {$newStatus} not found. Allowed: 1..7");
             }
             $checkStatus->close();
 
-            // [LƯU Ý QUAN TRỌNG] Cột trong DB là 'status', không phải 'status_id'
-            $stmt = $this->prepare("UPDATE orders SET status = ? WHERE id = ?");
-            $stmt->bind_param("ii", $newStatus, $orderId);
+            // Enterprise: Reset agent_id/shipper_id when rolling back to earlier statuses
+            // Rollback APPROVED → BOOKED: Reset agent_id
+            // Rollback ASSIGNED → APPROVED: Reset shipper_id
+            $resetAgentId = false;
+            $resetShipperId = false;
+            
+            // If rolling back from APPROVED (2) to BOOKED (1), reset agent_id
+            if ($currentStatus === self::STATUS_APPROVED && $newStatus === self::STATUS_BOOKED) {
+                $resetAgentId = true;
+            }
+            
+            // If rolling back from ASSIGNED (3) to APPROVED (2) or BOOKED (1), reset shipper_id
+            if ($currentStatus === self::STATUS_ASSIGNED && ($newStatus === self::STATUS_APPROVED || $newStatus === self::STATUS_BOOKED)) {
+                $resetShipperId = true;
+            }
+            
+            // If rolling back from any status to BOOKED (1), reset both
+            if ($newStatus === self::STATUS_BOOKED && $currentStatus > self::STATUS_BOOKED) {
+                $resetAgentId = true;
+                $resetShipperId = true;
+            }
+
+            // Build UPDATE query with conditional resets
+            if ($resetAgentId && $resetShipperId) {
+                $stmt = $this->prepare("UPDATE orders SET status = ?, agent_id = NULL, shipper_id = NULL WHERE id = ?");
+                $stmt->bind_param("ii", $newStatus, $orderId);
+            } elseif ($resetAgentId) {
+                $stmt = $this->prepare("UPDATE orders SET status = ?, agent_id = NULL WHERE id = ?");
+                $stmt->bind_param("ii", $newStatus, $orderId);
+            } elseif ($resetShipperId) {
+                $stmt = $this->prepare("UPDATE orders SET status = ?, shipper_id = NULL WHERE id = ?");
+                $stmt->bind_param("ii", $newStatus, $orderId);
+            } else {
+                $stmt = $this->prepare("UPDATE orders SET status = ? WHERE id = ?");
+                $stmt->bind_param("ii", $newStatus, $orderId);
+            }
+            
             $stmt->execute();
+            $stmt->close();
 
             $this->logHistory($orderId, $newStatus, $actorId, $actorRole, $note);
 
@@ -428,18 +475,15 @@ class OrderService extends BaseService
                 throw new Exception("Order not belong to agent");
             }
 
-            // [SỬA ĐOẠN NÀY]
-            // Cập nhật shipper_id nhưng GIỮ NGUYÊN STATUS LÀ 2 (Approved)
-            // Để Shipper thấy đơn ở Dashboard và bấm "Nhận đơn" (chuyển sang 3)
+            // Enterprise: Assign shipper automatically bumps status to ASSIGNED (3)
+            // This ensures proper workflow: APPROVED (2) → ASSIGNED (3) when shipper is assigned
             $stmt = $this->prepare("
                 UPDATE orders SET shipper_id = ?, status = ?
                 WHERE id = ? AND shipper_id IS NULL
             ");
 
-            // [THAY ĐỔI QUAN TRỌNG] 
-            // Cũ: $statusAssigned = self::STATUS_ASSIGNED; (Là 3 - Sai luồng)
-            // Mới: $statusAssigned = self::STATUS_APPROVED; (Là 2 - Đúng luồng)
-            $statusAssigned = self::STATUS_APPROVED;
+            // Enterprise workflow: Assign shipper → Status becomes ASSIGNED (3)
+            $statusAssigned = self::STATUS_ASSIGNED; // 3
 
             $stmt->bind_param("iii", $shipperId, $statusAssigned, $orderId);
             $stmt->execute();
@@ -448,8 +492,8 @@ class OrderService extends BaseService
                 throw new Exception("Order already has shipper or update failed");
             }
 
-            // Ghi log
-            $this->logHistory($orderId, self::STATUS_APPROVED, $actorId, $role, $note);
+            // Ghi log với status mới (ASSIGNED)
+            $this->logHistory($orderId, self::STATUS_ASSIGNED, $actorId, $role, $note);
 
             if (method_exists($this, 'logAudit')) {
                 $this->logAudit($actorId, $role, "ASSIGN_SHIPPER", $orderId, "shipper={$shipperId}");
