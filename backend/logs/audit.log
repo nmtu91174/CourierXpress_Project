@@ -17,3 +17,5 @@
 [2025-12-22 03:27:23] user=4 role=shipper action=UPDATE_STATUS order=14 note=Shipper accepted assignment, heading to pickup.
 [2025-12-22 04:00:15] user=4 role=shipper action=UPDATE_STATUS order=15 note=Shipper accepted assignment, heading to pickup.
 [2025-12-22 07:10:09] user=4 role=shipper action=UPDATE_STATUS order=4 note=Shipper accepted assignment, heading to pickup.
+[2025-12-22 08:28:31] user=1 role=admin action=UPDATE_STATUS order=13 note=Cập nhật đơn hàng
+[2025-12-22 08:28:37] user=1 role=admin action=ASSIGN_SHIPPER order=13 note=shipper=4
