@@ -1,0 +1,21 @@
+[2025-12-20 09:20:17] user=1 role=admin action=ASSIGN_AGENT order=2 note=agent=3
+[2025-12-21 04:30:08] user=1 role=admin action=ASSIGN_AGENT order=7 note=agent=3
+[2025-12-21 04:30:24] user=1 role=admin action=ASSIGN_SHIPPER order=7 note=shipper=4
+[2025-12-21 08:23:46] user=4 role=shipper action=UPDATE_STATUS order=7 note=Shipper accepted assignment, heading to pickup.
+[2025-12-22 03:03:00] user=1 role=admin action=ASSIGN_AGENT order=4 note=agent=3
+[2025-12-22 03:03:07] user=1 role=admin action=ASSIGN_SHIPPER order=4 note=shipper=4
+[2025-12-22 03:23:32] user=1 role=admin action=ASSIGN_SHIPPER order=14 note=shipper=4
+[2025-12-22 03:23:38] user=1 role=admin action=ASSIGN_SHIPPER order=15 note=shipper=4
+[2025-12-22 03:24:27] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng
+[2025-12-22 03:24:57] user=1 role=admin action=UPDATE_STATUS order=3 note=Cập nhật đơn hàng
+[2025-12-22 03:25:13] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng
+[2025-12-22 03:25:22] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng
+[2025-12-22 03:25:30] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng
+[2025-12-22 03:25:46] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng
+[2025-12-22 03:25:53] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng
+[2025-12-22 03:26:25] user=1 role=admin action=UPDATE_STATUS order=1 note=Cập nhật đơn hàng
+[2025-12-22 03:27:23] user=4 role=shipper action=UPDATE_STATUS order=14 note=Shipper accepted assignment, heading to pickup.
+[2025-12-22 04:00:15] user=4 role=shipper action=UPDATE_STATUS order=15 note=Shipper accepted assignment, heading to pickup.
+[2025-12-22 07:10:09] user=4 role=shipper action=UPDATE_STATUS order=4 note=Shipper accepted assignment, heading to pickup.
+[2025-12-22 08:28:31] user=1 role=admin action=UPDATE_STATUS order=13 note=Cập nhật đơn hàng
+[2025-12-22 08:28:37] user=1 role=admin action=ASSIGN_SHIPPER order=13 note=shipper=4

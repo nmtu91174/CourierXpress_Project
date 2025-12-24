@@ -1,5 +1,3 @@
-// frontend/src/pages/shipper/OrderDetailShipper.jsx
-
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -28,13 +26,12 @@ import {
     TelephoneFill,
     CalendarEvent,
     CashStack,
-    CreditCard,
     Rulers
 } from "react-bootstrap-icons";
 import Swal from "sweetalert2";
 import axios from "axios";
 
-// Cấu hình API Base
+// Cấu hình API Base (Bỏ dấu / ở cuối để nối chuỗi cho đẹp)
 const API_BASE = "http://localhost:8888/api/shipper";
 
 const OrderDetailShipper = () => {
@@ -53,6 +50,7 @@ const OrderDetailShipper = () => {
     const [showPickupModal, setShowPickupModal] = useState(false);
     const [actualWeight, setActualWeight] = useState("");
     const [pickupImage, setPickupImage] = useState(null);
+    const [pickupPreview, setPickupPreview] = useState(null); // State riêng cho preview
     const [checkOrder, setCheckOrder] = useState(false);
     const [checkSender, setCheckSender] = useState(false);
     const [checkPackage, setCheckPackage] = useState(false);
@@ -60,15 +58,7 @@ const OrderDetailShipper = () => {
     // States cho Delivery Modal
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [deliveryImage, setDeliveryImage] = useState(null);
-
-    // Tạo URL preview cho ảnh pickup và delivery
-    const pickupPreviewUrl = pickupImage
-        ? URL.createObjectURL(pickupImage)
-        : null;
-
-    const deliveryPreviewUrl = deliveryImage
-        ? URL.createObjectURL(deliveryImage)
-        : null;
+    const [deliveryPreview, setDeliveryPreview] = useState(null); // State riêng cho preview
 
     // GPS when confirming delivery
     const [deliveryLocation, setDeliveryLocation] = useState(null);
@@ -78,6 +68,41 @@ const OrderDetailShipper = () => {
     // HÀM TIỆN ÍCH (HELPERS)
     // ==========================
 
+    // [FIX] Hàm lấy vị trí GPS (Quan trọng: Đã được thêm vào)
+    // [FIX] Hàm lấy vị trí GPS (Đã tinh chỉnh để tránh Timeout)
+    const getCurrentLocation = () => {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject(new Error("Geolocation is not supported by your browser"));
+            } else {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                        });
+                    },
+                    (error) => {
+                        let msg = "Unknown GPS error";
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED: msg = "Bạn đã từ chối cấp quyền vị trí."; break;
+                            case error.POSITION_UNAVAILABLE: msg = "Không thể xác định vị trí hiện tại."; break;
+                            case error.TIMEOUT: msg = "Hết thời gian chờ lấy vị trí (Timeout)."; break;
+                        }
+                        reject(new Error(msg));
+                    },
+                    // 👇 CẤU HÌNH QUAN TRỌNG ĐỂ KHẮC PHỤC LỖI:
+                    {
+                        enableHighAccuracy: false, // Đặt là FALSE để dùng định vị qua Wi-Fi/Network (Nhanh hơn, không cần ra ngoài trời)
+                        timeout: 20000,            // Tăng thời gian chờ lên 20 giây
+                        maximumAge: 5000           // Chấp nhận vị trí lưu đệm (cache) trong 5 giây gần nhất
+                    }
+                );
+            }
+        });
+    };
+
     // Định dạng tiền tệ VND
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
@@ -86,41 +111,35 @@ const OrderDetailShipper = () => {
     // Định dạng ngày tháng
     const formatDate = (dateString) => {
         if (!dateString) return "N/A";
-        return new Date(dateString).toLocaleString('en-GB'); // Định dạng ngày/tháng/năm giờ:phút
+        return new Date(dateString).toLocaleString('en-GB');
     };
 
-    // Hiển thị người trả phí dựa trên payer_type (1: Sender, 2: Receiver)
+    // Hiển thị người trả phí
     const getPayerLabel = (type) => {
         return parseInt(type) === 1 ? "Sender (Người gửi)" : "Receiver (Người nhận)";
     };
 
-    // Lấy vị trí GPS hiện tại
-    const getCurrentLocation = () => {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error("Geolocation is not supported by this browser"));
-                return;
-            }
+    // Xử lý preview ảnh pickup
+    useEffect(() => {
+        if (!pickupImage) {
+            setPickupPreview(null);
+            return;
+        }
+        const objectUrl = URL.createObjectURL(pickupImage);
+        setPickupPreview(objectUrl);
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [pickupImage]);
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    resolve({
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracy: position.coords.accuracy
-                    });
-                },
-                (error) => {
-                    reject(new Error(`Geolocation error: ${error.message}`));
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
-            );
-        });
-    };
+    // Xử lý preview ảnh delivery
+    useEffect(() => {
+        if (!deliveryImage) {
+            setDeliveryPreview(null);
+            return;
+        }
+        const objectUrl = URL.createObjectURL(deliveryImage);
+        setDeliveryPreview(objectUrl);
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [deliveryImage]);
 
     // ==========================
     // FETCH DATA
@@ -129,6 +148,7 @@ const OrderDetailShipper = () => {
         const fetchOrderDetail = async () => {
             setLoading(true);
             try {
+                // Đã có withCredentials: true -> Tốt
                 const res = await axios.get(
                     `${API_BASE}/order_detail.php?order_id=${id}`,
                     { withCredentials: true }
@@ -141,7 +161,13 @@ const OrderDetailShipper = () => {
                     setError(res.data.message);
                 }
             } catch (err) {
-                setError("Cannot connect to server");
+                console.error(err);
+                // Check lỗi 401 để logout nếu cần
+                if (err.response && err.response.status === 401) {
+                    setError("Session expired. Please login again.");
+                } else {
+                    setError("Cannot connect to server");
+                }
             } finally {
                 setLoading(false);
             }
@@ -232,10 +258,12 @@ const OrderDetailShipper = () => {
         if (!deliveryImage) return;
 
         setIsSubmitting(true);
+        setGpsError(null); // Reset lỗi cũ
 
         try {
-            // 1️⃣ Lấy GPS hiện tại
+            // 1️⃣ Lấy GPS hiện tại (Đã có hàm)
             const location = await getCurrentLocation();
+            setDeliveryLocation(location);
 
             // 2️⃣ Build FormData
             const formData = new FormData();
@@ -264,10 +292,12 @@ const OrderDetailShipper = () => {
                 Swal.fire("Error", res.data.message, "error");
             }
         } catch (err) {
+            console.error(err);
             // ❌ Lỗi GPS hoặc server
+            setGpsError(err.message); // Hiển thị lỗi lên Modal
             Swal.fire(
                 "GPS Error",
-                "Unable to get current location. Please enable GPS and try again.",
+                "Unable to get location: " + err.message,
                 "warning"
             );
         } finally {
@@ -302,8 +332,6 @@ const OrderDetailShipper = () => {
     if (!order) return null;
 
     const status = parseInt(order.status);
-
-
 
     return (
         <Container className="py-3 mb-5" fluid="md">
@@ -385,7 +413,6 @@ const OrderDetailShipper = () => {
                         </Col>
                         <Col xs={6} md={3}>
                             <small className="text-muted d-block">Dimensions (L-W-H)</small>
-                            {/* Hiển thị kích thước nếu có, nếu không thì hiển thị N/A */}
                             <strong>
                                 <Rulers className="me-1 text-muted" />
                                 {order.length ? `${Number(order.length)}x${Number(order.width)}x${Number(order.height)} cm` : "N/A"}
@@ -401,7 +428,6 @@ const OrderDetailShipper = () => {
                         </Col>
                     </Row>
 
-                    {/* Phần hiển thị Ghi chú */}
                     {order.notes && (
                         <Alert variant="warning" className="d-flex align-items-center mb-0 mt-3">
                             <ExclamationTriangleFill className="me-2 fs-4" />
@@ -440,7 +466,6 @@ const OrderDetailShipper = () => {
                                     </div>
                                 </td>
                                 <td className="align-middle">{formatCurrency(order.total_shipping_fee)}</td>
-                                {/* Làm nổi bật số tiền COD cần thu */}
                                 <td className="align-middle fw-bold text-danger fs-5">
                                     {formatCurrency(order.cod_amount)}
                                 </td>
@@ -514,7 +539,7 @@ const OrderDetailShipper = () => {
                             <CameraFill className="me-1" /> Photo
                         </Form.Label>
 
-                        {!pickupImage ? (
+                        {!pickupPreview ? (
                             /* ===== CHƯA CÓ ẢNH ===== */
                             <Form.Control
                                 type="file"
@@ -526,7 +551,7 @@ const OrderDetailShipper = () => {
                             /* ===== PREVIEW ẢNH ===== */
                             <div className="text-center">
                                 <img
-                                    src={pickupPreviewUrl}
+                                    src={pickupPreview}
                                     alt="Pickup Preview"
                                     className="img-fluid rounded mb-2"
                                     style={{ maxHeight: "220px" }}
@@ -555,8 +580,8 @@ const OrderDetailShipper = () => {
             </Modal>
 
             {/* ==========================
-                 MODAL: CONFIRM DELIVERY (PRO UX)
-                ========================== */}
+                  MODAL: CONFIRM DELIVERY (PRO UX)
+                  ========================== */}
             <Modal
                 show={showDeliveryModal}
                 onHide={() => setShowDeliveryModal(false)}
@@ -580,7 +605,7 @@ const OrderDetailShipper = () => {
                             Proof of Delivery (Photo)
                         </Form.Label>
 
-                        {!deliveryImage ? (
+                        {!deliveryPreview ? (
                             /* ===== CHƯA CÓ ẢNH ===== */
                             <Form.Control
                                 type="file"
@@ -592,7 +617,7 @@ const OrderDetailShipper = () => {
                             /* ===== PREVIEW ẢNH ===== */
                             <div className="text-center">
                                 <img
-                                    src={deliveryPreviewUrl}
+                                    src={deliveryPreview}
                                     alt="Delivery Proof Preview"
                                     className="img-fluid rounded mb-2"
                                     style={{ maxHeight: "240px" }}
