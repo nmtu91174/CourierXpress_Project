@@ -119,6 +119,27 @@ const OrderDetailShipper = () => {
         return parseInt(type) === 1 ? "Sender (Người gửi)" : "Receiver (Người nhận)";
     };
 
+    // ========================== new nmtu 15:38 24-12
+    // ==========================
+    // [ADDED] DELIVERY FAILED HELPERS
+    // ==========================
+    const getFailedReasonLabel = (reason) => {
+        switch (reason) {
+            case "receiver_unreachable":
+                return "Receiver unreachable (Không liên lạc được người nhận)";
+            case "receiver_not_available":
+                return "Receiver not available (Người nhận không có mặt)";
+            case "wrong_address":
+                return "Wrong address (Sai địa chỉ)";
+            case "receiver_refused":
+                return "Receiver refused (Người nhận từ chối)";
+            case "force_majeure":
+                return "Force majeure (Sự cố bất khả kháng)";
+            default:
+                return reason || "Unknown reason";
+        }
+    };
+    // ==========================
     // Xử lý preview ảnh pickup
     useEffect(() => {
         if (!pickupImage) {
@@ -304,6 +325,40 @@ const OrderDetailShipper = () => {
             setIsSubmitting(false);
         }
     };
+    //new nmtu 15:38 24-12
+    // ==========================
+    // [ADDED] DELIVERY FAILED HANDLERS
+    // ==========================
+const [showFailModal, setShowFailModal] = useState(false);
+    const handleConfirmDeliveryFail = async () => {
+    if (!failReason || !failImage) return;
+
+    try {
+        setGpsError(null);
+        const location = await getCurrentLocation();
+
+        await submitDeliveryFailed({
+            orderId: order.id,
+            reason: failReason,
+            note: failNote,
+            image: failImage,
+            location
+        });
+
+        await Swal.fire(
+            "Recorded",
+            "Delivery failure has been recorded successfully",
+            "success"
+        );
+
+        setShowFailModal(false);
+        window.location.reload();
+
+    } catch (err) {
+        Swal.fire("Error", err.message, "error");
+    }
+};
+
 
     // ==========================
     // RENDER UI
@@ -362,6 +417,8 @@ const OrderDetailShipper = () => {
                         {status === 3 && "Accepted (Picking up)"}
                         {status === 4 && "Picked Up (Delivering)"}
                         {status === 5 && "Delivered"}
+                        {/* === ADDED FOR STATUS = 6 === */}
+                        {status === 6 && "Delivery Failed"}
                     </Badge>
                 </Card.Header>
                 <Card.Body>
@@ -439,6 +496,63 @@ const OrderDetailShipper = () => {
                 </Card.Body>
             </Card>
 
+            {/* ========================== new nmtu 15:38 24-12
+                 [ADDED] DELIVERY FAILED INFORMATION (READ-ONLY)
+                 ========================== */}
+            {status === 6 && (
+                <Card className="mb-3 shadow-sm border-danger">
+                    <Card.Header className="bg-danger text-white fw-bold">
+                        <ExclamationTriangleFill className="me-2" />
+                        Delivery Failed
+                    </Card.Header>
+                    <Card.Body>
+                        <Alert variant="danger">
+                            This order was marked as <strong>Delivery Failed</strong>.
+                            Further actions will be handled by Agent/Admin.
+                        </Alert>
+
+                        <Row className="mb-3">
+                            <Col md={6}>
+                                <small className="text-muted d-block">Failed Reason</small>
+                                <strong className="text-danger">
+                                    {getFailedReasonLabel(order.delivery_fail_reason)}
+                                </strong>
+                            </Col>
+
+                            <Col md={6}>
+                                <small className="text-muted d-block">Failed At</small>
+                                <strong>{formatDate(order.delivery_fail_at)}</strong>
+                            </Col>
+                        </Row>
+
+                        {order.delivery_fail_note && (
+                            <Alert variant="warning" className="mb-3">
+                                <strong>Shipper Note:</strong> {order.delivery_fail_note}
+                            </Alert>
+                        )}
+
+                        {/* Proof Image (if exists) */}
+                        {order.failed_images && order.failed_images.length > 0 && (
+                            <>
+                                <h6 className="fw-bold mb-2">Failure Proof</h6>
+                                <Row>
+                                    {order.failed_images.map((img, idx) => (
+                                        <Col xs={6} md={4} key={idx} className="mb-2">
+                                            <img
+                                                src={img.image_url}
+                                                alt="Delivery Failed Proof"
+                                                className="img-fluid rounded border"
+                                            />
+                                        </Col>
+                                    ))}
+                                </Row>
+                            </>
+                        )}
+                    </Card.Body>
+                </Card>
+            )}
+
+
             {/* CARD 3: THÔNG TIN THANH TOÁN (FINANCIALS) */}
             <Card className="mb-3 shadow-sm border-0">
                 <Card.Body>
@@ -479,8 +593,8 @@ const OrderDetailShipper = () => {
             </Card>
 
             {/* ==========================
-          CÁC BUTTON HÀNH ĐỘNG (FIXED BOTTOM)
-      ========================== */}
+                 CÁC BUTTON HÀNH ĐỘNG (FIXED BOTTOM)
+                ========================== */}
             <div className="p-3 bg-white border-top shadow-lg d-md-static bg-md-transparent border-md-0 shadow-md-none">
                 <Container fluid="md" className="p-0">
                     {status === 2 && (
@@ -496,10 +610,28 @@ const OrderDetailShipper = () => {
                     )}
 
                     {status === 4 && (
-                        <Button variant="success" size="lg" className="w-100 fw-bold shadow-sm" onClick={() => setShowDeliveryModal(true)}>
-                            <Truck className="me-2" /> Confirm Delivery
-                        </Button>
-                    )}
+    <>
+        <Button
+            variant="success"
+            size="lg"
+            className="w-100 fw-bold shadow-sm mb-2"
+            onClick={() => setShowDeliveryModal(true)}
+        >
+            <Truck className="me-2" /> Confirm Delivery
+        </Button>
+
+        <Button
+            variant="outline-danger"
+            size="lg"
+            className="w-100 fw-bold"
+            onClick={() => setShowFailModal(true)}
+        >
+            <ExclamationTriangleFill className="me-2" />
+            Delivery Failed
+        </Button>
+    </>
+)}
+
                 </Container>
             </div>
 
@@ -581,7 +713,7 @@ const OrderDetailShipper = () => {
 
             {/* ==========================
                   MODAL: CONFIRM DELIVERY (PRO UX)
-                  ========================== */}
+                ========================== */}
             <Modal
                 show={showDeliveryModal}
                 onHide={() => setShowDeliveryModal(false)}
@@ -672,6 +804,101 @@ const OrderDetailShipper = () => {
                     </Button>
                 </Modal.Footer>
             </Modal>
+            <Modal
+    show={showFailModal}
+    onHide={() => setShowFailModal(false)}
+    centered
+    backdrop="static"
+>
+    <Modal.Header>
+        <Modal.Title className="text-danger">
+            <ExclamationTriangleFill className="me-2" />
+            Delivery Failed
+        </Modal.Title>
+    </Modal.Header>
+
+    <Modal.Body>
+        <Alert variant="danger" className="py-2">
+            Please provide a <strong>valid reason</strong> and
+            <strong> photo proof</strong>.
+        </Alert>
+
+        <Form.Group className="mb-3">
+            <Form.Label>Failure Reason *</Form.Label>
+            <Form.Select
+                value={failReason}
+                onChange={(e) => setFailReason(e.target.value)}
+            >
+                <option value="">-- Select reason --</option>
+                <option value="receiver_unreachable">Receiver unreachable</option>
+                <option value="receiver_not_available">Receiver not available</option>
+                <option value="wrong_address">Wrong address</option>
+                <option value="receiver_refused">Receiver refused</option>
+                <option value="force_majeure">Force majeure</option>
+            </Form.Select>
+        </Form.Group>
+
+        <Form.Group className="mb-3">
+            <Form.Label>Note (optional)</Form.Label>
+            <Form.Control
+                as="textarea"
+                rows={3}
+                value={failNote}
+                onChange={(e) => setFailNote(e.target.value)}
+            />
+        </Form.Group>
+
+        <Form.Group>
+            <Form.Label>
+                <CameraFill className="me-1" />
+                Proof Image *
+            </Form.Label>
+
+            {!failPreview ? (
+                <Form.Control
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => setFailImage(e.target.files[0])}
+                />
+            ) : (
+                <div className="text-center">
+                    <img
+                        src={failPreview}
+                        alt="Fail Proof"
+                        className="img-fluid rounded mb-2"
+                        style={{ maxHeight: 240 }}
+                    />
+                    <Button
+                        size="sm"
+                        variant="outline-secondary"
+                        onClick={() => setFailImage(null)}
+                    >
+                        Change Photo
+                    </Button>
+                </div>
+            )}
+        </Form.Group>
+    </Modal.Body>
+
+    <Modal.Footer>
+        <Button
+            variant="secondary"
+            onClick={() => setShowFailModal(false)}
+        >
+            Cancel
+        </Button>
+
+        <Button
+            variant="danger"
+            disabled={!failReason || !failImage || failSubmitting}
+            onClick={handleConfirmDeliveryFail}
+        >
+            {failSubmitting ? "Submitting..." : "Confirm Delivery Failed"}
+        </Button>
+    </Modal.Footer>
+</Modal>
+
 
 
         </Container >

@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Button, Table, Spinner, Alert, Badge } from "react-bootstrap";
 import { FaMotorcycle, FaTasks, FaCheckCircle, FaClock, FaEye } from "react-icons/fa";
+// [NEW] Bootstrap Icons for pagination (react-bootstrap friendly)
+import { BsChevronLeft, BsChevronRight } from "react-icons/bs";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
@@ -37,6 +39,18 @@ const ShipperHome = () => {
   const [waitingOrders, setWaitingOrders] = useState([]);     // Status 3 (ASSIGNED)
   const [activeOrders, setActiveOrders] = useState([]);       // Status 4 (PICKED)
   const [completedOrders, setCompletedOrders] = useState([]); // Status 5 (DELIVERED)
+
+  // ================================ new nmtu 11:02 24-12 ================================
+  // ===================== PAGINATION STATES =====================
+
+  // Pagination for "New Assigned Orders"
+  const [waitingPage, setWaitingPage] = useState(1);
+  const WAITING_PAGE_SIZE = 3; // Show 5 new orders per page
+
+  // Pagination for "Active & History Orders"
+  const [recentPage, setRecentPage] = useState(1);
+  const RECENT_PAGE_SIZE = 5; // Show 10 orders per page
+  // ================================ end nmtu 11:02 24-12 ================================
 
   // [NEW] Fetch Dashboard Data
   useEffect(() => {
@@ -94,6 +108,24 @@ const ShipperHome = () => {
 
   // [FIX] Gộp đơn đang xử lý + lịch sử để render bảng
   const recentOrders = [...activeOrders, ...completedOrders];
+
+  // new nmtu 11:02 24-12
+  // ===================== PAGINATION LOGIC =====================
+
+  // Assigned orders pagination
+  const waitingTotalPages = Math.ceil(waitingOrders.length / WAITING_PAGE_SIZE);
+  const paginatedWaitingOrders = waitingOrders.slice(
+    (waitingPage - 1) * WAITING_PAGE_SIZE,
+    waitingPage * WAITING_PAGE_SIZE
+  );
+
+  // Recent orders pagination
+  const recentTotalPages = Math.ceil(recentOrders.length / RECENT_PAGE_SIZE);
+  const paginatedRecentOrders = recentOrders.slice(
+    (recentPage - 1) * RECENT_PAGE_SIZE,
+    recentPage * RECENT_PAGE_SIZE
+  );
+  // ================================ end nmtu 11:02 24-12 ================================
 
   return (
     <div className="shipper-home-page">
@@ -158,7 +190,7 @@ const ShipperHome = () => {
 
           {waitingOrders.length > 0 ? (
             <div className="d-flex flex-column gap-3">
-              {waitingOrders.map(order => (
+              {paginatedWaitingOrders.map(order => ( //new nmtu 11:02 24-12 thay cho {waitingOrders.map(order => (
                 <Card
                   key={order.id}
                   className="p-3 bg-light border-0 d-flex flex-row justify-content-between align-items-center"
@@ -185,7 +217,7 @@ const ShipperHome = () => {
                       // But we check shipper_id field for extra safety
                       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
                       const currentShipperId = currentUser.id;
-                      
+
                       if (order.shipper_id && order.shipper_id === currentShipperId) {
                         navigate(`/shipper/order/${order.id}`);
                       } else if (order.shipper_id) {
@@ -209,6 +241,33 @@ const ShipperHome = () => {
               Hiện chưa có đơn hàng mới nào được gán cho bạn.
             </Alert>
           )}
+          {/* ===================== PAGINATION: NEW ASSIGNED ORDERS ===================== */}
+          {/* nmtu 11:02 24-12 */}
+          {waitingTotalPages > 1 && (
+            <div className="d-flex justify-content-center align-items-center gap-3 mt-3">
+              <Button
+                variant="outline-primary"
+                size="sm"
+                disabled={waitingPage === 1}
+                onClick={() => setWaitingPage(prev => Math.max(prev - 1, 1))}
+              >
+                <BsChevronLeft />
+              </Button>
+
+              <span className="small text-muted">
+                Page {waitingPage} / {waitingTotalPages}
+              </span>
+
+              <Button
+                variant="outline-primary"
+                size="sm"
+                disabled={waitingPage === waitingTotalPages}
+                onClick={() => setWaitingPage(prev => Math.min(prev + 1, waitingTotalPages))}
+              >
+                <BsChevronRight />
+              </Button>
+            </div>
+          )}
         </Card>
 
         {/* ================================
@@ -231,7 +290,7 @@ const ShipperHome = () => {
             </thead>
             <tbody>
               {recentOrders.length > 0 ? (
-                recentOrders.map(order => (
+                paginatedRecentOrders.map(order => ( //new nmtu 11:02 24-12 thay cho recentOrders.map(order => (
                   <tr key={order.id}>
                     <td>{order.order_code}</td>
                     <td>{order.receiver_name}</td>
@@ -262,7 +321,36 @@ const ShipperHome = () => {
               )}
             </tbody>
           </Table>
+          {/* ===================== PAGINATION: RECENT ORDERS ===================== */}
+          {recentTotalPages > 1 && (
+            <div className="d-flex justify-content-end align-items-center gap-3 mt-3">
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                disabled={recentPage === 1}
+                onClick={() => setRecentPage(prev => Math.max(prev - 1, 1))}
+              >
+                <BsChevronLeft />
+              </Button>
+
+              <span className="small text-muted">
+                Page {recentPage} / {recentTotalPages}
+              </span>
+
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                disabled={recentPage === recentTotalPages}
+                onClick={() => setRecentPage(prev => Math.min(prev + 1, recentTotalPages))}
+              >
+                <BsChevronRight />
+              </Button>
+            </div>
+          )}
+
         </Card>
+
+
 
       </Container>
     </div>
