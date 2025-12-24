@@ -29,7 +29,7 @@ export default function OrderManagement() {
   const [agents, setAgents] = useState([]);
   const [shippers, setShippers] = useState([]);
   const [userRole, setUserRole] = useState("admin");
-  
+
   // Additional data for order creation
   const [categories, setCategories] = useState([]);
   const [serviceTypes, setServiceTypes] = useState([]);
@@ -61,9 +61,15 @@ export default function OrderManagement() {
   const [filterDateTo, setFilterDateTo] = useState("");
   const [searchText, setSearchText] = useState("");
 
+  // ===================== PAGINATION STATES ===================== new nmtu 9:56 24-12
+  // Client-side pagination for filteredOrders
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10); // Default: 10 orders per page
+  // ===================== END PAGINATION STATES =====================
+
   // Form data
   const [createData, setCreateData] = useState({
-    sender_name: "", sender_phone: "", 
+    sender_name: "", sender_phone: "",
     fromStreet: "", fromWard: "", fromDistrict: "",
     receiver_name: "", receiver_phone: "", receiver_email: "",
     toStreet: "", toWard: "", toDistrict: "",
@@ -292,16 +298,35 @@ export default function OrderManagement() {
     if (searchText) {
       const searchLower = searchText.toLowerCase();
       filtered = filtered.filter((o) =>
-          (o.order_code || "").toLowerCase().includes(searchLower) ||
-          (o.sender_name || "").toLowerCase().includes(searchLower) ||
-          (o.receiver_name || "").toLowerCase().includes(searchLower) ||
-          (o.sender_phone || "").includes(searchText) ||
-          (o.receiver_phone || "").includes(searchText)
+        (o.order_code || "").toLowerCase().includes(searchLower) ||
+        (o.sender_name || "").toLowerCase().includes(searchLower) ||
+        (o.receiver_name || "").toLowerCase().includes(searchLower) ||
+        (o.sender_phone || "").includes(searchText) ||
+        (o.receiver_phone || "").includes(searchText)
       );
     }
 
     setFilteredOrders(filtered);
+
+    // RESET pagination when filters/search change - new nmtu 9:56 24-12
+    // Prevents empty table when current page exceeds total pages
+    setCurrentPage(1); // <-- ADDED
+    //------------
+
   }, [orders, filterStatus, filterStatusGroup, filterBranch, filterShipper, filterPayment, filterPaymentStatus, filterCOD, filterNoAgent, filterNoShipper, filterAssignedNotPicked, filterDateFrom, filterDateTo, searchText]);
+
+  //new nmtu 9:56 24-12
+  // ===================== PAGINATED ORDERS =====================
+  // Calculate orders for current page AFTER filtering
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredOrders.slice(startIndex, endIndex);
+  }, [filteredOrders, currentPage, pageSize]);
+
+  // Total pages for pagination
+  const totalPages = Math.ceil(filteredOrders.length / pageSize);
+  // ===================== END PAGINATED ORDERS =====================
 
   // Calculate fees function (from OrderNoAccount.js)
   const calculateFees = useMemo(() => {
@@ -370,11 +395,11 @@ export default function OrderManagement() {
         const serviceFee = parseFloat(selectedService.fee) || 0;
         // Always add service fee (even if 0, to show in details)
         total_shipping_fee += serviceFee;
-        fees_detail.push({ 
-          id: SERVICE_SURCHARGE_FEE_ID, 
-          code: 'service_surcharge', 
-          name: `Phụ phí Dịch vụ (${selectedService.name || 'Service Type'})`, 
-          amount: serviceFee 
+        fees_detail.push({
+          id: SERVICE_SURCHARGE_FEE_ID,
+          code: 'service_surcharge',
+          name: `Phụ phí Dịch vụ (${selectedService.name || 'Service Type'})`,
+          amount: serviceFee
         });
       }
     }
@@ -396,11 +421,11 @@ export default function OrderManagement() {
     setCreateData(prev => ({
       ...prev,
       [name]: (['weight', 'length', 'width', 'height', 'cod_amount', 'service_type', 'payment_method_id', 'category_id', 'payer_type'].includes(name))
-        ? (name === 'service_type' || name === 'payment_method_id' || name === 'category_id' || name === 'payer_type' 
-            ? parseInt(value) || (name === 'payer_type' ? 1 : 0) 
-            : name === 'weight' 
-              ? parseInt(value) || 0 // weight is now INT (grams)
-              : parseFloat(value) || 0)
+        ? (name === 'service_type' || name === 'payment_method_id' || name === 'category_id' || name === 'payer_type'
+          ? parseInt(value) || (name === 'payer_type' ? 1 : 0)
+          : name === 'weight'
+            ? parseInt(value) || 0 // weight is now INT (grams)
+            : parseFloat(value) || 0)
         : value
     }));
   };
@@ -424,7 +449,7 @@ export default function OrderManagement() {
       setCreateData(prev => ({ ...prev, toWard: value }));
     }
   };
-  
+
   const handleImageChange = (e) => {
     const input = e.target;
     if (!input || !input.files || input.files.length === 0) {
@@ -433,13 +458,13 @@ export default function OrderManagement() {
 
     // Convert FileList to Array - this ensures multiple files are captured
     const newFiles = Array.from(input.files);
-    
+
     console.log('Selected files count:', newFiles.length); // Debug log
-    
+
     // Security: Validate file types
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-    
+
     // Check total file count (existing + new)
     const totalFiles = productImages.length + newFiles.length;
     if (totalFiles > 5) {
@@ -461,7 +486,7 @@ export default function OrderManagement() {
       const isDuplicate = productImages.some(
         existingFile => existingFile.name === file.name && existingFile.size === file.size
       );
-      
+
       if (isDuplicate) {
         invalidFiles.push(`${file.name} (already selected)`);
         return;
@@ -469,11 +494,11 @@ export default function OrderManagement() {
 
       // Check MIME type
       const isValidMime = allowedTypes.includes(file.type);
-      
+
       // Check file extension (double security)
       const fileName = file.name.toLowerCase();
       const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
-      
+
       // Check file size (max 5MB per file)
       const maxSize = 5 * 1024 * 1024; // 5MB
       const isValidSize = file.size <= maxSize;
@@ -502,36 +527,36 @@ export default function OrderManagement() {
     if (validFiles.length > 0) {
       setProductImages(prev => [...prev, ...validFiles]);
     }
-    
+
     // Reset input to allow selecting same files again if needed
     // Note: We don't reset if there were invalid files, so user can see the error
     if (invalidFiles.length === 0) {
       input.value = '';
     }
   };
-  
+
   const removeImage = (index) => setProductImages(productImages.filter((_, i) => i !== index));
-  
+
   const handleCreateSubmit = async () => {
     // Validation - Kiểm tra tất cả trường bắt buộc
     const missingFields = [];
-    
+
     if (!createData.sender_name || createData.sender_name.trim() === "") missingFields.push("Tên người gửi");
     if (!createData.sender_phone || createData.sender_phone.trim() === "") missingFields.push("Số điện thoại người gửi");
     if (!createData.fromStreet || createData.fromStreet.trim() === "") missingFields.push("Street Address (Sender)");
     if (!createData.fromDistrict || createData.fromDistrict.trim() === "") missingFields.push("District (Sender)");
-    
+
     if (!createData.receiver_name || createData.receiver_name.trim() === "") missingFields.push("Receiver Name");
     if (!createData.receiver_phone || createData.receiver_phone.trim() === "") missingFields.push("Receiver Phone");
     if (!createData.toStreet || createData.toStreet.trim() === "") missingFields.push("Street Address (Receiver)");
     if (!createData.toDistrict || createData.toDistrict.trim() === "") missingFields.push("District (Receiver)");
-    
+
     if (!createData.category_id || createData.category_id === "" || createData.category_id === 0) missingFields.push("Item Category");
     if (!createData.weight || createData.weight === 0 || createData.weight === "") missingFields.push("Weight (grams)");
     if (!createData.length || createData.length === 0 || createData.length === "") missingFields.push("Length");
     if (!createData.width || createData.width === 0 || createData.width === "") missingFields.push("Width");
     if (!createData.height || createData.height === 0 || createData.height === "") missingFields.push("Height");
-    
+
     if (missingFields.length > 0) {
       return Swal.fire({
         icon: "error",
@@ -543,13 +568,13 @@ export default function OrderManagement() {
     try {
       const formData = new FormData();
       const user = JSON.parse(localStorage.getItem("user") || "{}");
-      
+
       formData.append("customer_id", user.id || 6);
-      
+
       // Address fields
       formData.append('sender_address', `${createData.fromStreet}, ${createData.fromWard || ''}, ${createData.fromDistrict}, Hà Nội`);
       formData.append('receiver_address', `${createData.toStreet}, ${createData.toWard || ''}, ${createData.toDistrict}, Hà Nội`);
-      
+
       // Basic fields
       formData.append('sender_name', createData.sender_name);
       formData.append('sender_phone', createData.sender_phone);
@@ -568,7 +593,7 @@ export default function OrderManagement() {
       formData.append('payer_type', createData.payer_type || 1); // 1 = Người gửi trả, 2 = Người nhận trả
       formData.append('cod_amount', createData.cod_amount || 0);
       formData.append('note', createData.note || '');
-      
+
       // Distance and fees - Backend yêu cầu distance_km không được empty
       const finalDistance = distanceKm || createData.distance_km || "";
       // Đảm bảo distance_km luôn có giá trị (ít nhất là "0" nếu không nhập)
@@ -592,7 +617,7 @@ export default function OrderManagement() {
         credentials: "include",
         body: formData,
       });
-      
+
       if (!res.ok) {
         const errorText = await res.text();
         try {
@@ -602,17 +627,17 @@ export default function OrderManagement() {
           return Swal.fire("Lỗi", `Lỗi server (${res.status})`, "error");
         }
       }
-      
+
       const data = await res.json();
       if (data.status === "success") {
         Swal.fire("Thành công", `Đã tạo đơn: ${data.data?.order_code || "thành công"}`, "success");
         setShowCreateModal(false);
         resetCreateModal();
-        
+
         // Refresh orders list
         await fetchOrders();
         fetchKPIStats();
-        
+
         // If detail panel is open, fetch updated order detail
         if (showDetailPanel && selectedOrder && data.data?.order_id) {
           try {
@@ -643,17 +668,17 @@ export default function OrderManagement() {
   const getAvailableStatuses = (currentStatus) => {
     const status = Number(currentStatus);
     const options = [];
-    
+
     // If terminal status, return empty (should not be editable)
     if (isTerminalStatus(status)) {
       return options; // Terminal states cannot be changed
     }
-    
+
     // Enterprise workflow mapping (correct status progression):
     // BOOKED (1) → APPROVED (2) → ASSIGNED (3) → IN_PROGRESS (4) → DELIVERED (5)
     // Get next status in workflow
     const nextStatus = status + 1;
-    
+
     // Add next status (if exists and not terminal)
     // Note: ASSIGNED (3) → IN_PROGRESS (4) is correct workflow
     // Label "Picked Up" is correct for status 4 (IN_PROGRESS)
@@ -664,7 +689,7 @@ export default function OrderManagement() {
         label: `${nextStatus} - ${statusLabel}${status === ORDER_STATUS.ASSIGNED && nextStatus === ORDER_STATUS.IN_PROGRESS ? " (Shipper must confirm pickup)" : ""}`
       });
     }
-    
+
     // Enterprise: Allow rollback 1 step (Option A)
     // Only allow rollback if current status > BOOKED (status 1)
     if (status > ORDER_STATUS.BOOKED) {
@@ -674,13 +699,13 @@ export default function OrderManagement() {
         label: `${previousStatus} - ${ORDER_STATUS_LABEL[previousStatus] || "Unknown"} (Rollback)`
       });
     }
-    
+
     // Always add Failed option (can be selected from any non-terminal status)
     options.push({
       value: ORDER_STATUS.FAILED,
       label: `${ORDER_STATUS.FAILED} - ${ORDER_STATUS_LABEL[ORDER_STATUS.FAILED]}`
     });
-    
+
     return options;
   };
 
@@ -693,18 +718,18 @@ export default function OrderManagement() {
       // Default to next status (first option), or Failed if no next status
       defaultStatus = availableStatuses[0].value;
     }
-    
-    setEditData({ 
-      order_id: order.id, 
-      receiver_address: order.receiver_address || order.address || "", 
+
+    setEditData({
+      order_id: order.id,
+      receiver_address: order.receiver_address || order.address || "",
       status: defaultStatus,
       original_status: currentStatus // Store original status for dropdown logic
     });
     setShowEditModal(true);
   };
-  
+
   const handleEditChange = (e) => setEditData({ ...editData, [e.target.name]: e.target.value });
-  
+
   const handleUpdateSubmit = async () => {
     try {
       const res = await fetch(`${API_BASE}/update_order.php`, {
@@ -722,7 +747,7 @@ export default function OrderManagement() {
         Swal.fire("Error", data.message || "Cannot update", "error");
       }
     } catch (error) {
-        Swal.fire("Error", "Server connection error", "error");
+      Swal.fire("Error", "Server connection error", "error");
     }
   };
 
@@ -744,19 +769,19 @@ export default function OrderManagement() {
         return document.getElementById('cancel-reason')?.value || 'Order cancelled by admin';
       }
     });
-    
+
     if (cancelReason !== undefined) {
       try {
         const res = await fetch(`${API_BASE}/cancel_order.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             order_id: order.id,
             cancel_reason: cancelReason
           }),
         });
-        
+
         if (!res.ok) {
           const errorText = await res.text();
           try {
@@ -766,7 +791,7 @@ export default function OrderManagement() {
             return Swal.fire('Error', `Server error (${res.status})`, 'error');
           }
         }
-        
+
         const data = await res.json();
         if (data.status === "success") {
           const cancelType = data.data?.cancel_type || 'soft';
@@ -811,19 +836,19 @@ export default function OrderManagement() {
         return reason;
       }
     });
-    
+
     if (terminationReason !== undefined) {
       try {
         const res = await fetch(`${API_BASE}/terminate_workflow.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             order_id: order.id,
             termination_reason: terminationReason
           }),
         });
-        
+
         if (!res.ok) {
           const errorText = await res.text();
           try {
@@ -833,19 +858,19 @@ export default function OrderManagement() {
             return Swal.fire('Error', `Server error (${res.status})`, 'error');
           }
         }
-        
+
         const data = await res.json();
         if (data.status === "success") {
           const canClone = data.data?.can_clone || false;
           const canCreateFollowup = data.data?.can_create_followup || false;
-          
+
           let followupMessage = 'Workflow terminated successfully.';
           if (canClone) {
             followupMessage += ' You can now clone this order to restart from scratch.';
           } else if (canCreateFollowup) {
             followupMessage += ' You can now create a follow-up order to continue the shipment.';
           }
-          
+
           Swal.fire({
             icon: 'success',
             title: 'Workflow Terminated',
@@ -853,7 +878,7 @@ export default function OrderManagement() {
           });
           fetchOrders();
           fetchKPIStats();
-          
+
           // If detail panel is open for this order, fetch updated order detail
           if (showDetailPanel && selectedOrder && selectedOrder.id === order.id) {
             try {
@@ -898,19 +923,19 @@ export default function OrderManagement() {
         return document.getElementById('reopen-reason')?.value || 'Order reopened by admin';
       }
     });
-    
+
     if (reopenReason !== undefined) {
       try {
         const res = await fetch(`${API_BASE}/reopen_order.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             order_id: order.id,
             reopen_reason: reopenReason
           }),
         });
-        
+
         if (!res.ok) {
           const errorText = await res.text();
           try {
@@ -920,7 +945,7 @@ export default function OrderManagement() {
             return Swal.fire('Error', `Server error (${res.status})`, 'error');
           }
         }
-        
+
         const data = await res.json();
         if (data.status === "success") {
           Swal.fire({
@@ -957,19 +982,19 @@ export default function OrderManagement() {
         return document.getElementById('clone-reason')?.value || 'Order cloned by admin';
       }
     });
-    
+
     if (cloneReason !== undefined) {
       try {
         const res = await fetch(`${API_BASE}/clone_order.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             order_id: order.id,
             clone_reason: cloneReason
           }),
         });
-        
+
         if (!res.ok) {
           const errorText = await res.text();
           try {
@@ -979,7 +1004,7 @@ export default function OrderManagement() {
             return Swal.fire('Error', `Server error (${res.status})`, 'error');
           }
         }
-        
+
         const data = await res.json();
         if (data.status === "success") {
           Swal.fire({
@@ -1021,19 +1046,19 @@ export default function OrderManagement() {
         return reason;
       }
     });
-    
+
     if (followupReason !== undefined) {
       try {
         const res = await fetch(`${API_BASE}/create_followup_order.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             order_id: order.id,
             followup_reason: followupReason
           }),
         });
-        
+
         if (!res.ok) {
           const errorText = await res.text();
           try {
@@ -1043,7 +1068,7 @@ export default function OrderManagement() {
             return Swal.fire('Error', `Server error (${res.status})`, 'error');
           }
         }
-        
+
         const data = await res.json();
         if (data.status === "success") {
           Swal.fire({
@@ -1089,10 +1114,10 @@ export default function OrderManagement() {
         setShowAssignModal(false);
         setSelectedOrderForShipper(null);
         setConfirmAssignShipper(false);
-        
+
         // Refresh orders list
         await fetchOrders();
-        
+
         // If detail panel is open for this order, fetch updated order detail
         if (showDetailPanel && selectedOrder && selectedOrder.id === assignData.order_id) {
           try {
@@ -1114,7 +1139,7 @@ export default function OrderManagement() {
         Swal.fire("Lỗi", data.message || "Không thể phân công", "error");
       }
     } catch (error) {
-        Swal.fire("Error", "Server connection error", "error");
+      Swal.fire("Error", "Server connection error", "error");
     }
   };
 
@@ -1144,10 +1169,10 @@ export default function OrderManagement() {
         Swal.fire("Success", "Agent assigned successfully!", "success");
         setShowAssignAgentModal(false);
         setConfirmAssignAgent(false);
-        
+
         // Refresh orders list
         await fetchOrders();
-        
+
         // If detail panel is open for this order, fetch updated order detail
         if (showDetailPanel && selectedOrder && selectedOrder.id === assignAgentData.order_id) {
           try {
@@ -1169,7 +1194,7 @@ export default function OrderManagement() {
         Swal.fire("Lỗi", data.message || "Không thể phân công", "error");
       }
     } catch (error) {
-        Swal.fire("Error", "Server connection error", "error");
+      Swal.fire("Error", "Server connection error", "error");
     }
   };
 
@@ -1183,11 +1208,11 @@ export default function OrderManagement() {
       const tableElement = document.querySelector('.lux-table-wrapper');
       if (tableElement) tableElement.scrollIntoView({ behavior: 'smooth' });
     }
-    
+
     // Apply filters from navigation state (drill-down from Agent Management)
     if (location.state?.agent_id) {
       setFilterBranch(location.state.agent_id);
-      
+
       // Priority: specific status > status_group
       // If both are set, status takes priority
       if (location.state.status && location.state.status !== "all") {
@@ -1201,10 +1226,10 @@ export default function OrderManagement() {
         setFilterStatus("all");
         setFilterStatusGroup("all");
       }
-      
+
       // Clear navigation state after applying filters
       window.history.replaceState({}, document.title);
-      
+
       // Scroll to table
       setTimeout(() => {
         const tableElement = document.querySelector('.lux-table-wrapper');
@@ -1376,7 +1401,11 @@ export default function OrderManagement() {
 
       <OrderTable
         loading={loading}
-        orders={filteredOrders}
+        // new nmtu 9:56 24-12
+        // Use paginatedOrders instead of full filteredOrders
+        // Enables client-side pagination without changing OrderTable
+        orders={paginatedOrders}
+        //------------------- thay cho orders={filteredOrders}
         userRole={userRole}
         onRowClick={(order) => { setSelectedOrder(order); setShowDetailPanel(true); }}
         onViewDetail={(order) => { setSelectedOrder(order); setShowDetailPanel(true); }}
@@ -1389,7 +1418,56 @@ export default function OrderManagement() {
         onCloneOrder={handleClone}
         onCreateFollowupOrder={handleCreateFollowup}
       />
+      {/* ===================== new nmtu 9:56 24-12 ===================== */}
+      {/* ===================== PAGINATION UI ===================== */}
+      <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
 
+        {/* Page size selector */}
+        <div className="d-flex align-items-center mb-2">
+          <span className="me-2 small text-muted">Rows per page:</span>
+          <Form.Select
+            size="sm"
+            style={{ width: "90px" }}
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1); // Reset page when page size changes
+            }}
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </Form.Select>
+        </div>
+
+        {/* Pagination controls */}
+        <div className="d-flex align-items-center gap-2 mb-2">
+          <Button
+            variant="outline-secondary bg-danger text-white"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+          >
+            Previous
+          </Button>
+
+          <span className="small text-muted">
+            Page <strong>{currentPage}</strong> of <strong>{totalPages || 1}</strong>
+          </span>
+
+          <Button
+            variant="outline-secondary bg-danger text-white"
+            size="sm"
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+
+      {/* --------------------------------------------------------------- */}
       <OrderDetailPanel
         order={selectedOrder}
         isOpen={showDetailPanel}
@@ -1398,558 +1476,558 @@ export default function OrderManagement() {
         onAssign={openAssignModal}
       />
 
-{showCreateModal && (
-  <div className="dqn-modal-overlay">
+      {showCreateModal && (
+        <div className="dqn-modal-overlay">
 
-    <div className="dqn-modal">
+          <div className="dqn-modal">
 
-      {/* ================= HEADER ================= */}
-      <div className="dqn-modal-header">
-        <div className="dqn-modal-title">
-          <FaPlus /> Create New Order
-        </div>
-
-        <button
-          className="dqn-modal-close"
-          onClick={() => {
-            setShowCreateModal(false);
-            resetCreateModal();
-          }}
-        >
-          ×
-        </button>
-      </div>
-
-      {/* ================= BODY (SCROLL) ================= */}
-      <div className="dqn-modal-body luxury-create-body">
-        <Form>
-      <Row className="mb-3">
-        <Col md={6}>
-          <div className="luxury-section-header mb-2">
-            <h6 className="fw-bold d-flex align-items-center text-primary mb-0">
-              <FaUser className="me-2" /> Sender
-            </h6>
-          </div>
-
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Sender Name (*)</Form.Label>
-            <Form.Control
-              name="sender_name"
-              placeholder="Enter sender name"
-              className="luxury-input"
-              value={createData.sender_name}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Phone (*)</Form.Label>
-            <Form.Control
-              name="sender_phone"
-              placeholder="Enter phone number"
-              className="luxury-input"
-              value={createData.sender_phone}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Street Address (*)</Form.Label>
-            <Form.Control
-              name="fromStreet"
-              placeholder="Street address"
-              className="luxury-input"
-              value={createData.fromStreet}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-
-          <Row className="mb-2">
-            <Col md={6}>
-              <Form.Group>
-                <Form.Label className="small text-muted">District (*)</Form.Label>
-                <Form.Select
-                  name="fromDistrict"
-                  value={createData.fromDistrict}
-                  onChange={(e) => handleDistrictChange(e, "from")}
-                  className="luxury-select"
-                >
-                  <option value="">-- Select District --</option>
-                  {Object.keys(hanoiData).map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-
-            <Col md={6}>
-              <Form.Group>
-                <Form.Label className="small text-muted">Ward</Form.Label>
-                <Form.Select
-                  name="fromWard"
-                  value={createData.fromWard}
-                  onChange={(e) => handleWardChange(e, "from")}
-                  disabled={!createData.fromDistrict}
-                  className="luxury-select"
-                >
-                  <option value="">-- Select Ward --</option>
-                  {createData.fromDistrict &&
-                    hanoiData[createData.fromDistrict]?.map((w) => (
-                      <option key={w} value={w}>{w}</option>
-                    ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-          </Row>
-        </Col>
-
-        <Col md={6}>
-          <div className="luxury-section-header mb-2">
-            <h6 className="fw-bold d-flex align-items-center text-success mb-0">
-              <FaUser className="me-2" /> Receiver
-            </h6>
-          </div>
-
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Receiver Name (*)</Form.Label>
-            <Form.Control
-              name="receiver_name"
-              placeholder="Enter receiver name"
-              className="luxury-input"
-              value={createData.receiver_name}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Phone (*)</Form.Label>
-            <Form.Control
-              name="receiver_phone"
-              placeholder="Enter phone number"
-              className="luxury-input"
-              value={createData.receiver_phone}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Email</Form.Label>
-            <Form.Control
-              type="email"
-              name="receiver_email"
-              placeholder="Receiver email"
-              className="luxury-input"
-              value={createData.receiver_email}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Street Address (*)</Form.Label>
-            <Form.Control
-              name="toStreet"
-              placeholder="Street address"
-              className="luxury-input"
-              value={createData.toStreet}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-
-          <Row className="mb-2">
-            <Col md={6}>
-              <Form.Group>
-                <Form.Label className="small text-muted">District (*)</Form.Label>
-                <Form.Select
-                  name="toDistrict"
-                  value={createData.toDistrict}
-                  onChange={(e) => handleDistrictChange(e, "to")}
-                  className="luxury-select"
-                >
-                  <option value="">-- Select District --</option>
-                  {Object.keys(hanoiData).map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-
-            <Col md={6}>
-              <Form.Group>
-                <Form.Label className="small text-muted">Ward</Form.Label>
-                <Form.Select
-                  name="toWard"
-                  value={createData.toWard}
-                  onChange={(e) => handleWardChange(e, "to")}
-                  disabled={!createData.toDistrict}
-                  className="luxury-select"
-                >
-                  <option value="">-- Select Ward --</option>
-                  {createData.toDistrict &&
-                    hanoiData[createData.toDistrict]?.map((w) => (
-                      <option key={w} value={w}>{w}</option>
-                    ))}
-                </Form.Select>
-              </Form.Group>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
-
-      <div className="luxury-section-header mb-2">
-        <h6 className="fw-bold d-flex align-items-center mb-0">
-          <FaBox className="me-2 text-primary" /> Item Information
-        </h6>
-      </div>
-
-      <Row className="mb-3">
-        <Col md={12}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Item Name</Form.Label>
-            <Form.Control
-              name="item_name"
-              placeholder="Enter item name (e.g., Clothes, Phone, Books...)"
-              className="luxury-input"
-              value={createData.item_name}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-        </Col>
-      </Row>
-
-      <Row className="mb-3">
-        <Col md={4}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Item Category (*)</Form.Label>
-            <Form.Select
-              name="category_id"
-              value={createData.category_id}
-              onChange={handleCreateChange}
-              className="luxury-select"
-            >
-              <option value="">-- Select Category --</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-        </Col>
-
-        <Col md={4}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Weight (grams) (*)</Form.Label>
-            <Form.Control
-              type="number"
-              name="weight"
-              step="1"
-              min="1"
-              className="luxury-input"
-              value={createData.weight}
-              onChange={handleCreateChange}
-              placeholder="e.g., 500 (for 0.5kg)"
-            />
-          </Form.Group>
-        </Col>
-
-        <Col md={4}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Distance (km)</Form.Label>
-            <Form.Control
-              type="number"
-              name="distance_km"
-              step="0.1"
-              min="0"
-              className="luxury-input"
-              value={distanceKm !== null && distanceKm !== "" ? distanceKm : (createData.distance_km || "")}
-              onChange={(e) => {
-                const val = e.target.value;
-                setDistanceKm(val === "" ? null : val);
-              }}
-            />
-          </Form.Group>
-        </Col>
-      </Row>
-
-      <Row className="mb-3">
-        <Col md={4}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Length (cm) (*)</Form.Label>
-            <Form.Control
-              type="number"
-              name="length"
-              step="1"
-              min="1"
-              className="luxury-input"
-              value={createData.length}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-        </Col>
-
-        <Col md={4}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Width (cm) (*)</Form.Label>
-            <Form.Control
-              type="number"
-              name="width"
-              step="1"
-              min="1"
-              className="luxury-input"
-              value={createData.width}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-        </Col>
-
-        <Col md={4}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Height (cm) (*)</Form.Label>
-            <Form.Control
-              type="number"
-              name="height"
-              step="1"
-              min="1"
-              className="luxury-input"
-              value={createData.height}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-        </Col>
-      </Row>
-
-      <Row className="mb-3">
-        <Col md={6}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Service Type (*)</Form.Label>
-            <Form.Select
-              name="service_type"
-              value={createData.service_type}
-              onChange={handleCreateChange}
-              className="luxury-select"
-            >
-              {serviceTypes.map((service) => (
-                <option key={service.id} value={service.id}>
-                  {service.name} ({Number(service.fee).toLocaleString()} VNĐ)
-                </option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-        </Col>
-
-        <Col md={6}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Payment Method (*)</Form.Label>
-            <Form.Select
-              name="payment_method_id"
-              value={createData.payment_method_id}
-              onChange={handleCreateChange}
-              className="luxury-select"
-            >
-              {paymentMethods.map((method) => (
-                <option key={method.id} value={method.id}>{method.name}</option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-        </Col>
-      </Row>
-
-      <Row className="mb-3">
-        <Col md={6}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Shipping Fee Payer (*)</Form.Label>
-            <Form.Select
-              name="payer_type"
-              value={createData.payer_type}
-              onChange={handleCreateChange}
-              className="luxury-select"
-            >
-              <option value={1}>Sender Pays</option>
-              <option value={2}>Receiver Pays</option>
-            </Form.Select>
-          </Form.Group>
-        </Col>
-
-        <Col md={6}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">COD Amount - VND</Form.Label>
-            <Form.Control
-              type="number"
-              name="cod_amount"
-              step="1000"
-              min="0"
-              className="luxury-input"
-              value={createData.cod_amount}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-        </Col>
-      </Row>
-
-      <Row className="mb-3">
-        <Col md={12}>
-          <Form.Group className="mb-2">
-            <Form.Label className="small text-muted">Notes</Form.Label>
-            <Form.Control
-              as="textarea"
-              rows={2}
-              name="note"
-              placeholder="Notes for order"
-              className="luxury-input"
-              value={createData.note}
-              onChange={handleCreateChange}
-            />
-          </Form.Group>
-        </Col>
-      </Row>
-
-      {/* Fee Calculation Display */}
-      <div className="luxury-section-header mb-2">
-        <h6 className="fw-bold d-flex align-items-center mb-0">
-          <FaMoneyBillWave className="me-2 text-success" /> Fee Details
-        </h6>
-      </div>
-
-      <div
-        className="mb-3 p-3"
-        style={{
-          backgroundColor: "#f8f9fa",
-          borderRadius: "8px",
-          border: "1px solid #dee2e6",
-        }}
-      >
-        {calculateFees.fees_detail.map((fee, idx) => (
-          <div key={idx} className="d-flex justify-content-between mb-1 small">
-            <span>{fee.name}:</span>
-            <strong>{Number(fee.amount).toLocaleString("en-US")} VND</strong>
-          </div>
-        ))}
-
-        <hr className="my-2" />
-
-        <div className="d-flex justify-content-between fw-bold text-primary">
-          <span>Total Shipping Fee:</span>
-          <strong>{Number(calculateFees.total_shipping_fee).toLocaleString("en-US")} VND</strong>
-        </div>
-
-        {calculateFees.cod_amount > 0 && (
-          <>
-            <div className="d-flex justify-content-between mt-2">
-              <span>COD Amount:</span>
-              <strong className="text-success">
-                {Number(calculateFees.cod_amount).toLocaleString("en-US")} VND
-              </strong>
-            </div>
-
-            <div
-              className="d-flex justify-content-between mt-2 fw-bold"
-              style={{ fontSize: "1.1em", color: "#28a745" }}
-            >
-              <span>Total Amount:</span>
-              <strong>
-                {Number(calculateFees.total_amount_with_cod).toLocaleString("en-US")} VND
-              </strong>
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="luxury-section-header mb-2">
-        <h6 className="fw-bold d-flex align-items-center mb-0">
-          <FaImage className="me-2 text-primary" /> Product Images
-          <span className="text-muted small fw-normal ms-2">
-            ({productImages.length}/5 images)
-          </span>
-        </h6>
-      </div>
-
-      <Row className="mb-2">
-        <Col md={12}>
-          <Form.Control
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-            multiple={true}
-            onChange={handleImageChange}
-            className="luxury-input mb-2"
-            style={{ cursor: "pointer" }}
-            disabled={productImages.length >= 5}
-          />
-
-          {productImages.length >= 5 && (
-            <Form.Text className="text-warning d-block mb-2">
-              Maximum 5 images reached. Please remove an image to add a new one.
-            </Form.Text>
-          )}
-
-          {productImages.length > 0 && (
-            <div className="luxury-image-preview">
-              <div className="d-flex flex-wrap gap-2">
-                {productImages.map((file, index) => (
-                  <div
-                    key={index}
-                    className="luxury-image-item position-relative"
-                    style={{ width: "80px", height: "80px" }}
-                  >
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Preview ${index + 1}`}
-                      className="luxury-preview-img"
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="luxury-image-remove btn btn-sm btn-danger position-absolute"
-                      style={{
-                        top: "-5px",
-                        right: "-5px",
-                        width: "20px",
-                        height: "20px",
-                        padding: 0,
-                        fontSize: "12px",
-                      }}
-                      onClick={() => removeImage(index)}
-                      title="Remove Image"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+            {/* ================= HEADER ================= */}
+            <div className="dqn-modal-header">
+              <div className="dqn-modal-title">
+                <FaPlus /> Create New Order
               </div>
+
+              <button
+                className="dqn-modal-close"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetCreateModal();
+                }}
+              >
+                ×
+              </button>
             </div>
-          )}
-        </Col>
-      </Row>
-        </Form>
-      </div>
 
-      {/* ================= FOOTER ================= */}
-      <div className="dqn-modal-footer">
-        <Button
-          variant="secondary"
-          className="btn-lux-outline-secondary"
-          onClick={() => {
-            setShowCreateModal(false);
-            resetCreateModal();
-          }}
-        >
-          Cancel
-        </Button>
+            {/* ================= BODY (SCROLL) ================= */}
+            <div className="dqn-modal-body luxury-create-body">
+              <Form>
+                <Row className="mb-3">
+                  <Col md={6}>
+                    <div className="luxury-section-header mb-2">
+                      <h6 className="fw-bold d-flex align-items-center text-primary mb-0">
+                        <FaUser className="me-2" /> Sender
+                      </h6>
+                    </div>
 
-        <Button
-          variant="primary"
-          className="btn-lux-primary-blue"
-          onClick={handleCreateSubmit}
-        >
-          <FaPlus className="me-2" /> Create Order
-        </Button>
-      </div>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Sender Name (*)</Form.Label>
+                      <Form.Control
+                        name="sender_name"
+                        placeholder="Enter sender name"
+                        className="luxury-input"
+                        value={createData.sender_name}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
 
-    </div>
-  </div>
-)}
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Phone (*)</Form.Label>
+                      <Form.Control
+                        name="sender_phone"
+                        placeholder="Enter phone number"
+                        className="luxury-input"
+                        value={createData.sender_phone}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Street Address (*)</Form.Label>
+                      <Form.Control
+                        name="fromStreet"
+                        placeholder="Street address"
+                        className="luxury-input"
+                        value={createData.fromStreet}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+
+                    <Row className="mb-2">
+                      <Col md={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">District (*)</Form.Label>
+                          <Form.Select
+                            name="fromDistrict"
+                            value={createData.fromDistrict}
+                            onChange={(e) => handleDistrictChange(e, "from")}
+                            className="luxury-select"
+                          >
+                            <option value="">-- Select District --</option>
+                            {Object.keys(hanoiData).map((d) => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+
+                      <Col md={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Ward</Form.Label>
+                          <Form.Select
+                            name="fromWard"
+                            value={createData.fromWard}
+                            onChange={(e) => handleWardChange(e, "from")}
+                            disabled={!createData.fromDistrict}
+                            className="luxury-select"
+                          >
+                            <option value="">-- Select Ward --</option>
+                            {createData.fromDistrict &&
+                              hanoiData[createData.fromDistrict]?.map((w) => (
+                                <option key={w} value={w}>{w}</option>
+                              ))}
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </Col>
+
+                  <Col md={6}>
+                    <div className="luxury-section-header mb-2">
+                      <h6 className="fw-bold d-flex align-items-center text-success mb-0">
+                        <FaUser className="me-2" /> Receiver
+                      </h6>
+                    </div>
+
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Receiver Name (*)</Form.Label>
+                      <Form.Control
+                        name="receiver_name"
+                        placeholder="Enter receiver name"
+                        className="luxury-input"
+                        value={createData.receiver_name}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Phone (*)</Form.Label>
+                      <Form.Control
+                        name="receiver_phone"
+                        placeholder="Enter phone number"
+                        className="luxury-input"
+                        value={createData.receiver_phone}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Email</Form.Label>
+                      <Form.Control
+                        type="email"
+                        name="receiver_email"
+                        placeholder="Receiver email"
+                        className="luxury-input"
+                        value={createData.receiver_email}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Street Address (*)</Form.Label>
+                      <Form.Control
+                        name="toStreet"
+                        placeholder="Street address"
+                        className="luxury-input"
+                        value={createData.toStreet}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+
+                    <Row className="mb-2">
+                      <Col md={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">District (*)</Form.Label>
+                          <Form.Select
+                            name="toDistrict"
+                            value={createData.toDistrict}
+                            onChange={(e) => handleDistrictChange(e, "to")}
+                            className="luxury-select"
+                          >
+                            <option value="">-- Select District --</option>
+                            {Object.keys(hanoiData).map((d) => (
+                              <option key={d} value={d}>{d}</option>
+                            ))}
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+
+                      <Col md={6}>
+                        <Form.Group>
+                          <Form.Label className="small text-muted">Ward</Form.Label>
+                          <Form.Select
+                            name="toWard"
+                            value={createData.toWard}
+                            onChange={(e) => handleWardChange(e, "to")}
+                            disabled={!createData.toDistrict}
+                            className="luxury-select"
+                          >
+                            <option value="">-- Select Ward --</option>
+                            {createData.toDistrict &&
+                              hanoiData[createData.toDistrict]?.map((w) => (
+                                <option key={w} value={w}>{w}</option>
+                              ))}
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                  </Col>
+                </Row>
+
+                <div className="luxury-section-header mb-2">
+                  <h6 className="fw-bold d-flex align-items-center mb-0">
+                    <FaBox className="me-2 text-primary" /> Item Information
+                  </h6>
+                </div>
+
+                <Row className="mb-3">
+                  <Col md={12}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Item Name</Form.Label>
+                      <Form.Control
+                        name="item_name"
+                        placeholder="Enter item name (e.g., Clothes, Phone, Books...)"
+                        className="luxury-input"
+                        value={createData.item_name}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row className="mb-3">
+                  <Col md={4}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Item Category (*)</Form.Label>
+                      <Form.Select
+                        name="category_id"
+                        value={createData.category_id}
+                        onChange={handleCreateChange}
+                        className="luxury-select"
+                      >
+                        <option value="">-- Select Category --</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={4}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Weight (grams) (*)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        name="weight"
+                        step="1"
+                        min="1"
+                        className="luxury-input"
+                        value={createData.weight}
+                        onChange={handleCreateChange}
+                        placeholder="e.g., 500 (for 0.5kg)"
+                      />
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={4}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Distance (km)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        name="distance_km"
+                        step="0.1"
+                        min="0"
+                        className="luxury-input"
+                        value={distanceKm !== null && distanceKm !== "" ? distanceKm : (createData.distance_km || "")}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setDistanceKm(val === "" ? null : val);
+                        }}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row className="mb-3">
+                  <Col md={4}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Length (cm) (*)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        name="length"
+                        step="1"
+                        min="1"
+                        className="luxury-input"
+                        value={createData.length}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={4}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Width (cm) (*)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        name="width"
+                        step="1"
+                        min="1"
+                        className="luxury-input"
+                        value={createData.width}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={4}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Height (cm) (*)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        name="height"
+                        step="1"
+                        min="1"
+                        className="luxury-input"
+                        value={createData.height}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row className="mb-3">
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Service Type (*)</Form.Label>
+                      <Form.Select
+                        name="service_type"
+                        value={createData.service_type}
+                        onChange={handleCreateChange}
+                        className="luxury-select"
+                      >
+                        {serviceTypes.map((service) => (
+                          <option key={service.id} value={service.id}>
+                            {service.name} ({Number(service.fee).toLocaleString()} VNĐ)
+                          </option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Payment Method (*)</Form.Label>
+                      <Form.Select
+                        name="payment_method_id"
+                        value={createData.payment_method_id}
+                        onChange={handleCreateChange}
+                        className="luxury-select"
+                      >
+                        {paymentMethods.map((method) => (
+                          <option key={method.id} value={method.id}>{method.name}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row className="mb-3">
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Shipping Fee Payer (*)</Form.Label>
+                      <Form.Select
+                        name="payer_type"
+                        value={createData.payer_type}
+                        onChange={handleCreateChange}
+                        className="luxury-select"
+                      >
+                        <option value={1}>Sender Pays</option>
+                        <option value={2}>Receiver Pays</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">COD Amount - VND</Form.Label>
+                      <Form.Control
+                        type="number"
+                        name="cod_amount"
+                        step="1000"
+                        min="0"
+                        className="luxury-input"
+                        value={createData.cod_amount}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row className="mb-3">
+                  <Col md={12}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Notes</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        name="note"
+                        placeholder="Notes for order"
+                        className="luxury-input"
+                        value={createData.note}
+                        onChange={handleCreateChange}
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                {/* Fee Calculation Display */}
+                <div className="luxury-section-header mb-2">
+                  <h6 className="fw-bold d-flex align-items-center mb-0">
+                    <FaMoneyBillWave className="me-2 text-success" /> Fee Details
+                  </h6>
+                </div>
+
+                <div
+                  className="mb-3 p-3"
+                  style={{
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "8px",
+                    border: "1px solid #dee2e6",
+                  }}
+                >
+                  {calculateFees.fees_detail.map((fee, idx) => (
+                    <div key={idx} className="d-flex justify-content-between mb-1 small">
+                      <span>{fee.name}:</span>
+                      <strong>{Number(fee.amount).toLocaleString("en-US")} VND</strong>
+                    </div>
+                  ))}
+
+                  <hr className="my-2" />
+
+                  <div className="d-flex justify-content-between fw-bold text-primary">
+                    <span>Total Shipping Fee:</span>
+                    <strong>{Number(calculateFees.total_shipping_fee).toLocaleString("en-US")} VND</strong>
+                  </div>
+
+                  {calculateFees.cod_amount > 0 && (
+                    <>
+                      <div className="d-flex justify-content-between mt-2">
+                        <span>COD Amount:</span>
+                        <strong className="text-success">
+                          {Number(calculateFees.cod_amount).toLocaleString("en-US")} VND
+                        </strong>
+                      </div>
+
+                      <div
+                        className="d-flex justify-content-between mt-2 fw-bold"
+                        style={{ fontSize: "1.1em", color: "#28a745" }}
+                      >
+                        <span>Total Amount:</span>
+                        <strong>
+                          {Number(calculateFees.total_amount_with_cod).toLocaleString("en-US")} VND
+                        </strong>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="luxury-section-header mb-2">
+                  <h6 className="fw-bold d-flex align-items-center mb-0">
+                    <FaImage className="me-2 text-primary" /> Product Images
+                    <span className="text-muted small fw-normal ms-2">
+                      ({productImages.length}/5 images)
+                    </span>
+                  </h6>
+                </div>
+
+                <Row className="mb-2">
+                  <Col md={12}>
+                    <Form.Control
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      multiple={true}
+                      onChange={handleImageChange}
+                      className="luxury-input mb-2"
+                      style={{ cursor: "pointer" }}
+                      disabled={productImages.length >= 5}
+                    />
+
+                    {productImages.length >= 5 && (
+                      <Form.Text className="text-warning d-block mb-2">
+                        Maximum 5 images reached. Please remove an image to add a new one.
+                      </Form.Text>
+                    )}
+
+                    {productImages.length > 0 && (
+                      <div className="luxury-image-preview">
+                        <div className="d-flex flex-wrap gap-2">
+                          {productImages.map((file, index) => (
+                            <div
+                              key={index}
+                              className="luxury-image-item position-relative"
+                              style={{ width: "80px", height: "80px" }}
+                            >
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt={`Preview ${index + 1}`}
+                                className="luxury-preview-img"
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                  borderRadius: "4px",
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="luxury-image-remove btn btn-sm btn-danger position-absolute"
+                                style={{
+                                  top: "-5px",
+                                  right: "-5px",
+                                  width: "20px",
+                                  height: "20px",
+                                  padding: 0,
+                                  fontSize: "12px",
+                                }}
+                                onClick={() => removeImage(index)}
+                                title="Remove Image"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </Col>
+                </Row>
+              </Form>
+            </div>
+
+            {/* ================= FOOTER ================= */}
+            <div className="dqn-modal-footer">
+              <Button
+                variant="secondary"
+                className="btn-lux-outline-secondary"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  resetCreateModal();
+                }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="primary"
+                className="btn-lux-primary-blue"
+                onClick={handleCreateSubmit}
+              >
+                <FaPlus className="me-2" /> Create Order
+              </Button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
 
 
@@ -1977,12 +2055,12 @@ export default function OrderManagement() {
                   <Form.Label className="fw-bold d-flex align-items-center">
                     <FaMapMarkerAlt className="me-2 text-primary" /> Receiver Address
                   </Form.Label>
-                  <Form.Control 
-                    name="receiver_address" 
-                    value={editData.receiver_address} 
-                    onChange={handleEditChange} 
-                    placeholder="Enter receiver address" 
-                    className="luxury-input" 
+                  <Form.Control
+                    name="receiver_address"
+                    value={editData.receiver_address}
+                    onChange={handleEditChange}
+                    placeholder="Enter receiver address"
+                    className="luxury-input"
                   />
                 </Form.Group>
                 <Form.Group>
@@ -2001,10 +2079,10 @@ export default function OrderManagement() {
                             <div style={{ display: "inline-block" }}><StatusBadge status={originalStatus} /></div>
                           </div>
                         )}
-                        <Form.Select 
-                          name="status" 
-                          value={editData.status} 
-                          onChange={handleEditChange} 
+                        <Form.Select
+                          name="status"
+                          value={editData.status}
+                          onChange={handleEditChange}
                           className="luxury-select"
                           disabled={isTerminal}
                         >
@@ -2029,16 +2107,16 @@ export default function OrderManagement() {
 
             {/* ================= FOOTER ================= */}
             <div className="dqn-modal-footer">
-              <Button 
-                variant="secondary" 
-                onClick={() => setShowEditModal(false)} 
+              <Button
+                variant="secondary"
+                onClick={() => setShowEditModal(false)}
                 className="btn-lux-outline-secondary"
               >
                 Cancel
               </Button>
-              <Button 
-                variant="primary" 
-                onClick={handleUpdateSubmit} 
+              <Button
+                variant="primary"
+                onClick={handleUpdateSubmit}
                 className="btn-lux-primary-blue"
               >
                 Update
@@ -2076,10 +2154,10 @@ export default function OrderManagement() {
                   <Form.Label className="fw-bold d-flex align-items-center">
                     <FaShippingFast className="me-2 text-warning" /> Select Shipper <span className="text-danger ms-1">*</span>
                   </Form.Label>
-                  <Form.Select 
-                    value={assignData.shipper_id} 
-                    onChange={(e) => setAssignData({ ...assignData, shipper_id: e.target.value })} 
-                    size="lg" 
+                  <Form.Select
+                    value={assignData.shipper_id}
+                    onChange={(e) => setAssignData({ ...assignData, shipper_id: e.target.value })}
+                    size="lg"
                     className="luxury-select"
                   >
                     <option value="">-- Select Shipper --</option>
@@ -2114,13 +2192,13 @@ export default function OrderManagement() {
                   <Form.Label className="fw-bold">
                     Assignment Note <span className="text-muted small fw-normal">(Optional)</span>
                   </Form.Label>
-                  <Form.Control 
-                    as="textarea" 
-                    rows={3} 
-                    placeholder="e.g., Urgent order - deliver today, VIP customer..." 
-                    value={assignData.note} 
-                    onChange={(e) => setAssignData({ ...assignData, note: e.target.value })} 
-                    className="luxury-textarea" 
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    placeholder="e.g., Urgent order - deliver today, VIP customer..."
+                    value={assignData.note}
+                    onChange={(e) => setAssignData({ ...assignData, note: e.target.value })}
+                    className="luxury-textarea"
                   />
                 </Form.Group>
 
@@ -2147,20 +2225,20 @@ export default function OrderManagement() {
 
             {/* ================= FOOTER ================= */}
             <div className="dqn-modal-footer">
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 onClick={() => {
                   setShowAssignModal(false);
                   setSelectedOrderForShipper(null);
-                }} 
+                }}
                 className="btn-lux-outline-secondary"
               >
                 Cancel
               </Button>
-              <Button 
-                variant="warning" 
-                onClick={handleAssignSubmit} 
-                disabled={!assignData.shipper_id || !confirmAssignShipper} 
+              <Button
+                variant="warning"
+                onClick={handleAssignSubmit}
+                disabled={!assignData.shipper_id || !confirmAssignShipper}
                 className="btn-lux-primary-yellow"
               >
                 <FaShippingFast className="me-2" /> Confirm Assignment
@@ -2198,10 +2276,10 @@ export default function OrderManagement() {
                   <Form.Label className="fw-bold d-flex align-items-center">
                     <FaUserTie className="me-2 text-danger" /> Select Agent <span className="text-danger ms-1">*</span>
                   </Form.Label>
-                  <Form.Select 
-                    value={assignAgentData.agent_id} 
-                    onChange={(e) => setAssignAgentData({ ...assignAgentData, agent_id: e.target.value })} 
-                    size="lg" 
+                  <Form.Select
+                    value={assignAgentData.agent_id}
+                    onChange={(e) => setAssignAgentData({ ...assignAgentData, agent_id: e.target.value })}
+                    size="lg"
                     className="luxury-select"
                   >
                     <option value="">-- Select Agent --</option>
@@ -2235,13 +2313,13 @@ export default function OrderManagement() {
                   <Form.Label className="fw-bold">
                     Assignment Note <span className="text-muted small fw-normal">(Optional)</span>
                   </Form.Label>
-                  <Form.Control 
-                    as="textarea" 
-                    rows={3} 
-                    placeholder="e.g., Urgent order - process today, VIP customer..." 
-                    value={assignAgentData.note} 
-                    onChange={(e) => setAssignAgentData({ ...assignAgentData, note: e.target.value })} 
-                    className="luxury-textarea" 
+                  <Form.Control
+                    as="textarea"
+                    rows={3}
+                    placeholder="e.g., Urgent order - process today, VIP customer..."
+                    value={assignAgentData.note}
+                    onChange={(e) => setAssignAgentData({ ...assignAgentData, note: e.target.value })}
+                    className="luxury-textarea"
                   />
                 </Form.Group>
 
@@ -2268,20 +2346,20 @@ export default function OrderManagement() {
 
             {/* ================= FOOTER ================= */}
             <div className="dqn-modal-footer">
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 onClick={() => {
                   setShowAssignAgentModal(false);
                   setSelectedOrderForAgent(null);
-                }} 
+                }}
                 className="btn-lux-outline-secondary"
               >
                 Cancel
               </Button>
-              <Button 
-                variant="danger" 
-                onClick={handleAssignAgentSubmit} 
-                disabled={!assignAgentData.agent_id || !confirmAssignAgent} 
+              <Button
+                variant="danger"
+                onClick={handleAssignAgentSubmit}
+                disabled={!assignAgentData.agent_id || !confirmAssignAgent}
                 className="btn-lux-primary-red"
               >
                 <FaUserTie className="me-2" /> Confirm Assignment
