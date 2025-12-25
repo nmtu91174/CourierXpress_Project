@@ -1,3 +1,4 @@
+
 <?php
 // =====================================================
 // SHIPPER CONFIRM DELIVERY FAILED (FULL HARDENED)
@@ -168,6 +169,10 @@ try {
              latitude, longitude, accuracy, is_final)
         VALUES (?, ?, ?, ?, ?, ?, ?, 1)
     ");
+    $latitude  = $latitude  ?: null;
+    $longitude = $longitude ?: null;
+    $accuracy  = $accuracy  ?: null;
+
     $issue->bind_param(
         "iissddd",
         $orderId,
@@ -184,26 +189,30 @@ try {
 
     // 2️⃣ orders
     $update = $conn->prepare("
-        UPDATE orders
-        SET
-            previous_status = status,
-            status = 6,
-            failed_at = NOW(),
-            failed_by = ?,
-            failed_issue_id = ?,
-            is_locked = 1
-        WHERE id = ?
-    ");
-    $update->bind_param("iii", $shipperId, $issueId, $orderId);
+    UPDATE orders
+    SET
+        previous_status = status,
+        status = 6,
+        failed_at = NOW(),
+        failed_by = ?,
+        failed_issue_id = ?,
+        failed_reason = ?,
+        is_locked = 1
+    WHERE id = ?
+");
+
+    $update->bind_param("iisi", $shipperId, $issueId, $reason, $orderId);
+
     $update->execute();
     $update->close();
 
     // 3️⃣ order_images
     $img = $conn->prepare("
-        INSERT INTO order_images (order_id, image_url, type)
-        VALUES (?, ?, 'delivery_failed')
-    ");
-    $img->bind_param("is", $orderId, $imageUrl);
+    INSERT INTO order_images
+        (order_id, image_url, type, uploaded_by, role)
+    VALUES (?, ?, 'delivery_failed', ?, 'shipper')
+");
+    $img->bind_param("isi", $orderId, $imageUrl, $shipperId);
     $img->execute();
     $img->close();
 

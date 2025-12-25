@@ -1,3 +1,5 @@
+// frontend/src/pages/shipper/OrderDetailShipper.jsx
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -934,13 +936,24 @@ const OrderDetailShipper = () => {
               onChange={(e) => setFailReason(e.target.value)}
             >
               <option value="">-- Select reason --</option>
-              <option value="receiver_unreachable">Receiver unreachable</option>
-              <option value="receiver_not_available">
-                Receiver not available
+
+              <option value="customer_unreachable">
+                Customer unreachable (Không liên lạc được)
               </option>
-              <option value="wrong_address">Wrong address</option>
-              <option value="receiver_refused">Receiver refused</option>
-              <option value="force_majeure">Force majeure</option>
+
+              <option value="customer_refused">
+                Customer refused (Từ chối nhận)
+              </option>
+
+              <option value="package_damaged">
+                Package damaged (Hàng hư hỏng)
+              </option>
+
+              <option value="weather_delay">
+                Weather delay (Thời tiết xấu)
+              </option>
+
+              <option value="other">Other reason</option>
             </Form.Select>
           </Form.Group>
 
