@@ -153,16 +153,16 @@ const OrderDetailShipper = () => {
   // ==========================
   const getFailedReasonLabel = (reason) => {
     switch (reason) {
-      case "receiver_unreachable":
-        return "Receiver unreachable (Không liên lạc được người nhận)";
-      case "receiver_not_available":
-        return "Receiver not available (Người nhận không có mặt)";
-      case "wrong_address":
-        return "Wrong address (Sai địa chỉ)";
-      case "receiver_refused":
-        return "Receiver refused (Người nhận từ chối)";
-      case "force_majeure":
-        return "Force majeure (Sự cố bất khả kháng)";
+      case "customer_unreachable":
+        return "Customer unreachable (Không liên lạc được)";
+      case "customer_refused":
+        return "Customer refused (Từ chối nhận)";
+      case "package_damaged":
+        return "Package damaged (Hàng hư hỏng)";
+      case "weather_delay":
+        return "Weather delay (Thời tiết xấu)";
+      case "other":
+        return "Other reason (Lý do khác)";
       default:
         return reason || "Unknown reason";
     }
