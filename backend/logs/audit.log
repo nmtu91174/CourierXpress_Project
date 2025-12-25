@@ -23,3 +23,14 @@
 [2025-12-24 03:30:44] user=1 role=admin action=ASSIGN_SHIPPER order=3 note=shipper=4
 [2025-12-25 10:05:04] user=1 role=admin action=CREATE_ORDER order=16 note=ORD0016
 time=2025-12-25T10:05:04+00:00 event=CREATE_FOLLOWUP_ORDER actor_id=1 actor_role=admin resource=order resource_id=16 original_order_id=1 outcome=SUCCESS message="Create follow-up order ORD0016 from ORD101"
+[2025-12-25 10:14:47] user=1 role=admin action=UPDATE_STATUS order=16 note=Cập nhật đơn hàng
+[2025-12-25 10:15:30] user=1 role=admin action=ASSIGN_SHIPPER order=16 note=shipper=4
+[2025-12-25 10:16:48] user=1 role=admin action=UPDATE_STATUS order=16 note=Cập nhật đơn hàng
+[2025-12-25 10:16:55] user=1 role=admin action=UPDATE_STATUS order=10 note=Cập nhật đơn hàng
+[2025-12-25 10:17:01] user=1 role=admin action=UPDATE_STATUS order=11 note=Cập nhật đơn hàng
+[2025-12-25 10:17:07] user=1 role=admin action=UPDATE_STATUS order=12 note=Cập nhật đơn hàng
+[2025-12-25 10:17:22] user=1 role=admin action=ASSIGN_SHIPPER order=16 note=shipper=4
+[2025-12-25 10:17:36] user=1 role=admin action=ASSIGN_SHIPPER order=10 note=shipper=4
+[2025-12-25 10:17:48] user=1 role=admin action=ASSIGN_SHIPPER order=11 note=shipper=4
+[2025-12-25 10:18:01] user=1 role=admin action=ASSIGN_SHIPPER order=12 note=shipper=4
+[2025-12-25 10:18:07] user=1 role=admin action=UPDATE_STATUS order=13 note=Cập nhật đơn hàng
