@@ -198,7 +198,7 @@ if ($feeStmt) {
 $order["delivery_issue"] = null;
 if ((int)$order["status"] === 6 && !empty($order["failed_issue_id"])) {
     $issueStmt = $conn->prepare("
-        SELECT id, issue_type, note, latitude, longitude, accuracy, created_at
+        SELECT id, reason, detail, latitude, longitude, accuracy, created_at
         FROM delivery_issues
         WHERE id = ?
         LIMIT 1
@@ -231,10 +231,24 @@ if ($failImgStmt) {
 // [ADDED] NORMALIZED FAILED FIELDS FOR UI
 if ((int)$order["status"] === 6) {
     $order["delivery_fail_reason"] =
-        $order["delivery_issue"]["issue_type"] ?? $order["delivery_fail_reason"] ?? null;
+        $order["delivery_issue"]["reason"] ?? $order["failed_reason"] ?? null;
 
     $order["delivery_fail_note"] =
-        $order["delivery_issue"]["note"] ?? $order["delivery_fail_note"] ?? null;
+        $order["delivery_issue"]["detail"] ?? null;
+     
+    // Normalize failed_at for frontend
+    $order["delivery_fail_at"] = $order["failed_at"] ?? null;
+    
+    // Add full URL for failed images if they exist
+    if (!empty($order["failed_images"])) {
+        $baseUrl = "http://localhost:8888/";
+        foreach ($order["failed_images"] as &$img) {
+            if (!empty($img["image_url"]) && strpos($img["image_url"], "http") !== 0) {
+                $img["image_url"] = $baseUrl . ltrim($img["image_url"], "/");
+            }
+        }
+        unset($img);
+    }
 }
 
 // ==========================

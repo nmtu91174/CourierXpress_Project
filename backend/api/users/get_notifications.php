@@ -1,6 +1,6 @@
 <?php
 // backend/api/users/get_notifications.php
-// Get user notifications from system_logs
+// Get user notifications from notifications table
 
 // CORS Headers
 require_once __DIR__ . "/../../core/Cors.php";
@@ -31,53 +31,66 @@ $currentRole = $GLOBALS['auth_user']['role'];
 // ==========================
 // PARAMETERS
 // ==========================
-$limit = isset($_GET["limit"]) ? (int)$_GET["limit"] : 50;
-$limit = min(100, max(1, $limit)); // Max 100, min 1
+$limit = isset($_GET["limit"]) ? (int)$_GET["limit"] : 200; // Default 200 for full history
+$limit = min(500, max(1, $limit)); // Max 500, min 1
 
-$filterType = $_GET["type"] ?? "all"; // all, security, orders, system
+$filterType = $_GET["type"] ?? "all"; // all, order, system, warning
+$unreadOnly = isset($_GET["unread_only"]) && $_GET["unread_only"] === "1";
 
 // ==========================
 // BUILD QUERY
 // ==========================
-// Get notifications for this user (or all if admin)
+// Admin sees ALL system-wide notifications (like Recent Notifications in Dashboard)
+// Other users only see their own notifications
 $whereConditions = [];
 $params = [];
 $types = "";
 
+// RBAC: Admin sees all notifications, others only see their own
 if ($currentRole !== "admin") {
-    // Regular users only see their own notifications
-    $whereConditions[] = "sl.user_id = ?";
+    $whereConditions[] = "n.user_id = ?";
     $params[] = $currentUserId;
     $types .= "i";
 }
+// Admin: no user_id filter (sees all notifications)
 
-// Filter by type
+// Filter by type (validate to prevent empty results)
 if ($filterType !== "all") {
-    if ($filterType === "security") {
-        $whereConditions[] = "sl.entity IN ('security', 'users')";
-    } elseif ($filterType === "orders") {
-        $whereConditions[] = "sl.entity = 'orders'";
-    } elseif ($filterType === "system") {
-        // System notifications: system, push, email, or entity IS NULL (general system events)
-        $whereConditions[] = "(sl.entity IN ('system', 'push', 'email') OR sl.entity IS NULL)";
+    $validTypes = ['order', 'system', 'warning'];
+    if (in_array($filterType, $validTypes, true)) {
+        $whereConditions[] = "n.type = ?";
+        $params[] = $filterType;
+        $types .= "s";
     }
+    // If invalid type, ignore filter (safer than returning empty)
+}
+
+// Filter unread only
+if ($unreadOnly) {
+    $whereConditions[] = "n.is_read = 0";
 }
 
 $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
 
 // Build query
 $sql = "SELECT 
-    sl.id,
-    sl.action,
-    sl.entity,
-    sl.entity_id,
-    sl.user_id,
-    sl.created_at,
+    n.id,
+    n.user_id,
+    n.title,
+    n.message,
+    n.type,
+    n.related_order_id,
+    n.is_read,
+    n.read_at,
+    n.metadata,
+    n.created_at,
+    o.order_code,
     u.name AS user_name
-FROM system_logs sl
-LEFT JOIN users u ON sl.user_id = u.id
+FROM notifications n
+LEFT JOIN orders o ON n.related_order_id = o.id
+LEFT JOIN users u ON n.user_id = u.id
 {$whereClause}
-ORDER BY sl.created_at DESC
+ORDER BY n.created_at DESC
 LIMIT ?";
 
 $params[] = $limit;
@@ -100,7 +113,55 @@ if (!$stmt->execute()) {
 }
 
 $result = $stmt->get_result();
-$notifications = $result->fetch_all(MYSQLI_ASSOC);
+$notifications = [];
+while ($row = $result->fetch_assoc()) {
+    // Parse metadata JSON if exists
+    if (!empty($row['metadata'])) {
+        $row['metadata'] = json_decode($row['metadata'], true);
+    }
+    $notifications[] = $row;
+}
+
+// Get unread count and total count (for badge synchronization)
+// RBAC: Admin sees all, others only see their own
+$unreadCountSql = "";
+$totalCountSql = "";
+
+if ($currentRole === "admin") {
+    // Admin: count all notifications
+    $unreadCountSql = "SELECT COUNT(*) as unread_count FROM notifications WHERE is_read = 0";
+    $totalCountSql = "SELECT COUNT(*) as total_count FROM notifications";
+} else {
+    // Other roles: count only their own notifications
+    $unreadCountSql = "SELECT COUNT(*) as unread_count FROM notifications WHERE user_id = ? AND is_read = 0";
+    $totalCountSql = "SELECT COUNT(*) as total_count FROM notifications WHERE user_id = ?";
+}
+
+// Get unread count
+$countStmt = $conn->prepare($unreadCountSql);
+if ($currentRole !== "admin") {
+    $countStmt->bind_param("i", $currentUserId);
+}
+$countStmt->execute();
+$countResult = $countStmt->get_result();
+$unreadCount = 0;
+if ($countRow = $countResult->fetch_assoc()) {
+    $unreadCount = (int)$countRow['unread_count'];
+}
+$countStmt->close();
+
+// Get total count (for badge synchronization - matches badge blue count)
+$totalStmt = $conn->prepare($totalCountSql);
+if ($currentRole !== "admin") {
+    $totalStmt->bind_param("i", $currentUserId);
+}
+$totalStmt->execute();
+$totalResult = $totalStmt->get_result();
+$totalCount = 0;
+if ($totalRow = $totalResult->fetch_assoc()) {
+    $totalCount = (int)$totalRow['total_count'];
+}
+$totalStmt->close();
 
 $stmt->close();
 $conn->close();
@@ -110,6 +171,8 @@ $conn->close();
 // ==========================
 Response::success("Notifications loaded", [
     "notifications" => $notifications,
-    "total" => count($notifications)
+    "total" => count($notifications), // Count of notifications in result set (may be limited)
+    "total_count" => $totalCount, // Total count from DB (for badge synchronization)
+    "unread_count" => $unreadCount
 ]);
 

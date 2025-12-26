@@ -2,6 +2,7 @@
 // Agent Dashboard - Workflow Console (matching Dashboard.jsx pattern)
 
 import React, { useEffect, useState, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card, Row, Col, Button, Form } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -33,6 +34,9 @@ import "../../assets/styles/dashboard.css";
 import "../../assets/styles/agent_dashboard.css";
 
 export default function AgentDashboard() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  
   // =============================
   // 1. GSAP ANIMATION
   // =============================
@@ -74,6 +78,12 @@ export default function AgentDashboard() {
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
   const [searchText, setSearchText] = useState("");
+
+  // =============================
+  // 2.2. PAGINATION STATE
+  // =============================
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // =============================
   // 3. FETCH ORDERS (Team scope - Agent can see all orders for coordination)
@@ -345,6 +355,24 @@ export default function AgentDashboard() {
   ]);
 
   // =============================
+  // 5.1. PAGINATED ORDERS
+  // =============================
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterAgent, filterStatus, filterStatusGroup, filterShipper, filterPayment, filterPaymentStatus, filterCOD, filterNoShipper, filterAssignedNotPicked, filterDateFrom, filterDateTo, searchText]);
+
+  // Calculate paginated orders
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredOrders.slice(startIndex, endIndex);
+  }, [filteredOrders, currentPage, pageSize]);
+
+  // Total pages for pagination
+  const totalPages = Math.ceil(filteredOrders.length / pageSize);
+
+  // =============================
   // 6. DETAIL PANEL
   // =============================
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -356,6 +384,25 @@ export default function AgentDashboard() {
   };
 
   const closePanel = () => setShowPanel(false);
+
+  // =============================
+  // 6.1. HANDLE NOTIFICATION REDIRECT (query param ?highlight=order_id)
+  // =============================
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const highlightOrderId = searchParams.get('highlight');
+    
+    if (highlightOrderId && allOrders.length > 0) {
+      const orderId = Number(highlightOrderId);
+      const targetOrder = allOrders.find((o) => Number(o.id) === orderId);
+      
+      if (targetOrder) {
+        openPanel(targetOrder);
+        // Clean up URL
+        navigate(location.pathname, { replace: true });
+      }
+    }
+  }, [location.search, allOrders, navigate]);
 
   // =============================
   // 7. MODAL ASSIGN SHIPPER (Enterprise-grade)
@@ -760,13 +807,129 @@ export default function AgentDashboard() {
 
       <OrderTable
         loading={loadingOrders}
-        orders={filteredOrders}
+        orders={paginatedOrders}
         onRowClick={openPanel}
         onViewDetail={openPanel}
         onAssignShipper={handleAssignShipper}
         userRole="agent"
         showAgentColumn={true} // Show Assigned Agent column for agent dashboard
       />
+
+      {/* ===================== PAGINATION UI ===================== */}
+      <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+        {/* Page size selector */}
+        <div className="d-flex align-items-center mb-2">
+          <span className="me-2 small text-muted">Rows per page:</span>
+          <Form.Select
+            size="sm"
+            style={{ width: "90px" }}
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1); // Reset page when page size changes
+            }}
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </Form.Select>
+        </div>
+
+        {/* Pagination controls - Luxury Style */}
+        <div className="d-flex align-items-center gap-3 mb-2">
+          <Button
+            className="luxury-pagination-btn"
+            variant="outline-primary"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            style={{
+              minWidth: "100px",
+              padding: "8px 20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(37, 99, 235, 0.3)",
+              background: currentPage === 1 
+                ? "rgba(0, 0, 0, 0.05)" 
+                : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
+              color: currentPage === 1 ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+              fontWeight: 600,
+              transition: "all 0.3s ease",
+              boxShadow: currentPage === 1 ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage !== 1) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.25))";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.25)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage !== 1) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.15)";
+              }
+            }}
+          >
+            ← Previous
+          </Button>
+
+          <span 
+            className="small"
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              background: "linear-gradient(135deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.08))",
+              border: "1px solid rgba(15, 23, 42, 0.1)",
+              fontWeight: 600,
+              color: "#0b1220",
+            }}
+          >
+            Page <strong style={{ color: "#2563eb" }}>{currentPage}</strong> of <strong style={{ color: "#2563eb" }}>{totalPages || 1}</strong>
+            {filteredOrders.length > 0 && (
+              <span className="text-muted ms-2">({filteredOrders.length} orders)</span>
+            )}
+          </span>
+
+          <Button
+            className="luxury-pagination-btn"
+            variant="outline-primary"
+            size="sm"
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            style={{
+              minWidth: "100px",
+              padding: "8px 20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(37, 99, 235, 0.3)",
+              background: (currentPage === totalPages || totalPages === 0)
+                ? "rgba(0, 0, 0, 0.05)" 
+                : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
+              color: (currentPage === totalPages || totalPages === 0) ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+              fontWeight: 600,
+              transition: "all 0.3s ease",
+              boxShadow: (currentPage === totalPages || totalPages === 0) ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage !== totalPages && totalPages !== 0) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.25))";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.25)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage !== totalPages && totalPages !== 0) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.15)";
+              }
+            }}
+          >
+            Next →
+          </Button>
+        </div>
+      </div>
 
       {/* ================= DETAIL PANEL ================= */}
       <OrderDetailPanel

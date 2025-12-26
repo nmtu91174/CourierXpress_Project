@@ -21,6 +21,7 @@ require_once __DIR__ . "/../../core/Response.php";
 require_once __DIR__ . "/../../middleware/require_login.php";
 require_once __DIR__ . "/../../middleware/require_role.php";
 require_once __DIR__ . "/../../services/OrderService.php";
+require_once __DIR__ . "/../../services/NotificationService.php";
 
 // ==========================
 // AUTH
@@ -309,6 +310,17 @@ try {
             $data["cod_amount"] ?? 0
         );
     }
+
+    // ==========================
+    // CREATE NOTIFICATIONS (RBAC)
+    // ==========================
+    $notificationService = new NotificationService($conn);
+    $notificationService->emit(
+        'order_created',
+        $result["order_id"],
+        $userId,
+        $role
+    );
 
     // Đảm bảo response có đầy đủ thông tin về phí vận chuyển
     $responseData = [

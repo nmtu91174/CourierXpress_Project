@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Table, Spinner, Button } from "react-bootstrap";
 import { FaSearch, FaUserCog, FaEdit, FaTimesCircle, FaRedo, FaClone, FaLevelUpAlt, FaUserTie, FaStop } from "react-icons/fa";
 
@@ -23,6 +23,8 @@ export default function OrderTable({
   orders = [],
   userRole = "admin",
   showAgentColumn = false, // For agent dashboard to show "Assigned Agent" column
+  focusedOrderId = null, // For highlighting order from Dashboard redirect
+  onUserInteraction = null, // Callback to reset highlight when user interacts (ONLY on click, NOT on hover)
 
   onRowClick,
   onViewDetail,
@@ -35,11 +37,26 @@ export default function OrderTable({
   onCloneOrder,
   onCreateFollowupOrder,
 }) {
+  // Separate hover state (JS-controlled for smooth scroll)
+  const [hoveredOrderId, setHoveredOrderId] = useState(null);
+
   /* ================================
    * HANDLERS
    * ================================ */
   const handleRowClick = (order) => {
+    // Only reset highlight on click, NOT on hover
+    if (typeof onUserInteraction === "function") onUserInteraction();
     if (typeof onRowClick === "function") onRowClick(order);
+  };
+
+  const handleRowMouseEnter = (orderId) => {
+    setHoveredOrderId(orderId);
+    // DO NOT call onUserInteraction here - hover should NOT reset highlight
+  };
+
+  const handleRowMouseLeave = () => {
+    setHoveredOrderId(null);
+    // DO NOT call onUserInteraction here - hover should NOT reset highlight
   };
 
   const handleView = (e, order) => {
@@ -325,12 +342,19 @@ export default function OrderTable({
 
             {/* ================= Data ================= */}
             {!loading &&
-              orders.map((o) => (
-                <tr
-                  key={o.id || o.order_code}
-                  className="cursor-pointer"
-                  onClick={() => handleRowClick(o)}
-                >
+              orders.map((o) => {
+                const isHighlighted = focusedOrderId && Number(o.id) === Number(focusedOrderId);
+                const isHovered = hoveredOrderId === o.id;
+                
+                return (
+                  <tr
+                    key={o.id || o.order_code}
+                    data-order-id={o.id}
+                    className={`cursor-pointer order-row ${isHighlighted ? 'highlight' : ''} ${isHovered ? 'hovered' : ''}`}
+                    onClick={() => handleRowClick(o)}
+                    onMouseEnter={() => handleRowMouseEnter(o.id)}
+                    onMouseLeave={handleRowMouseLeave}
+                  >
                   {/* Order code */}
                   <td className="fw-semibold text-primary" data-label="">
                     <span className="order-code">{o.order_code || o.code}</span>
@@ -521,8 +545,9 @@ export default function OrderTable({
                       */}
                     </div>
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
           </tbody>
         </Table>
       </div>

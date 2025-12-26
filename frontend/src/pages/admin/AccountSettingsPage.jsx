@@ -156,7 +156,7 @@ export default function AccountSettingsPage() {
   const isAdmin = role === "admin";
 
   return (
-    <div className="account-settings-page admin-page">
+    <div className="account-settings-page admin-page" data-role={role}>
       <div className="settings-container">
         {/* Page Header */}
         <div className="settings-header">

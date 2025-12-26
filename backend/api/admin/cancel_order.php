@@ -52,7 +52,7 @@ try {
 
     // 1️⃣ Kiểm tra tồn tại và lấy thông tin đơn
     $check = $conn->prepare(
-        "SELECT id, order_code, status, agent_id, shipper_id FROM orders WHERE id = ?"
+        "SELECT id, order_code, status, agent_id, shipper_id, customer_id FROM orders WHERE id = ?"
     );
     $check->bind_param("i", $orderId);
     $check->execute();
@@ -152,6 +152,9 @@ try {
         $orderId,
         $userId
     );
+
+    // 7️⃣.5 CREATE NOTIFICATIONS (RBAC)
+    $notify->emit('order_cancelled', $orderId, $userId, $role, ['reason' => $cancelReason]);
 
     // 8️⃣ AUDIT LOG (FILE – ISO 27001)
     $auditLine = sprintf(

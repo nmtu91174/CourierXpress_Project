@@ -32,6 +32,7 @@ export default function OrderFilterBar({
   userRole = "admin",    // NEW: For conditional rendering
   filterAgent,           // NEW: For agent view filter (all/me)
   onFilterAgentChange,   // NEW: Callback for agent filter change
+  isDashboardMode = false, // NEW: For admin dashboard (booked/approved only)
   onStatusChange,
   onStatusGroupChange,   // NEW
   onBranchChange,        // thực chất là onAgentChange
@@ -85,52 +86,58 @@ export default function OrderFilterBar({
             </Form.Select>
           </Col>
 
-          <Col md={2}>
-            <Form.Label className="lux-label">Shipper</Form.Label>
-            <Form.Select
-              size="sm"
-              className="lux-select"
-              value={filterShipper}
-              onChange={(e) => onShipperChange(e.target.value)}
-            >
-              <option value="all">All Shippers</option>
-              {shippers.map((shipper) => (
-                <option key={shipper.id} value={shipper.id}>
-                  {shipper.name} {shipper.email ? `(${shipper.email})` : ""}
-                </option>
-              ))}
-            </Form.Select>
-          </Col>
+          {!isDashboardMode && (
+            <Col md={2}>
+              <Form.Label className="lux-label">Shipper</Form.Label>
+              <Form.Select
+                size="sm"
+                className="lux-select"
+                value={filterShipper}
+                onChange={(e) => onShipperChange(e.target.value)}
+              >
+                <option value="all">All Shippers</option>
+                {shippers.map((shipper) => (
+                  <option key={shipper.id} value={shipper.id}>
+                    {shipper.name} {shipper.email ? `(${shipper.email})` : ""}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+          )}
 
-          <Col md={2}>
-            <Form.Label className="lux-label">Payment Method</Form.Label>
-            <Form.Select
-              size="sm"
-              className="lux-select"
-              value={filterPayment}
-              onChange={(e) => onPaymentChange(e.target.value)}
-            >
-              <option value="all">All</option>
-              <option value="1">Cash</option>
-              <option value="2">Bank Transfer</option>
-              <option value="3">MoMo Wallet</option>
-            </Form.Select>
-          </Col>
+          {!isDashboardMode && (
+            <>
+              <Col md={2}>
+                <Form.Label className="lux-label">Payment Method</Form.Label>
+                <Form.Select
+                  size="sm"
+                  className="lux-select"
+                  value={filterPayment}
+                  onChange={(e) => onPaymentChange(e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="1">Cash</option>
+                  <option value="2">Bank Transfer</option>
+                  <option value="3">MoMo Wallet</option>
+                </Form.Select>
+              </Col>
 
-          <Col md={2}>
-            <Form.Label className="lux-label">Payment Status</Form.Label>
-            <Form.Select
-              size="sm"
-              className="lux-select"
-              value={filterPaymentStatus || "all"}
-              onChange={(e) => onPaymentStatusChange && onPaymentStatusChange(e.target.value)}
-            >
-              <option value="all">All</option>
-              <option value="unpaid">Unpaid</option>
-              <option value="paid">Paid</option>
-              <option value="cancelled">Cancelled</option>
-            </Form.Select>
-          </Col>
+              <Col md={2}>
+                <Form.Label className="lux-label">Payment Status</Form.Label>
+                <Form.Select
+                  size="sm"
+                  className="lux-select"
+                  value={filterPaymentStatus || "all"}
+                  onChange={(e) => onPaymentStatusChange && onPaymentStatusChange(e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="unpaid">Unpaid</option>
+                  <option value="paid">Paid</option>
+                  <option value="cancelled">Cancelled</option>
+                </Form.Select>
+              </Col>
+            </>
+          )}
         </Row>
         
         {/* DÒNG 2: Từ ngày, Đến ngày, Bộ lọc vận hành, Bộ lọc tài chính */}
@@ -163,23 +170,25 @@ export default function OrderFilterBar({
           <Col md={8}>
             <div className="d-flex gap-2 align-items-start">
               {/* Bộ lọc tài chính */}
-              <div className="flex-shrink-0">
-                <Form.Label className="lux-label">Finance Filters</Form.Label>
-                <div className="d-flex align-items-center gap-2">
-                  <Form.Label className="mb-0 small">COD:</Form.Label>
-                  <Form.Select
-                    size="sm"
-                    className="lux-select"
-                    style={{ width: "auto", minWidth: "150px" }}
-                    value={filterCOD || "all"}
-                    onChange={(e) => onCODChange && onCODChange(e.target.value)}
-                  >
-                    <option value="all">All</option>
-                    <option value="has_cod">Has COD</option>
-                    <option value="no_cod">No COD</option>
-                  </Form.Select>
+              {!isDashboardMode && (
+                <div className="flex-shrink-0">
+                  <Form.Label className="lux-label">Finance Filters</Form.Label>
+                  <div className="d-flex align-items-center gap-2">
+                    <Form.Label className="mb-0 small">COD:</Form.Label>
+                    <Form.Select
+                      size="sm"
+                      className="lux-select"
+                      style={{ width: "auto", minWidth: "150px" }}
+                      value={filterCOD || "all"}
+                      onChange={(e) => onCODChange && onCODChange(e.target.value)}
+                    >
+                      <option value="all">All</option>
+                      <option value="has_cod">Has COD</option>
+                      <option value="no_cod">No COD</option>
+                    </Form.Select>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Bộ lọc vận hành */}
               <div className="flex-grow-1">
@@ -199,13 +208,15 @@ export default function OrderFilterBar({
                     checked={filterNoShipper || false}
                     onChange={(e) => onNoShipperChange && onNoShipperChange(e.target.checked)}
                   />
-                  <Form.Check
-                    type="checkbox"
-                    id="filter-assigned-not-picked"
-                    label="Assigned Not Picked"
-                    checked={filterAssignedNotPicked || false}
-                    onChange={(e) => onAssignedNotPickedChange && onAssignedNotPickedChange(e.target.checked)}
-                  />
+                  {!isDashboardMode && (
+                    <Form.Check
+                      type="checkbox"
+                      id="filter-assigned-not-picked"
+                      label="Assigned Not Picked"
+                      checked={filterAssignedNotPicked || false}
+                      onChange={(e) => onAssignedNotPickedChange && onAssignedNotPickedChange(e.target.checked)}
+                    />
+                  )}
                 </div>
               </div>
             </div>

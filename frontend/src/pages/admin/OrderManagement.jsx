@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card, Button, Row, Col, Modal, Form } from "react-bootstrap";
 import { FaPlus, FaBox, FaShippingFast, FaCheckCircle, FaExclamationTriangle, FaUserTie, FaInfoCircle, FaMapMarkerAlt, FaMoneyBillWave, FaCreditCard, FaCalendarAlt, FaUser, FaPhone, FaWeight, FaRoute, FaImage, FaTag, FaEdit } from "react-icons/fa";
 import Swal from "sweetalert2";
@@ -67,6 +67,11 @@ export default function OrderManagement() {
   const [pageSize, setPageSize] = useState(10); // Default: 10 orders per page
   // ===================== END PAGINATION STATES =====================
 
+  // ===================== HIGHLIGHT STATE (for Dashboard redirect) =====================
+  const [focusedOrderId, setFocusedOrderId] = useState(null);
+  const processedRedirectRef = React.useRef(false); // Use ref to prevent redirect loop without clearing state too early
+  // ===================== END HIGHLIGHT STATE =====================
+
   // Form data
   const [createData, setCreateData] = useState({
     sender_name: "", sender_phone: "",
@@ -116,7 +121,8 @@ export default function OrderManagement() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/get_orders.php?page=1&limit=100`, {
+      // Fetch all orders (high limit to get all orders for OrderManagement)
+      const res = await fetch(`${API_BASE}/get_orders.php?page=1&limit=10000`, {
         method: "GET",
         credentials: "include",
       });
@@ -327,6 +333,29 @@ export default function OrderManagement() {
   // Total pages for pagination
   const totalPages = Math.ceil(filteredOrders.length / pageSize);
   // ===================== END PAGINATED ORDERS =====================
+
+  // ===================== CALCULATE WORKLOAD FOR AGENTS & SHIPPERS =====================
+  // Calculate workload from ALL orders (same logic as Dashboard)
+  const agentsWithWorkload = useMemo(() => {
+    return agents.map(agent => {
+      const activeOrders = orders.filter(o => 
+        Number(o.agent_id) === Number(agent.id) && 
+        [1, 2, 3, 4].includes(Number(o.status)) // Non-terminal statuses
+      ).length;
+      return { ...agent, active_orders_count: activeOrders };
+    });
+  }, [agents, orders]);
+
+  const shippersWithWorkload = useMemo(() => {
+    return shippers.map(shipper => {
+      const activeOrders = orders.filter(o => 
+        Number(o.shipper_id) === Number(shipper.id) && 
+        [1, 2, 3, 4].includes(Number(o.status)) // Non-terminal statuses
+      ).length;
+      return { ...shipper, active_orders_count: activeOrders };
+    });
+  }, [shippers, orders]);
+  // ===================== END CALCULATE WORKLOAD =====================
 
   // Calculate fees function (from OrderNoAccount.js)
   const calculateFees = useMemo(() => {
@@ -634,8 +663,13 @@ export default function OrderManagement() {
         setShowCreateModal(false);
         resetCreateModal();
 
-        // Refresh orders list
+        // Refresh orders list first, then reset pagination to page 1
         await fetchOrders();
+        
+        // Reset pagination to page 1 to show new order at the top
+        // Set after fetchOrders completes to ensure orders are loaded
+        setCurrentPage(1);
+        
         fetchKPIStats();
 
         // If detail panel is open, fetch updated order detail
@@ -1199,17 +1233,133 @@ export default function OrderManagement() {
   };
 
   const location = useLocation();
+  const navigate = useNavigate();
+  
+  // State for navigation intent (from Dashboard or Notification)
+  const [navigationIntent, setNavigationIntent] = useState(null);
+  
+  // ===================== STEP 1: RECEIVE NAVIGATION INTENT (ONLY ONCE) =====================
   useEffect(() => {
     if (location.state?.action === "create") {
       setShowCreateModal(true);
-      window.history.replaceState({}, document.title);
-    }
-    if (location.state?.action === "assign" || location.state?.action === "assign_agent") {
-      const tableElement = document.querySelector('.lux-table-wrapper');
-      if (tableElement) tableElement.scrollIntoView({ behavior: 'smooth' });
+      navigate(location.pathname, { replace: true, state: {} });
     }
 
-    // Apply filters from navigation state (drill-down from Agent Management)
+    // Handle redirect from Dashboard with focusOrderId (state-based)
+    if (location.state?.focusOrderId && !processedRedirectRef.current) {
+      const targetOrderId = Number(location.state.focusOrderId);
+      const shouldOpenAssign = location.state.openAssign || false;
+      const shouldOpenAssignAgent = location.state.openAssignAgent || false;
+      
+      // Mark as processed to prevent duplicate execution
+      processedRedirectRef.current = true;
+      
+      // Save navigation intent to local state (separate from location.state)
+      setNavigationIntent({
+        orderId: targetOrderId,
+        openAssign: shouldOpenAssign,
+        openAssignAgent: shouldOpenAssignAgent,
+      });
+      
+      // Set focused order ID for highlighting
+      setFocusedOrderId(targetOrderId);
+      return;
+    }
+
+    // Handle redirect from Notification with query param ?focus=order_id
+    const searchParams = new URLSearchParams(location.search);
+    const focusOrderId = searchParams.get('focus');
+    if (focusOrderId && !processedRedirectRef.current) {
+      const targetOrderId = Number(focusOrderId);
+      processedRedirectRef.current = true;
+      
+      setNavigationIntent({
+        orderId: targetOrderId,
+        openAssign: false,
+        openAssignAgent: false,
+      });
+      
+      setFocusedOrderId(targetOrderId);
+      
+      // Clean up URL
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, location.search, navigate]);
+  
+  // ===================== STEP 2: PROCESS NAVIGATION INTENT (AFTER ORDERS LOAD) =====================
+  useEffect(() => {
+    // Wait for navigation intent and orders to be ready
+    if (!navigationIntent || loading || orders.length === 0 || filteredOrders.length === 0) {
+      return;
+    }
+
+    const { orderId, openAssign, openAssignAgent } = navigationIntent;
+    const targetOrderId = Number(orderId);
+
+    // Find order in filteredOrders
+    const orderIndex = filteredOrders.findIndex(o => Number(o.id) === targetOrderId);
+    if (orderIndex === -1) {
+      // Order not found - clear intent and state
+      setNavigationIntent(null);
+      navigate(location.pathname, { replace: true, state: {} });
+      processedRedirectRef.current = false;
+      return;
+    }
+
+    // Calculate target page
+    const targetPage = Math.floor(orderIndex / pageSize) + 1;
+    
+    // Change page if needed
+    if (targetPage !== currentPage) {
+      setCurrentPage(targetPage);
+      // Wait for page to update before continuing
+      return;
+    }
+
+    // Page is correct, now scroll and highlight
+    const targetOrder = filteredOrders.find(o => Number(o.id) === targetOrderId);
+    if (targetOrder) {
+      // Open modal if requested
+      if (openAssign) {
+        openAssignModal(targetOrder);
+      } else if (openAssignAgent) {
+        openAssignAgentModal(targetOrder);
+      }
+      
+      // Scroll to order and highlight (wait for DOM to render)
+      setTimeout(() => {
+        const orderRow = document.querySelector(`[data-order-id="${targetOrderId}"]`);
+        if (orderRow) {
+          orderRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Set highlight AFTER scroll completes using requestAnimationFrame
+          requestAnimationFrame(() => {
+            // Highlight is already set via focusedOrderId state, but ensure it's applied
+            setFocusedOrderId(targetOrderId);
+          });
+        } else {
+          // Fallback: scroll to table
+          const tableElement = document.querySelector('.lux-table-wrapper');
+          if (tableElement) tableElement.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Clear navigation state AFTER processing is complete
+        setTimeout(() => {
+          setNavigationIntent(null);
+          navigate(location.pathname, { replace: true, state: {} });
+          processedRedirectRef.current = false;
+        }, 400);
+      }, 300);
+    } else {
+      // Order not found - clear intent
+      setNavigationIntent(null);
+      navigate(location.pathname, { replace: true, state: {} });
+      processedRedirectRef.current = false;
+    }
+  }, [navigationIntent, orders, filteredOrders, loading, currentPage, pageSize, navigate, openAssignModal, openAssignAgentModal]);
+
+  // ===================== STEP 3: APPLY FILTERS FROM NAVIGATION STATE (Agent Management drill-down) =====================
+  useEffect(() => {
     if (location.state?.agent_id) {
       setFilterBranch(location.state.agent_id);
 
@@ -1228,7 +1378,7 @@ export default function OrderManagement() {
       }
 
       // Clear navigation state after applying filters
-      window.history.replaceState({}, document.title);
+      navigate(location.pathname, { replace: true, state: {} });
 
       // Scroll to table
       setTimeout(() => {
@@ -1236,7 +1386,56 @@ export default function OrderManagement() {
         if (tableElement) tableElement.scrollIntoView({ behavior: 'smooth' });
       }, 100);
     }
-  }, [location]);
+  }, [location.state?.agent_id, location.state?.status, location.state?.status_group, navigate]);
+
+  // Reset highlight when filter/search changes (user changed context)
+  useEffect(() => {
+    if (focusedOrderId) {
+      setFocusedOrderId(null);
+      processedRedirectRef.current = false;
+    }
+  }, [filterStatus, filterStatusGroup, filterBranch, filterShipper, filterPayment, filterPaymentStatus, filterCOD, filterNoAgent, filterNoShipper, filterAssignedNotPicked, filterDateFrom, filterDateTo, searchText]);
+
+  // Auto-fade highlight after 5 seconds
+  useEffect(() => {
+    if (!focusedOrderId) return;
+
+    const timer = setTimeout(() => {
+      setFocusedOrderId(null);
+    }, 5000); // 5 seconds as per user request
+
+    return () => clearTimeout(timer);
+  }, [focusedOrderId]);
+
+  // Ensure highlight is applied after DOM updates (using requestAnimationFrame for reliability)
+  useEffect(() => {
+    if (!focusedOrderId) return;
+    
+    // Use requestAnimationFrame to ensure DOM is ready
+    const rafId = requestAnimationFrame(() => {
+      // Double RAF to ensure render is complete
+      requestAnimationFrame(() => {
+        const orderRow = document.querySelector(`[data-order-id="${focusedOrderId}"]`);
+        if (orderRow) {
+          // Force highlight class to be applied
+          orderRow.classList.add('highlight');
+        }
+      });
+    });
+    
+    return () => cancelAnimationFrame(rafId);
+  }, [focusedOrderId, paginatedOrders, currentPage]);
+
+  // Reset highlight when user explicitly interacts (ONLY on click, NOT on hover)
+  // Hover should NOT reset highlight - only click or page/filter change
+  const handleUserInteraction = () => {
+    // Only reset on explicit click, not on hover
+    // Highlight will auto-fade after 5 seconds via useEffect
+    if (focusedOrderId) {
+      setFocusedOrderId(null);
+      processedRedirectRef.current = false;
+    }
+  };
 
   const resetFilters = () => {
     setFilterStatus("all");
@@ -1304,7 +1503,7 @@ export default function OrderManagement() {
   };
 
   return (
-    <div className="admin-page">
+    <div className="admin-page container-fluid p-0">
       <div className="page-header d-flex justify-content-between mb-4">
         <h3 className="fw-bold">Order Management</h3>
         <Button className="btn-lux-primary" onClick={() => setShowCreateModal(true)}>
@@ -1407,6 +1606,8 @@ export default function OrderManagement() {
         orders={paginatedOrders}
         //------------------- thay cho orders={filteredOrders}
         userRole={userRole}
+        focusedOrderId={focusedOrderId}
+        onUserInteraction={handleUserInteraction}
         onRowClick={(order) => { setSelectedOrder(order); setShowDetailPanel(true); }}
         onViewDetail={(order) => { setSelectedOrder(order); setShowDetailPanel(true); }}
         onAssignAgent={openAssignAgentModal}
@@ -1441,28 +1642,109 @@ export default function OrderManagement() {
           </Form.Select>
         </div>
 
-        {/* Pagination controls */}
-        <div className="d-flex align-items-center gap-2 mb-2">
+        {/* Pagination controls - Luxury Style */}
+        <div className="d-flex align-items-center gap-3 mb-2">
           <Button
-            variant="outline-secondary bg-danger text-white"
+            className="luxury-pagination-btn"
+            variant="outline-primary"
             size="sm"
             disabled={currentPage === 1}
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            onClick={() => {
+              // Reset navigation intent when user manually changes page
+              setCurrentPage(prev => Math.max(prev - 1, 1));
+              setFocusedOrderId(null);
+              setNavigationIntent(null);
+              processedRedirectRef.current = false;
+            }}
+            style={{
+              minWidth: "100px",
+              padding: "8px 20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(37, 99, 235, 0.3)",
+              background: currentPage === 1 
+                ? "rgba(0, 0, 0, 0.05)" 
+                : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
+              color: currentPage === 1 ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+              fontWeight: 600,
+              transition: "all 0.3s ease",
+              boxShadow: currentPage === 1 ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage !== 1) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.25))";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.25)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage !== 1) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.15)";
+              }
+            }}
           >
-            Previous
+            ← Previous
           </Button>
 
-          <span className="small text-muted">
-            Page <strong>{currentPage}</strong> of <strong>{totalPages || 1}</strong>
+          <span 
+            className="small"
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              background: "linear-gradient(135deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.08))",
+              border: "1px solid rgba(15, 23, 42, 0.1)",
+              fontWeight: 600,
+              color: "#0b1220",
+            }}
+          >
+            Page <strong style={{ color: "#2563eb" }}>{currentPage}</strong> of <strong style={{ color: "#2563eb" }}>{totalPages || 1}</strong>
+            {filteredOrders.length > 0 && (
+              <span className="text-muted ms-2">({filteredOrders.length} orders)</span>
+            )}
           </span>
 
           <Button
-            variant="outline-secondary bg-danger text-white"
+            className="luxury-pagination-btn"
+            variant="outline-primary"
             size="sm"
             disabled={currentPage === totalPages || totalPages === 0}
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            onClick={() => {
+              // Reset navigation intent when user manually changes page
+              setCurrentPage(prev => Math.min(prev + 1, totalPages));
+              setFocusedOrderId(null);
+              setNavigationIntent(null);
+              processedRedirectRef.current = false;
+            }}
+            style={{
+              minWidth: "100px",
+              padding: "8px 20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(37, 99, 235, 0.3)",
+              background: (currentPage === totalPages || totalPages === 0)
+                ? "rgba(0, 0, 0, 0.05)" 
+                : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
+              color: (currentPage === totalPages || totalPages === 0) ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+              fontWeight: 600,
+              transition: "all 0.3s ease",
+              boxShadow: (currentPage === totalPages || totalPages === 0) ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage !== totalPages && totalPages !== 0) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.25))";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.25)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage !== totalPages && totalPages !== 0) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.15)";
+              }
+            }}
           >
-            Next
+            Next →
           </Button>
         </div>
       </div>
@@ -2161,7 +2443,7 @@ export default function OrderManagement() {
                     className="luxury-select"
                   >
                     <option value="">-- Select Shipper --</option>
-                    {shippers.map(s => {
+                    {shippersWithWorkload.map(s => {
                       const workload = s.active_orders_count || 0;
                       const workloadLabel = workload === 0 ? "Available" : workload < 5 ? "Low" : workload < 10 ? "Medium" : "High";
                       const workloadColor = workload === 0 ? "text-success" : workload < 5 ? "text-info" : workload < 10 ? "text-warning" : "text-danger";
@@ -2173,7 +2455,7 @@ export default function OrderManagement() {
                     })}
                   </Form.Select>
                   {assignData.shipper_id && (() => {
-                    const selected = shippers.find(s => s.id === Number(assignData.shipper_id));
+                    const selected = shippersWithWorkload.find(s => s.id === Number(assignData.shipper_id));
                     if (!selected) return null;
                     const workload = selected.active_orders_count || 0;
                     const afterAssign = workload + 1;
@@ -2283,7 +2565,7 @@ export default function OrderManagement() {
                     className="luxury-select"
                   >
                     <option value="">-- Select Agent --</option>
-                    {agents.map(a => {
+                    {agentsWithWorkload.map(a => {
                       const workload = a.active_orders_count || 0;
                       const workloadLabel = workload === 0 ? "Available" : workload < 5 ? "Low" : workload < 10 ? "Medium" : "High";
                       return (
@@ -2294,7 +2576,7 @@ export default function OrderManagement() {
                     })}
                   </Form.Select>
                   {assignAgentData.agent_id && (() => {
-                    const selected = agents.find(a => a.id === Number(assignAgentData.agent_id));
+                    const selected = agentsWithWorkload.find(a => a.id === Number(assignAgentData.agent_id));
                     if (!selected) return null;
                     const workload = selected.active_orders_count || 0;
                     const afterAssign = workload + 1;

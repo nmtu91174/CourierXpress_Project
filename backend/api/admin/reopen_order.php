@@ -192,6 +192,9 @@ try {
         $userId
     );
 
+    // 9️⃣.5 CREATE NOTIFICATIONS (RBAC)
+    $notify->emit('order_reopened', $orderId, $userId, $role, ['new_status' => $previousStatus]);
+
     // 🔟 AUDIT LOG (FILE – ISO 27001)
     $auditLine = sprintf(
         "time=%s event=REOPEN_ORDER actor_id=%d actor_role=%s resource=order resource_id=%d previous_status=%d new_status=%d outcome=SUCCESS message=\"Reopen order %s\"\n",

@@ -31,7 +31,6 @@ require_role(["admin"]);
 // ==========================
 $statusFilter = $_GET["status"] ?? null; // 'active', 'inactive', 'all'
 $workloadFilter = $_GET["workload"] ?? null; // 'has_active', 'no_orders', 'overloaded', 'all'
-$approvalFilter = $_GET["approval"] ?? null; // 'has_pending', 'no_pending', 'all'
 $search = $_GET["search"] ?? null;
 
 // ==========================
@@ -80,7 +79,7 @@ if ($search && trim($search) !== "") {
 
 $sql .= " GROUP BY u.id";
 
-// Build HAVING clause for workload filters (pending_approvals sẽ được thêm sau)
+// Build HAVING clause for workload filters
 $havingConditions = [];
 
 if ($workloadFilter && $workloadFilter !== "all") {
@@ -135,59 +134,10 @@ while ($row = $result->fetch_assoc()) {
         "active_orders" => (int)$row["active_orders"],
         "completed_orders" => (int)$row["completed_orders"],
         "failed_orders" => (int)$row["failed_orders"],
-        "pending_approvals" => 0, // Will be filled in next query
     ];
 }
 
 $stmt->close();
-
-// Query 2: Get pending_approvals for each agent (separate to avoid duplicate)
-$pendingApprovalsMap = [];
-if (!empty($agents)) {
-    $agentIds = array_map(function($a) { return $a["id"]; }, $agents);
-    $placeholders = implode(",", array_fill(0, count($agentIds), "?"));
-    
-    $sqlPending = "
-        SELECT 
-            agent_id,
-            COUNT(*) AS pending_count
-        FROM order_approvals
-        WHERE agent_id IN ($placeholders) AND status = 'pending'
-        GROUP BY agent_id
-    ";
-    
-    $stmtPending = $conn->prepare($sqlPending);
-    if ($stmtPending) {
-        $typesPending = str_repeat("i", count($agentIds));
-        $stmtPending->bind_param($typesPending, ...$agentIds);
-        
-        if ($stmtPending->execute()) {
-            $resultPending = $stmtPending->get_result();
-            while ($rowPending = $resultPending->fetch_assoc()) {
-                $pendingApprovalsMap[(int)$rowPending["agent_id"]] = (int)$rowPending["pending_count"];
-            }
-        }
-        $stmtPending->close();
-    }
-}
-
-// Update pending_approvals for each agent
-foreach ($agents as &$agent) {
-    $agent["pending_approvals"] = $pendingApprovalsMap[$agent["id"]] ?? 0;
-}
-
-// Apply approval filter if needed
-if ($approvalFilter && $approvalFilter !== "all") {
-    $agents = array_filter($agents, function($agent) use ($approvalFilter) {
-        if ($approvalFilter === "has_pending") {
-            return $agent["pending_approvals"] > 0;
-        } elseif ($approvalFilter === "no_pending") {
-            return $agent["pending_approvals"] === 0;
-        }
-        return true;
-    });
-    $agents = array_values($agents); // Re-index array
-}
 $conn->close();
 
 // ==========================

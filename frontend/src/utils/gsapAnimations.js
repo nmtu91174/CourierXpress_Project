@@ -22,10 +22,10 @@ export const animateKPICards = (selector = ".kpi-item") => {
 
   const timeline = gsap.from(selector, {
     opacity: 0,
-    y: 25,
-    duration: 0.6,
-    ease: "power3.out",
-    stagger: 0.12,
+    y: 20,
+    duration: 0.3,
+    ease: "power2.out",
+    stagger: 0.05,
     clearProps: "will-change", // Clear after animation
     onComplete: () => {
       // Add class to enable CSS transitions after GSAP animation completes

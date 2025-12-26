@@ -276,6 +276,15 @@ class OrderService extends BaseService
                 $this->logAudit($actorId, $actorRole, "CREATE_ORDER", $orderId, $orderCode);
             }
 
+            /* ---------- 10. FINAL UPDATE: Ensure updated_at = NOW() ---------- */
+            // Đảm bảo updated_at = NOW() sau khi tạo xong tất cả để order mới luôn hiển thị ở đầu danh sách
+            $updateTimeStmt = $this->prepare("UPDATE orders SET updated_at = NOW() WHERE id = ?");
+            if ($updateTimeStmt) {
+                $updateTimeStmt->bind_param("i", $orderId);
+                $updateTimeStmt->execute();
+                $updateTimeStmt->close();
+            }
+
             return [
                 "order_id"     => $orderId,
                 "order_code"   => $orderCode,

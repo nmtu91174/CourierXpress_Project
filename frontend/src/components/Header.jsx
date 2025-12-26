@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Navbar, Container, Nav, Button, NavDropdown } from "react-bootstrap";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { FaShippingFast } from "react-icons/fa";
+import UserMenu from "./layout/UserMenu";
 
 const Header = ({ className = "" }) => {
   const navigate = useNavigate();
@@ -175,14 +176,7 @@ const Header = ({ className = "" }) => {
             {/* USER / LOGIN */}
             {user ? (
               <div className="d-flex align-items-center ms-3">
-                <span className="me-2 fw-bold text-dark">{user.name}</span>
-                <Button
-                  variant="outline-danger"
-                  className="rounded-pill px-4"
-                  onClick={handleLogout}
-                >
-                  Logout
-                </Button>
+                <UserMenu user={user} />
               </div>
             ) : (
               <Button

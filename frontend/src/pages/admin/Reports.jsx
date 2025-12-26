@@ -1,6 +1,7 @@
 // frontend/src/pages/admin/Reports.jsx
-import React, { useMemo, useState, useEffect } from "react";
-import { Card, Row, Col, Button, Table } from "react-bootstrap";
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Card, Row, Col, Button, Form, Spinner, Badge, Table, ProgressBar } from "react-bootstrap";
 import {
   FaChartBar,
   FaFilePdf,
@@ -13,1014 +14,940 @@ import {
 } from "react-icons/fa";
 
 import ReactECharts from "echarts-for-react";
+import * as echarts from "echarts";
+
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import * as XLSX from "xlsx";
+import autoTable from "jspdf-autotable";
+
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+
 import { initPageAnimations } from "../../utils/gsapAnimations";
 import "../../assets/styles/reports.css";
 import "../../assets/styles/dashboard.css";
 
 /**
- * ENTERPRISE REPORTS (ECharts only)
+ * ENTERPRISE REPORTS (ECharts + ExcelJS + jsPDF AutoTable)
  * - 4 KPI cards
- * - 4 reports (high-level)
- * - 6 operational analytics (enterprise workflow)
+ * - 8 meaningful reports (workflow aligned)
+ * - Removed SLA report
+ * - Revenue KPI shown as VND currency (e.g. 262.000 ₫)
  */
 
+const API_URL = "http://localhost:8888/api/admin/get_reports_data.php"; // adjust if needed
+
+const STATUS_META = [
+  { id: 1, key: "BOOKED", label: "Booked" },
+  { id: 2, key: "APPROVED", label: "Approved" },
+  { id: 3, key: "ASSIGNED", label: "Assigned" },
+  { id: 4, key: "PICKED_UP", label: "Picked Up" },
+  { id: 5, key: "DELIVERED", label: "Delivered" },
+  { id: 6, key: "FAILED", label: "Failed" },
+];
+
+const SERVICE_LABEL = { all: "All", standard: "Standard", express: "Express", sameday: "Same-day" };
+const PAYMENT_LABEL = { all: "All", cash: "Cash", banking: "Bank Transfer", momo: "MoMo" };
+
+function safeNum(v, d = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : d;
+}
+
+function formatVND(amount) {
+  // Example: 262.000 ₫
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(Math.round(safeNum(amount, 0)));
+}
+
+function formatInt(n) {
+  return new Intl.NumberFormat("en-US").format(Math.round(safeNum(n, 0)));
+}
+
+function formatPct(n, digits = 1) {
+  const x = safeNum(n, 0);
+  return `${x.toFixed(digits)}%`;
+}
+
+function toDateLabel(bucket, period) {
+  try {
+    if (period === "12m") {
+      const [yy, mm] = bucket.split("-").map((x) => parseInt(x, 10));
+      const d = new Date(yy, (mm || 1) - 1, 1);
+      return new Intl.DateTimeFormat("en-US", { month: "short" }).format(d);
+    }
+    const [y, m, d] = bucket.split("-").map((x) => parseInt(x, 10));
+    const dt = new Date(y, (m || 1) - 1, d || 1);
+    return new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit" }).format(dt);
+  } catch {
+    return bucket;
+  }
+}
+
+function unwrapResponse(json) {
+  // Supports Response::success formats (status/data/message) or simple {data:...}
+  if (!json) return null;
+  if (json.data) return json.data;
+  return json;
+}
+
+function responseOk(res, json) {
+  if (!res.ok) return false;
+  if (!json) return false;
+  if (json.status === "success") return true;
+  if (json.success === true) return true;
+  // allow when it contains "data" payload
+  if (json.data) return true;
+  return false;
+}
+
 export default function Reports() {
-  /* ==========================
-   * FILTERS - ENTERPRISE LOGIC
-   * ========================== */
   const [filters, setFilters] = useState({
     period: "7d",
-    view: "overall", // 👈 TRỤC PHỤ #1 - View Mode
-    service: "all", // Contextual - chỉ hiện khi view = "service"
-    payment: "all", // Contextual - chỉ hiện khi view = "payment"
-    status: "all", // Contextual - chỉ hiện khi view = "workflow"
+    service: "all",
+    payment: "all",
+    status: "all",
   });
 
+  const [payload, setPayload] = useState({
+    meta: {},
+    kpi: { revenueRaw: 0, revenueFormatted: "0 ₫", orders: 0, deliveredRate: 0, failedRate: 0 },
+    timeBuckets: [],
+    revenueTimeData: [],
+    statusTimeData: [],
+    serviceMix: [],
+    paymentMix: [],
+    workflowFunnel: [],
+    backlogAging: [],
+    topAgents: [],
+    topShippers: [],
+  });
+
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  // Chart refs for PDF export
+  const refRevenue = useRef(null);
+  const refDelivery = useRef(null);
+  const refService = useRef(null);
+  const refPayment = useRef(null);
+  const refFunnel = useRef(null);
+  const refAging = useRef(null);
+  const refAgents = useRef(null);
+  const refShippers = useRef(null);
+
+  const onFilter = (k, v) => setFilters((p) => ({ ...p, [k]: v }));
+
   /* ==========================
-   * ENTERPRISE THEME (clean / less flashy)
-   * - Solid colors + low opacity
-   * - No tooltip blur
-   * - Less shadow
+   * THEME (more vivid / enterprise)
    * ========================== */
   const palette = useMemo(
     () => ({
-      blue: "#2563EB",
-      cyan: "#0891B2",
-      green: "#10B981",
-      amber: "#F59E0B",
-      violet: "#7C3AED",
-      red: "#EF4444",
-      slate: "#64748B",
-      ink: "#0F172A",
-      grid: "rgba(2, 6, 23, 0.07)",
-      axis: "rgba(2, 6, 23, 0.22)",
-      label: "rgba(2, 6, 23, 0.70)",
-      muted: "rgba(2, 6, 23, 0.55)",
+      bg: "#ffffff",
+      card: "#ffffff",
+      ink: "#0b1220",
+      muted: "rgba(15,23,42,0.62)",
+      label: "rgba(15,23,42,0.78)",
+      grid: "rgba(15,23,42,0.10)",
+      border: "rgba(15,23,42,0.10)",
+      // vivid palette
+      colors: ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#a855f7", "#84cc16"],
     }),
     []
   );
 
-  const luxColors = useMemo(
-    () => [palette.blue, palette.green, palette.amber, palette.violet, palette.cyan, palette.red, palette.slate],
-    [palette]
-  );
-
-  const tooltipLux = useMemo(
-    () => ({
-      backgroundColor: "rgba(15, 23, 42, 0.96)",
-      borderColor: "rgba(148, 163, 184, 0.18)",
-      borderWidth: 1,
-      padding: [10, 12],
-      textStyle: { color: "#E2E8F0", fontSize: 12 },
-      extraCssText: "border-radius: 12px;",
-    }),
-    []
-  );
-
+  const baseGrid = useMemo(() => ({ left: 46, right: 20, top: 52, bottom: 42 }), []);
   const axisLux = useMemo(
     () => ({
-      axisLine: { lineStyle: { color: palette.axis } },
+      axisLine: { lineStyle: { color: palette.border } },
       axisTick: { show: false },
-      axisLabel: { color: palette.label, fontSize: 11 },
+      axisLabel: { color: palette.label, fontSize: 12, fontFamily: "Inter, system-ui, sans-serif" },
       splitLine: { lineStyle: { color: palette.grid } },
-      nameTextStyle: { color: palette.muted, fontWeight: 600 },
     }),
     [palette]
   );
 
-  const legendLux = useMemo(
-    () => ({
-      bottom: 0,
-      icon: "roundRect",
-      itemWidth: 10,
-      itemHeight: 10,
-      itemGap: 14,
-      textStyle: { color: palette.muted, fontSize: 11 },
-      inactiveColor: "rgba(2,6,23,0.28)",
+  const dataZoomInside = useMemo(
+    () => [
+      {
+        type: "inside",
+        zoomOnMouseWheel: "shift", // hold Shift to zoom
+        moveOnMouseWheel: true,
+        moveOnMouseMove: true,
+      },
+    ],
+    []
+  );
+
+
+  const withLux = useCallback(
+    (opt) => ({
+      backgroundColor: palette.bg,
+      color: palette.colors,
+      textStyle: { fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial", fontSize: 12 },
+      tooltip: {
+        trigger: "axis",
+        borderWidth: 0,
+        backgroundColor: "rgba(15,23,42,0.92)",
+        textStyle: { color: "#fff" },
+      },
+      toolbox: {
+        show: false,
+      },
+      ...opt,
     }),
     [palette]
   );
 
   /* ==========================
-   * GLOBAL HELPERS
+   * FETCH
    * ========================== */
-  const gridAxis = useMemo(
-    () => ({
-      left: 16,
-      right: 16,
-      top: 18,
-      bottom: 76,
-      containLabel: true,
-    }),
-    []
-  );
-
-  const toolboxDefault = useMemo(
-    () => ({
-      show: true,
-      right: 10,
-      top: 6,
-      iconStyle: {
-        borderColor: "rgba(2, 6, 23, 0.38)",
-      },
-      feature: {
-        restore: { show: true },
-        saveAsImage: { show: true },
-      },
-    }),
-    []
-  );
-
-  // Slider: neutral, không “rực”
-  const dataZoomX = useMemo(
-    () => [
-      { type: "inside", xAxisIndex: 0, filterMode: "none" },
-      {
-        type: "slider",
-        xAxisIndex: 0,
-        height: 14,
-        bottom: 18,
-        showDetail: false,
-        brushSelect: false,
-        fillerColor: "rgba(2, 6, 23, 0.08)",
-        borderColor: "rgba(2, 6, 23, 0.10)",
-        handleStyle: { color: "rgba(2, 6, 23, 0.22)" },
-      },
-    ],
-    []
-  );
-
-  const dataZoomY = useMemo(
-    () => [
-      { type: "inside", yAxisIndex: 0, filterMode: "none" },
-      {
-        type: "slider",
-        yAxisIndex: 0,
-        width: 10,
-        right: 8,
-        top: 24,
-        bottom: 24,
-        showDetail: false,
-        brushSelect: false,
-        fillerColor: "rgba(2, 6, 23, 0.08)",
-        borderColor: "rgba(2, 6, 23, 0.10)",
-        handleStyle: { color: "rgba(2, 6, 23, 0.22)" },
-      },
-    ],
-    []
-  );
-
-  const echartCommonProps = useMemo(
-    () => ({
-      notMerge: true,
-      lazyUpdate: true,
-      opts: { renderer: "canvas" },
-      style: { width: "100%" },
-    }),
-    []
-  );
-
-  const withLux = (opt) => ({
-    backgroundColor: "transparent",
-    color: luxColors,
-    animationDuration: 420,
-    textStyle: {
-      fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
-      color: palette.label,
-    },
-    tooltip: { ...tooltipLux, ...(opt.tooltip || {}) },
-    ...opt,
-  });
-
-  /* ==========================
-   * MOCK DATA
-   * ========================== */
-  const labels7d = useMemo(() => ["D-6", "D-5", "D-4", "D-3", "D-2", "D-1", "Hôm nay"], []);
-  const labels30d = useMemo(() => Array.from({ length: 30 }, (_, i) => `D-${29 - i}`), []);
-  const labels12m = useMemo(
-    () => ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"],
-    []
-  );
-
-  const timeLabels = useMemo(() => {
-    if (filters.period === "7d") return labels7d;
-    if (filters.period === "30d") return labels30d;
-    return labels12m;
-  }, [filters.period, labels7d, labels30d, labels12m]);
-
-  const STATUS = useMemo(
-    () => [
-      { key: "BOOKED", label: "Đã tạo đơn" },
-      { key: "APPROVED", label: "Đã duyệt" },
-      { key: "ASSIGNED", label: "Đã phân công" },
-      { key: "IN_PROGRESS", label: "Đang giao" },
-      { key: "DELIVERED", label: "Giao thành công" },
-      { key: "FAILED", label: "Giao thất bại" },
-    ],
-    []
-  );
-
-  // ==========================
-  // FETCH REAL DATA FROM API
-  // ==========================
-  const [kpi, setKpi] = useState({
-    revenueB: 0,
-    orders: 0,
-    deliveredRate: 0,
-    cancelRate: 0,
-  });
-  const [reportsData, setReportsData] = useState({
-    statusTimeData: [],
-    revenueTimeData: [],
-    serviceDist: [],
-    paymentDist: [],
-    workflowData: [],
-    agingData: [],
-    agentData: [],
-    shipperData: [],
-    failedRiskData: [],
-  });
-  const [loading, setLoading] = useState(true);
-
-  // GSAP Animation
   useEffect(() => {
-    return initPageAnimations({ kpiSelector: ".kpi-item", chartSelector: ".chart-wrapper" });
+    // Initial animation on mount
+    try {
+      initPageAnimations?.({ kpiSelector: ".kpi-item", chartSelector: ".chart-wrapper" });
+    } catch {
+      // ignore animation if not available
+    }
   }, []);
 
+  // Re-animate KPI cards when filters change (faster animation)
   useEffect(() => {
-    const fetchReportsData = async () => {
+    if (!loading) {
+      import("../../utils/gsapAnimations").then(({ animateKPICards }) => {
+        animateKPICards(".kpi-item");
+      }).catch(() => {
+        // ignore if animation not available
+      });
+    }
+
+    let mounted = true;
+
+    async function run() {
       setLoading(true);
+      setErr("");
+
       try {
         const params = new URLSearchParams({
           period: filters.period,
-          view: filters.view,
           service: filters.service,
           payment: filters.payment,
           status: filters.status,
+          view: "overall",
         });
 
-        const res = await fetch(`http://localhost:8888/api/admin/get_reports_data.php?${params.toString()}`, {
-          method: "GET",
-          credentials: "include",
-        });
+        const res = await fetch(`${API_URL}?${params.toString()}`, { credentials: "include" });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.status === "success") {
-            setKpi(data.data.kpi);
-            setReportsData({
-              statusTimeData: data.data.statusTimeData || [],
-              revenueTimeData: data.data.revenueTimeData || [],
-              serviceDist: data.data.serviceDist || [],
-              paymentDist: data.data.paymentDist || [],
-              workflowData: data.data.workflowData || [],
-              agingData: data.data.agingData || [],
-              agentData: data.data.agentData || [],
-              shipperData: data.data.shipperData || [],
-              failedRiskData: data.data.failedRiskData || [],
-            });
-          }
+        const ct = res.headers.get("content-type") || "";
+        let json = null;
+
+        if (ct.includes("application/json")) {
+          json = await res.json();
+        } else {
+          const text = await res.text();
+          throw new Error(text?.slice?.(0, 300) || "Non-JSON response from server.");
         }
-      } catch (error) {
-        console.error("Error fetching reports data:", error);
-      } finally {
+
+        if (!mounted) return;
+
+        if (!responseOk(res, json)) {
+          setErr(json?.message || "Unable to load reports data.");
+          setLoading(false);
+          return;
+        }
+
+        const data = unwrapResponse(json);
+        setPayload({
+          meta: data?.meta ?? {},
+          kpi: data?.kpi ?? payload.kpi,
+          timeBuckets: data?.timeBuckets ?? [],
+          revenueTimeData: data?.revenueTimeData ?? [],
+          statusTimeData: data?.statusTimeData ?? [],
+          serviceMix: data?.serviceMix ?? [],
+          paymentMix: data?.paymentMix ?? [],
+          workflowFunnel: data?.workflowFunnel ?? [],
+          backlogAging: data?.backlogAging ?? [],
+          topAgents: data?.topAgents ?? [],
+          topShippers: data?.topShippers ?? [],
+        });
+
+        setLoading(false);
+      } catch (e) {
+        if (!mounted) return;
+        setErr(e?.message ? `Network/Server response: ${e.message}` : "Network error while loading reports data.");
         setLoading(false);
       }
-    };
+    }
 
-    fetchReportsData();
+    run();
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  // Transform API data to chart format
-  const serviceDist = useMemo(() => {
-    if (reportsData.serviceDist.length === 0) {
-      return [{ name: "Standard", value: 52 }, { name: "Express", value: 34 }, { name: "Same-day", value: 14 }];
-    }
-    const total = reportsData.serviceDist.reduce((sum, item) => sum + parseInt(item.count), 0);
-    return reportsData.serviceDist.map((item) => ({
-      name: item.service_name || "Unknown",
-      value: total > 0 ? Math.round((parseInt(item.count) / total) * 100) : 0,
-    }));
-  }, [reportsData.serviceDist]);
+  /* ==========================
+   * DERIVED SERIES
+   * ========================== */
+  const timeBuckets = payload.timeBuckets ?? [];
+  const timeLabels = useMemo(() => timeBuckets.map((b) => toDateLabel(b, filters.period)), [timeBuckets, filters.period]);
 
-  const paymentDist = useMemo(() => {
-    if (reportsData.paymentDist.length === 0) {
-      return [{ name: "Cash", value: 60 }, { name: "Banking", value: 25 }, { name: "Wallet", value: 15 }];
-    }
-    const total = reportsData.paymentDist.reduce((sum, item) => sum + parseInt(item.count), 0);
-    return reportsData.paymentDist.map((item) => ({
-      name: item.payment_name || "Unknown",
-      value: total > 0 ? Math.round((parseInt(item.count) / total) * 100) : 0,
-    }));
-  }, [reportsData.paymentDist]);
+  const revenueMap = useMemo(() => {
+    const m = new Map();
+    for (const r of payload.revenueTimeData ?? []) m.set(r.bucket, r);
+    return m;
+  }, [payload.revenueTimeData]);
 
-  const slaBuckets = useMemo(() => ["<2h", "2-4h", "4-8h", "8-12h", ">12h"], []);
-  const agingBuckets = useMemo(() => ["<2h", "2-6h", "6-12h", "12-24h", "1-2d", ">2d"], []);
+  const revenueSeries = useMemo(() => timeBuckets.map((b) => safeNum(revenueMap.get(b)?.revenue, 0)), [timeBuckets, revenueMap]);
+  const ordersSeries = useMemo(() => timeBuckets.map((b) => safeNum(revenueMap.get(b)?.orders, 0)), [timeBuckets, revenueMap]);
 
-  const topAgents = useMemo(
-    () => [
-      { name: "Agent #12", delivered: 480, failed: 18, wip: 22 },
-      { name: "Agent #07", delivered: 430, failed: 16, wip: 28 },
-      { name: "Agent #03", delivered: 390, failed: 14, wip: 26 },
-      { name: "Agent #18", delivered: 350, failed: 21, wip: 19 },
-      { name: "Agent #05", delivered: 330, failed: 11, wip: 16 },
-      { name: "Agent #09", delivered: 305, failed: 9, wip: 20 },
-      { name: "Agent #02", delivered: 290, failed: 13, wip: 15 },
-    ],
-    []
+  const statusMap = useMemo(() => {
+    const m = new Map(); // key `${bucket}-${status}` => count
+    for (const r of payload.statusTimeData ?? []) m.set(`${r.bucket}-${r.status}`, safeNum(r.count, 0));
+    return m;
+  }, [payload.statusTimeData]);
+
+  const deliveredSeries = useMemo(() => timeBuckets.map((b) => safeNum(statusMap.get(`${b}-5`), 0)), [timeBuckets, statusMap]);
+  const failedSeries = useMemo(() => timeBuckets.map((b) => safeNum(statusMap.get(`${b}-6`), 0)), [timeBuckets, statusMap]);
+
+  const successRateSeries = useMemo(
+    () =>
+      timeBuckets.map((_, idx) => {
+        const total = safeNum(ordersSeries[idx], 0);
+        const delivered = safeNum(deliveredSeries[idx], 0);
+        return total > 0 ? (delivered / total) * 100 : 0;
+      }),
+    [timeBuckets, ordersSeries, deliveredSeries]
   );
-
-  const topShippers = useMemo(
-    () => ["Shipper #09", "Shipper #14", "Shipper #02", "Shipper #21", "Shipper #06", "Shipper #11", "Shipper #03"],
-    []
-  );
-
-  // Transform API data for charts
-  const seriesOrdersByStatus = useMemo(() => {
-    if (reportsData.statusTimeData.length === 0) {
-      const n = timeLabels.length;
-      const mk = (base) => Array.from({ length: n }, (_, i) => Math.max(0, Math.round(base + (i - n / 2) * 1.2)));
-      return {
-        BOOKED: mk(120),
-        APPROVED: mk(110),
-        ASSIGNED: mk(95),
-        IN_PROGRESS: mk(80),
-        DELIVERED: mk(140),
-        FAILED: mk(12),
-      };
-    }
-
-    // Group by date and status
-    const grouped = {};
-    timeLabels.forEach((label) => {
-      STATUS.forEach((s) => {
-        if (!grouped[s.key]) grouped[s.key] = [];
-        const data = reportsData.statusTimeData.find(
-          (d) => d.date_bucket === label && parseInt(d.status) === parseInt(s.key === "BOOKED" ? 1 : s.key === "APPROVED" ? 2 : s.key === "ASSIGNED" ? 3 : s.key === "IN_PROGRESS" ? 4 : s.key === "DELIVERED" ? 5 : 6)
-        );
-        grouped[s.key].push(data ? parseInt(data.count) : 0);
-      });
-    });
-
-    return grouped;
-  }, [reportsData.statusTimeData, timeLabels, STATUS]);
-
-  const revenueSeries = useMemo(() => {
-    if (reportsData.revenueTimeData.length === 0) {
-      const n = timeLabels.length;
-      return Array.from({ length: n }, (_, i) => Number((1.2 + i * 0.05).toFixed(2)));
-    }
-    return timeLabels.map((label) => {
-      const data = reportsData.revenueTimeData.find((d) => d.date_bucket === label);
-      return data ? Number((parseFloat(data.revenue) / 1000000000).toFixed(2)) : 0;
-    });
-  }, [reportsData.revenueTimeData, timeLabels]);
-
-  const ordersSeries = useMemo(() => {
-    if (reportsData.revenueTimeData.length === 0) {
-      const n = timeLabels.length;
-      return Array.from({ length: n }, (_, i) => Math.round(210 + i * 6));
-    }
-    return timeLabels.map((label) => {
-      const data = reportsData.revenueTimeData.find((d) => d.date_bucket === label);
-      return data ? parseInt(data.orders_count) : 0;
-    });
-  }, [reportsData.revenueTimeData, timeLabels]);
 
   /* ==========================
-   * EXPORT FUNCTIONS
+   * CHART OPTIONS (8 Reports)
    * ========================== */
-  async function exportPDF() {
-    const input = document.getElementById("report-wrapper");
-    if (!input) return;
 
-    const canvas = await html2canvas(input, { scale: 2, useCORS: true });
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-
-    pdf.save(`bao-cao-${filters.period}.pdf`);
-  }
-
-  function exportCSV() {
-    const data = [
-      ["Báo cáo", "Giá trị"],
-      ["Doanh thu (Tỷ)", kpi.revenueB],
-      ["Tổng đơn", kpi.orders],
-      ["Tỷ lệ giao thành công (%)", kpi.deliveredRate],
-      ["Tỷ lệ thất bại (%)", kpi.cancelRate],
-    ];
-
-    let csv = data.map((row) => row.join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `bao-cao-${filters.period}.csv`;
-    link.click();
-  }
-
-  function exportXLSX() {
-    const wb = XLSX.utils.book_new();
-
-    // KPI Sheet
-    const kpiData = [
-      ["Chỉ số", "Giá trị"],
-      ["Doanh thu (Tỷ)", kpi.revenueB],
-      ["Tổng đơn", kpi.orders],
-      ["Tỷ lệ giao thành công (%)", kpi.deliveredRate],
-      ["Tỷ lệ thất bại (%)", kpi.cancelRate],
-    ];
-    const ws1 = XLSX.utils.aoa_to_sheet(kpiData);
-    XLSX.utils.book_append_sheet(wb, ws1, "KPI");
-
-    // Service Distribution
-    if (reportsData.serviceDist.length > 0) {
-      const serviceData = [
-        ["Dịch vụ", "Số lượng"],
-        ...reportsData.serviceDist.map((item) => [item.service_name || "Unknown", item.count]),
-      ];
-      const ws2 = XLSX.utils.aoa_to_sheet(serviceData);
-      XLSX.utils.book_append_sheet(wb, ws2, "Phân bố Dịch vụ");
-    }
-
-    // Payment Distribution
-    if (reportsData.paymentDist.length > 0) {
-      const paymentData = [
-        ["Phương thức thanh toán", "Số lượng"],
-        ...reportsData.paymentDist.map((item) => [item.payment_name || "Unknown", item.count]),
-      ];
-      const ws3 = XLSX.utils.aoa_to_sheet(paymentData);
-      XLSX.utils.book_append_sheet(wb, ws3, "Phân bố Thanh toán");
-    }
-
-    // Workflow
-    if (reportsData.workflowData.length > 0) {
-      const workflowData = [
-        ["Trạng thái", "Số lượng"],
-        ...reportsData.workflowData.map((item) => [item.status_name || "Unknown", item.count]),
-      ];
-      const ws4 = XLSX.utils.aoa_to_sheet(workflowData);
-      XLSX.utils.book_append_sheet(wb, ws4, "Quy trình");
-    }
-
-    // Agent Quality
-    if (reportsData.agentData.length > 0) {
-      const agentData = [
-        ["Đại lý", "Giao thành công", "Đang xử lý", "Thất bại"],
-        ...reportsData.agentData.map((item) => [
-          item.agent_name || "Unknown",
-          item.delivered,
-          item.wip,
-          item.failed,
-        ]),
-      ];
-      const ws5 = XLSX.utils.aoa_to_sheet(agentData);
-      XLSX.utils.book_append_sheet(wb, ws5, "Chất lượng Đại lý");
-    }
-
-    XLSX.writeFile(wb, `bao-cao-${filters.period}.xlsx`);
-  }
-
-  /* =========================================================
-   * 4 REPORT CHARTS (high-level) — clean style
-   * ========================================================= */
-
-  // (R1) Orders by Status (Stacked Area) — very light area (no gradient)
-  const optR1_ordersStatusArea = useMemo(() => {
-    const series = STATUS.map((s) => ({
-      name: s.label,
-      type: "line",
-      stack: "total",
-      smooth: true,
-      showSymbol: false,
-      lineStyle: { width: 2 },
-      areaStyle: { opacity: 0.08 }, // ✅ giảm “mờ rực”
-      emphasis: { focus: "series" },
-      data: seriesOrdersByStatus[s.key],
-    }));
+  // 1) Revenue & Orders Trend (dual axis)
+  const optRevenueOrders = useMemo(() => {
+    const gradientRevenue = new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+      { offset: 0, color: "rgba(59,130,246,0.35)" },
+      { offset: 1, color: "rgba(59,130,246,0.02)" },
+    ]);
 
     return withLux({
-      tooltip: { trigger: "axis", axisPointer: { type: "cross", lineStyle: { color: "rgba(226,232,240,0.35)" } } },
-      legend: legendLux,
-      toolbox: toolboxDefault,
-      grid: gridAxis,
-      dataZoom: dataZoomX,
-      xAxis: { type: "category", boundaryGap: false, data: timeLabels, ...axisLux },
-      yAxis: { type: "value", name: "Đơn hàng", ...axisLux },
-      series,
-    });
-  }, [STATUS, seriesOrdersByStatus, timeLabels, toolboxDefault, gridAxis, dataZoomX, axisLux, legendLux]);
-
-  // (R2) Revenue & Orders (Dual Axis) — revenue line (blue), orders bar (slate)
-  const optR2_revenueOrdersDual = useMemo(() => {
-    return withLux({
-      tooltip: { trigger: "axis", axisPointer: { type: "cross", lineStyle: { color: "rgba(226,232,240,0.35)" } } },
-      legend: legendLux,
-      toolbox: toolboxDefault,
-      grid: gridAxis,
-      dataZoom: dataZoomX,
+      title: { text: "Revenue & Orders Trend", left: 12, top: 16, textStyle: { fontSize: 14, fontWeight: 800, color: palette.ink, fontFamily: "Inter, system-ui, sans-serif" } },
+      grid: { ...baseGrid, bottom: 50, top: 70 },
+      legend: { top: 18, right: 12, textStyle: { color: palette.muted, fontSize: 12, fontFamily: "Inter, system-ui, sans-serif" } },
+      dataZoom: dataZoomInside,
       xAxis: { type: "category", data: timeLabels, ...axisLux },
       yAxis: [
-        { type: "value", name: "Doanh thu (Tỷ)", ...axisLux },
-        { type: "value", name: "Đơn hàng", ...axisLux },
+        {
+          type: "value",
+          name: "Revenue (VND)",
+          axisLabel: { color: palette.label, fontSize: 11, formatter: (v) => formatVND(v) },
+          ...axisLux,
+        },
+        { type: "value", name: "Orders", axisLabel: { color: palette.label, fontSize: 11 }, ...axisLux },
       ],
       series: [
         {
-          name: "Doanh thu (Tỷ)",
+          name: "Revenue",
           type: "line",
           smooth: true,
           showSymbol: false,
-          lineStyle: { width: 3, color: palette.blue },
-          itemStyle: { color: palette.blue },
-          areaStyle: { opacity: 0.06 },
-          data: revenueSeries,
-          yAxisIndex: 0,
+          lineStyle: { width: 3 },
+          areaStyle: { color: gradientRevenue },
+          data: revenueSeries.map((x) => Math.round(x)),
         },
         {
-          name: "Đơn hàng",
+          name: "Orders",
           type: "bar",
-          barMaxWidth: 18,
-          itemStyle: {
-            color: "rgba(100, 116, 139, 0.48)",
-            borderRadius: [8, 8, 0, 0],
-          },
-          emphasis: { itemStyle: { color: "rgba(100, 116, 139, 0.62)" } },
-          data: ordersSeries,
           yAxisIndex: 1,
+          barWidth: 14,
+          itemStyle: { borderRadius: [10, 10, 0, 0] },
+          data: ordersSeries.map((x) => Math.round(x)),
         },
       ],
     });
-  }, [timeLabels, revenueSeries, ordersSeries, toolboxDefault, gridAxis, dataZoomX, axisLux, legendLux, palette]);
+  }, [withLux, palette, baseGrid, axisLux, dataZoomInside, timeLabels, revenueSeries, ordersSeries]);
 
-  // (R3) Service Mix (Donut) — remove heavy shadow
-  const optR3_serviceMixDonut = useMemo(() => {
+  // 2) Delivery Performance
+  const optDeliveryPerformance = useMemo(() => {
     return withLux({
-      tooltip: { trigger: "item" },
-      legend: legendLux,
-      toolbox: toolboxDefault,
-      series: [
-        {
-          name: "Phân bố Dịch vụ",
-          type: "pie",
-          radius: ["52%", "78%"],
-          center: ["50%", "40%"],
-          avoidLabelOverlap: true,
-          itemStyle: {
-            borderColor: "rgba(255,255,255,0.75)",
-            borderWidth: 2,
-            shadowBlur: 0, // ✅ bỏ shadow dày
-          },
-          label: { show: true, formatter: "{b}\n{d}%", color: palette.label, fontWeight: 600 },
-          labelLine: { length: 10, length2: 10 },
-          emphasis: { scale: true, scaleSize: 5 },
-          data: serviceDist,
-        },
-      ],
-    });
-  }, [serviceDist, toolboxDefault, legendLux, palette]);
-
-  // (R4) Payment Mix (Rose) — clean borders, no heavy glow
-  const optR4_paymentRose = useMemo(() => {
-    return withLux({
-      tooltip: { trigger: "item" },
-      legend: legendLux,
-      toolbox: toolboxDefault,
-      series: [
-        {
-          name: "Phân bố Thanh toán",
-          type: "pie",
-          roseType: "radius",
-          radius: ["18%", "80%"],
-          center: ["50%", "40%"],
-          itemStyle: {
-            borderColor: "rgba(255,255,255,0.75)",
-            borderWidth: 2,
-            shadowBlur: 0,
-          },
-          label: { show: true, formatter: "{b}\n{d}%", color: palette.label, fontWeight: 600 },
-          labelLine: { length: 10, length2: 10 },
-          emphasis: { scale: true, scaleSize: 5 },
-          data: paymentDist,
-        },
-      ],
-    });
-  }, [paymentDist, toolboxDefault, legendLux, palette]);
-
-  /* =========================================================
-   * 6 OPERATIONAL ANALYTICS (NO heatmap) — clean style
-   * ========================================================= */
-
-  // (T1) SLA Compliance — 100% Stacked Bar (monochrome blue shades)
-  const optT1_slaStacked100 = useMemo(() => {
-    const services = ["Standard", "Express", "Same-day"];
-    const pct = {
-      Standard: [58, 22, 12, 5, 3],
-      Express: [64, 18, 10, 5, 3],
-      "Same-day": [71, 16, 8, 3, 2],
-    };
-
-    const shades = [
-      "rgba(37, 99, 235, 0.82)",
-      "rgba(37, 99, 235, 0.62)",
-      "rgba(37, 99, 235, 0.44)",
-      "rgba(37, 99, 235, 0.30)",
-      "rgba(37, 99, 235, 0.18)",
-    ];
-
-    const series = slaBuckets.map((b, i) => ({
-      name: b,
-      type: "bar",
-      stack: "pct",
-      barWidth: 18,
-      itemStyle: {
-        color: shades[i],
-        borderRadius: i === slaBuckets.length - 1 ? [0, 10, 10, 0] : 0,
-      },
-      label: {
-        show: true,
-        position: "inside",
-        formatter: (p) => (p.value >= 9 ? `${p.value}%` : ""),
-        color: "rgba(255,255,255,0.92)",
-        fontWeight: 700,
-        fontSize: 11,
-      },
-      data: services.map((s) => pct[s][i]),
-    }));
-
-    return withLux({
-      tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-      legend: legendLux,
-      toolbox: toolboxDefault,
-      grid: { left: 110, right: 16, top: 18, bottom: 76, containLabel: true },
-      xAxis: { type: "value", max: 100, name: "Tỷ lệ SLA %", ...axisLux },
-      yAxis: { type: "category", data: services, ...axisLux },
-      series,
-    });
-  }, [slaBuckets, toolboxDefault, axisLux, legendLux]);
-
-  // (T2) Workflow Conversion — bar slate + line blue (clean)
-  const optT2_workflowConversion = useMemo(() => {
-    const stages = ["Booked", "Approved", "Assigned", "In Progress", "Delivered", "Failed"];
-    const counts = [3900, 3600, 3200, 3000, 2850, 150];
-
-    const base = counts[0] || 1;
-    const conv = counts.map((c) => Number(((c / base) * 100).toFixed(1)));
-
-    return withLux({
-      tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-      legend: legendLux,
-      toolbox: toolboxDefault,
-      grid: gridAxis,
-      dataZoom: dataZoomX,
-      xAxis: { type: "category", data: stages, ...axisLux },
+      title: { text: "Delivery Performance", left: 12, top: 16, textStyle: { fontSize: 14, fontWeight: 800, color: palette.ink, fontFamily: "Inter, system-ui, sans-serif" } },
+      grid: { ...baseGrid, right: 60, bottom: 50, top: 70 },
+      legend: { top: 18, right: 12, textStyle: { color: palette.muted, fontSize: 12, fontFamily: "Inter, system-ui, sans-serif" } },
+      dataZoom: dataZoomInside,
+      xAxis: { type: "category", data: timeLabels, ...axisLux },
       yAxis: [
         { type: "value", name: "Orders", ...axisLux },
-        { type: "value", name: "Conversion %", min: 0, max: 100, ...axisLux },
+        {
+          type: "value",
+          name: "Success %",
+          min: 0,
+          max: 100,
+          axisLabel: { formatter: (v) => `${v}%`, color: palette.label, fontSize: 11 },
+          ...axisLux,
+        },
       ],
       series: [
+        { name: "Delivered", type: "bar", stack: "perf", barWidth: 14, itemStyle: { borderRadius: [10, 10, 0, 0] }, data: deliveredSeries },
+        { name: "Failed", type: "bar", stack: "perf", barWidth: 14, itemStyle: { borderRadius: [10, 10, 0, 0] }, data: failedSeries },
+        { name: "Success Rate", type: "line", yAxisIndex: 1, smooth: true, showSymbol: false, lineStyle: { width: 3 }, data: successRateSeries.map((x) => Number(x.toFixed(1))) },
+      ],
+    });
+  }, [withLux, palette, baseGrid, axisLux, dataZoomInside, timeLabels, deliveredSeries, failedSeries, successRateSeries]);
+
+  // 3) Service Mix (donut)
+  const optServiceMix = useMemo(() => {
+    const data = (payload.serviceMix ?? []).map((x) => ({ name: x.name, value: safeNum(x.count, 0) }));
+    return withLux({
+      title: { text: "Service Mix", left: 12, top: 16, textStyle: { fontSize: 14, fontWeight: 800, color: palette.ink, fontFamily: "Inter, system-ui, sans-serif" } },
+      legend: { bottom: 12, left: "center", textStyle: { color: palette.muted, fontSize: 12, fontFamily: "Inter, system-ui, sans-serif" } },
+      tooltip: { trigger: "item" },
+      series: [
         {
-          name: "Đơn hàng",
-          type: "bar",
-          barMaxWidth: 30,
-          itemStyle: { color: "rgba(100, 116, 139, 0.52)", borderRadius: [10, 10, 0, 0] },
-          data: counts,
-        },
-        {
-          name: "Tỷ lệ chuyển đổi %",
-          type: "line",
-          yAxisIndex: 1,
-          smooth: true,
-          symbolSize: 7,
-          lineStyle: { width: 3, color: palette.blue },
-          itemStyle: { color: palette.blue },
-          data: conv,
+          type: "pie",
+          radius: ["55%", "80%"],
+          center: ["50%", "45%"], // Kéo chart lên chút để chừa không gian cho legend
+          itemStyle: { borderRadius: 10, borderColor: "rgba(255,255,255,0.9)", borderWidth: 2 },
+          label: {
+            show: true,
+            position: "inside",
+            formatter: "{d}%",
+            fontSize: 13,
+            fontWeight: 800,
+            color: "#fff"
+          },
+          labelLine: { show: false },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 14,
+              fontWeight: 900
+            }
+          },
+          data,
         },
       ],
     });
-  }, [toolboxDefault, gridAxis, dataZoomX, axisLux, legendLux, palette]);
+  }, [withLux, palette, payload.serviceMix]);
 
-  // (T3) Aging Backlog — stacked bars with slate shades (less colorful) - DỮ LIỆU THẬT
-  const optT3_agingBacklogStacked = useMemo(() => {
-    let statuses = ["Đã tạo đơn", "Đã duyệt", "Đã phân công", "Đang giao"];
-    let matrix = {
-      "Đã tạo đơn": [120, 90, 52, 21, 8, 3],
-      "Đã duyệt": [80, 76, 40, 18, 7, 2],
-      "Đã phân công": [60, 55, 34, 16, 6, 2],
-      "Đang giao": [50, 47, 30, 14, 6, 2],
-    };
+  // 4) Payment Mix (donut)
+  const optPaymentMix = useMemo(() => {
+    const data = (payload.paymentMix ?? []).map((x) => ({ name: x.name, value: safeNum(x.count, 0) }));
+    return withLux({
+      title: { text: "Payment Mix", left: 12, top: 16, textStyle: { fontSize: 14, fontWeight: 800, color: palette.ink, fontFamily: "Inter, system-ui, sans-serif" } },
+      legend: { bottom: 12, left: "center", textStyle: { color: palette.muted, fontSize: 12, fontFamily: "Inter, system-ui, sans-serif" } },
+      tooltip: { trigger: "item" },
+      series: [
+        {
+          type: "pie",
+          radius: ["55%", "80%"],
+          center: ["50%", "45%"], // Kéo chart lên chút để chừa không gian cho legend
+          itemStyle: { borderRadius: 10, borderColor: "rgba(255,255,255,0.9)", borderWidth: 2 },
+          label: {
+            show: true,
+            position: "inside",
+            formatter: "{d}%",
+            fontSize: 13,
+            fontWeight: 800,
+            color: "#fff"
+          },
+          labelLine: { show: false },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 14,
+              fontWeight: 900
+            }
+          },
+          data,
+        },
+      ],
+    });
+  }, [withLux, palette, payload.paymentMix]);
 
-    if (reportsData.agingData.length > 0) {
-      const statusMap = { 1: "Đã tạo đơn", 2: "Đã duyệt", 3: "Đã phân công", 4: "Đang giao" };
-      const agingMap = { "<2h": 0, "2-6h": 1, "6-12h": 2, "12-24h": 3, "1-2d": 4, ">2d": 5 };
-      statuses = [];
-      matrix = {};
+  // 5) Workflow Funnel
+  const optWorkflowFunnel = useMemo(() => {
+    const data = (payload.workflowFunnel ?? []).map((x) => ({ name: x.stage, value: safeNum(x.count, 0) }));
+    return withLux({
+      title: { text: "Workflow Funnel", left: 12, top: 16, textStyle: { fontSize: 14, fontWeight: 800, color: palette.ink, fontFamily: "Inter, system-ui, sans-serif" } },
+      tooltip: { trigger: "item", formatter: "{b}: {c}" },
+      series: [
+        {
+          type: "funnel",
+          left: "8%",
+          top: 56,
+          bottom: 20,
+          width: "84%",
+          minSize: "0%",
+          maxSize: "100%",
+          sort: "none",
+          gap: 6,
+          label: { color: "#0b1220", fontWeight: 900 },
+          labelLine: { length: 10, lineStyle: { color: palette.border } },
+          itemStyle: { borderColor: "rgba(255,255,255,0.9)", borderWidth: 2, borderRadius: 10 },
+          data,
+        },
+      ],
+    });
+  }, [withLux, palette, payload.workflowFunnel]);
 
-      reportsData.agingData.forEach((item) => {
-        const statusName = statusMap[parseInt(item.status)] || item.status_name;
-        if (!statuses.includes(statusName)) {
-          statuses.push(statusName);
-          matrix[statusName] = [0, 0, 0, 0, 0, 0];
-        }
-        const agingIdx = agingMap[item.aging_bucket];
-        if (agingIdx !== undefined) {
-          matrix[statusName][agingIdx] = parseInt(item.count) || 0;
-        }
-      });
-    }
-
-    const shades = [
-      "rgba(100, 116, 139, 0.75)",
-      "rgba(100, 116, 139, 0.58)",
-      "rgba(100, 116, 139, 0.42)",
-      "rgba(100, 116, 139, 0.30)",
-      "rgba(100, 116, 139, 0.22)",
-      "rgba(100, 116, 139, 0.14)",
+  // 6) Backlog Aging (stacked bar by status over aging bucket)
+  const optBacklogAging = useMemo(() => {
+    const buckets = ["<2h", "2-6h", "6-12h", "12-24h", "1-2d", ">2d"];
+    const openStatuses = [
+      { id: 1, label: "Booked" },
+      { id: 2, label: "Approved" },
+      { id: 3, label: "Assigned" },
+      { id: 4, label: "Picked Up" },
     ];
 
-    const series = agingBuckets.map((b, i) => ({
-      name: b,
+    const map = new Map(); // `${status}-${bucket}` -> count
+    for (const r of payload.backlogAging ?? []) {
+      map.set(`${r.status_id}-${r.aging_bucket}`, safeNum(r.count, 0));
+    }
+
+    const series = openStatuses.map((s) => ({
+      name: s.label,
       type: "bar",
-      stack: "age",
-      barMaxWidth: 22,
-      itemStyle: { color: shades[i], borderRadius: i === agingBuckets.length - 1 ? [8, 8, 0, 0] : 0 },
-      data: statuses.map((s) => (matrix[s] ? matrix[s][i] : 0)),
+      stack: "aging",
+      barWidth: 14,
+      itemStyle: { borderRadius: [10, 10, 0, 0] },
+      data: buckets.map((b) => safeNum(map.get(`${s.id}-${b}`), 0)),
     }));
 
     return withLux({
-      tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-      legend: legendLux,
-      toolbox: toolboxDefault,
-      grid: gridAxis,
-      dataZoom: dataZoomX,
-      xAxis: { type: "category", data: statuses, ...axisLux },
-      yAxis: { type: "value", name: "Đơn hàng", ...axisLux },
+      title: { text: "Backlog Aging (WIP)", left: 12, top: 16, textStyle: { fontSize: 14, fontWeight: 800, color: palette.ink, fontFamily: "Inter, system-ui, sans-serif" } },
+      grid: baseGrid,
+      legend: { top: 10, right: 10, textStyle: { color: palette.muted, fontSize: 11 } },
+      tooltip: { trigger: "axis" },
+      xAxis: { type: "category", data: buckets, ...axisLux },
+      yAxis: { type: "value", name: "Orders", ...axisLux },
       series,
     });
-  }, [reportsData.agingData, agingBuckets, toolboxDefault, gridAxis, dataZoomX, axisLux, legendLux]);
+  }, [withLux, palette, baseGrid, axisLux, payload.backlogAging]);
 
-  // (T4) Agent Productivity & Quality — solid colors, no gradient - DỮ LIỆU THẬT
-  const optT4_agentQuality = useMemo(() => {
-    let names = topAgents.map((a) => a.name);
-    let delivered = topAgents.map((a) => a.delivered);
-    let wip = topAgents.map((a) => a.wip);
-    let failed = topAgents.map((a) => a.failed);
+  // 7) Top Agents (highlight) - horizontal stacked bars
+  const optTopAgents = useMemo(() => {
+    const top = (payload.topAgents ?? []).slice(0, 8);
+    const names = top.map((x) => x.agent_name);
 
-    if (reportsData.agentData.length > 0) {
-      names = reportsData.agentData.map((a) => a.agent_name || "Unknown");
-      delivered = reportsData.agentData.map((a) => parseInt(a.delivered) || 0);
-      wip = reportsData.agentData.map((a) => parseInt(a.wip) || 0);
-      failed = reportsData.agentData.map((a) => parseInt(a.failed) || 0);
+    return withLux({
+      title: { text: "Top Agents (Highlight)", left: 12, top: 16, textStyle: { fontSize: 14, fontWeight: 800, color: palette.ink, fontFamily: "Inter, system-ui, sans-serif" } },
+      grid: { left: 110, right: 24, top: 70, bottom: 40 },
+      legend: { top: 18, right: 12, textStyle: { color: palette.muted, fontSize: 12, fontFamily: "Inter, system-ui, sans-serif" } },
+      tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+      xAxis: { type: "value", ...axisLux },
+      yAxis: { type: "category", data: names, axisLabel: { color: palette.label, fontSize: 11 }, axisTick: { show: false }, axisLine: { lineStyle: { color: palette.border } } },
+      series: [
+        { name: "Delivered", type: "bar", stack: "agent", barWidth: 14, data: top.map((x) => safeNum(x.delivered, 0)), itemStyle: { borderRadius: [10, 0, 0, 10] } },
+        { name: "WIP", type: "bar", stack: "agent", barWidth: 14, data: top.map((x) => safeNum(x.wip, 0)) },
+        { name: "Failed", type: "bar", stack: "agent", barWidth: 14, data: top.map((x) => safeNum(x.failed, 0)), itemStyle: { borderRadius: [0, 10, 10, 0] } },
+      ],
+    });
+  }, [withLux, palette, axisLux, payload.topAgents]);
+
+  // 8) Top Shippers (highlight) - bar delivered + line lead time
+  const optTopShippers = useMemo(() => {
+    const top = (payload.topShippers ?? []).slice(0, 10);
+    
+    // If no data, show empty chart with message
+    if (top.length === 0) {
+      return withLux({
+        title: { text: "Top Shippers (Highlight)", left: 12, top: 12, textStyle: { fontSize: 14, fontWeight: 800, color: palette.ink, fontFamily: "Inter, system-ui, sans-serif" } },
+        graphic: [
+          {
+            type: "text",
+            left: "center",
+            top: "middle",
+            style: {
+              text: "No shipper data available\nfor the selected period",
+              fontSize: 14,
+              fill: palette.muted,
+              textAlign: "center",
+            },
+          },
+        ],
+        xAxis: { type: "category", data: [] },
+        yAxis: [{ type: "value", name: "Delivered", ...axisLux }],
+        series: [],
+      });
+    }
+    
+    const names = top.map((x) => x.shipper_name);
+    const delivered = top.map((x) => safeNum(x.delivered, 0));
+    const lead = top.map((x) => {
+      const val = x.avg_lead_time_hours;
+      return val != null && val !== "" ? safeNum(val, 0) : null;
+    });
+
+    return withLux({
+      title: { text: "Top Shippers (Highlight)", left: 12, top: 16, textStyle: { fontSize: 14, fontWeight: 800, color: palette.ink, fontFamily: "Inter, system-ui, sans-serif" } },
+      grid: { left: 110, right: 60, top: 70, bottom: 30 },
+      legend: { top: 18, right: 12, textStyle: { color: palette.muted, fontSize: 12, fontFamily: "Inter, system-ui, sans-serif" } },
+      tooltip: { trigger: "axis" },
+      xAxis: { type: "category", data: names, axisLabel: { color: palette.label, fontSize: 11, interval: 0 }, axisTick: { show: false }, axisLine: { lineStyle: { color: palette.border } } },
+      yAxis: [
+        { type: "value", name: "Delivered", ...axisLux },
+        {
+          type: "value",
+          name: "Avg Hours",
+          ...axisLux,
+          axisLabel: { color: palette.label, fontSize: 11, formatter: (v) => `${v}h` },
+        },
+      ],
+      series: [
+        { name: "Delivered", type: "bar", barWidth: 14, itemStyle: { borderRadius: [10, 10, 0, 0] }, data: delivered },
+        { name: "Avg Lead Time", type: "line", yAxisIndex: 1, smooth: true, showSymbol: false, lineStyle: { width: 3 }, data: lead },
+      ],
+    });
+  }, [withLux, palette, axisLux, payload.topShippers]);
+
+  /* ==========================
+   * EXPORTS (ExcelJS / CSV / PDF)
+   * ========================== */
+  const exportExcel = useCallback(async () => {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "CourierXpress";
+    wb.created = new Date();
+
+    // KPI
+    const wsKpi = wb.addWorksheet("KPI");
+    wsKpi.addRow(["Metric", "Value"]);
+    wsKpi.addRow(["Revenue", payload.kpi?.revenueFormatted ?? formatVND(payload.kpi?.revenueRaw)]);
+    wsKpi.addRow(["Total Orders", safeNum(payload.kpi?.orders, 0)]);
+    wsKpi.addRow(["Delivered Rate (%)", safeNum(payload.kpi?.deliveredRate, 0)]);
+    wsKpi.addRow(["Failed Rate (%)", safeNum(payload.kpi?.failedRate, 0)]);
+    wsKpi.columns.forEach((c) => (c.width = 24));
+
+    // Trend
+    const wsTrend = wb.addWorksheet("Revenue_Orders_Trend");
+    wsTrend.addRow(["Bucket", "Revenue", "Orders"]);
+    for (const b of payload.timeBuckets ?? []) {
+      const r = (payload.revenueTimeData ?? []).find((x) => x.bucket === b);
+      wsTrend.addRow([b, safeNum(r?.revenue, 0), safeNum(r?.orders, 0)]);
+    }
+    wsTrend.columns.forEach((c) => (c.width = 18));
+
+    // Delivery Performance
+    const wsPerf = wb.addWorksheet("Delivery_Performance");
+    wsPerf.addRow(["Bucket", "Delivered", "Failed", "SuccessRate(%)"]);
+    for (let i = 0; i < (payload.timeBuckets ?? []).length; i++) {
+      wsPerf.addRow([
+        payload.timeBuckets[i],
+        safeNum(deliveredSeries[i], 0),
+        safeNum(failedSeries[i], 0),
+        Number(safeNum(successRateSeries[i], 0).toFixed(1)),
+      ]);
+    }
+    wsPerf.columns.forEach((c) => (c.width = 18));
+
+    // Service Mix
+    const wsService = wb.addWorksheet("Service_Mix");
+    wsService.addRow(["Service", "Count"]);
+    for (const x of payload.serviceMix ?? []) wsService.addRow([x.name, safeNum(x.count, 0)]);
+    wsService.columns.forEach((c) => (c.width = 20));
+
+    // Payment Mix
+    const wsPayment = wb.addWorksheet("Payment_Mix");
+    wsPayment.addRow(["Payment", "Count"]);
+    for (const x of payload.paymentMix ?? []) wsPayment.addRow([x.name, safeNum(x.count, 0)]);
+    wsPayment.columns.forEach((c) => (c.width = 22));
+
+    // Workflow Funnel
+    const wsFunnel = wb.addWorksheet("Workflow_Funnel");
+    wsFunnel.addRow(["Stage", "Count"]);
+    for (const x of payload.workflowFunnel ?? []) wsFunnel.addRow([x.stage, safeNum(x.count, 0)]);
+    wsFunnel.columns.forEach((c) => (c.width = 22));
+
+    // Backlog Aging
+    const wsAging = wb.addWorksheet("Backlog_Aging");
+    wsAging.addRow(["Status", "Aging Bucket", "Count"]);
+    for (const x of payload.backlogAging ?? []) wsAging.addRow([x.status_name, x.aging_bucket, safeNum(x.count, 0)]);
+    wsAging.columns.forEach((c) => (c.width = 22));
+
+    // Top Agents
+    const wsAgents = wb.addWorksheet("Top_Agents");
+    wsAgents.addRow(["Agent", "Delivered", "WIP", "Failed", "Total", "SuccessRate(%)"]);
+    for (const x of payload.topAgents ?? []) {
+      wsAgents.addRow([x.agent_name, safeNum(x.delivered, 0), safeNum(x.wip, 0), safeNum(x.failed, 0), safeNum(x.total, 0), x.success_rate ?? ""]);
+    }
+    wsAgents.columns.forEach((c) => (c.width = 20));
+
+    // Top Shippers
+    const wsShippers = wb.addWorksheet("Top_Shippers");
+    wsShippers.addRow(["Shipper", "Delivered", "AvgLeadTime(Hours)"]);
+    for (const x of payload.topShippers ?? []) {
+      wsShippers.addRow([x.shipper_name, safeNum(x.delivered, 0), x.avg_lead_time_hours ?? ""]);
+    }
+    wsShippers.columns.forEach((c) => (c.width = 24));
+
+    const buf = await wb.xlsx.writeBuffer();
+    saveAs(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `courierxpress_reports_${filters.period}.xlsx`);
+  }, [payload, filters.period, deliveredSeries, failedSeries, successRateSeries]);
+
+  const exportCsv = useCallback(() => {
+    const lines = [];
+
+    lines.push("Top Agents");
+    lines.push("agent_name,delivered,wip,failed,total,success_rate");
+    for (const a of payload.topAgents ?? []) {
+      lines.push(
+        `"${(a.agent_name ?? "").replaceAll('"', '""')}",${safeNum(a.delivered, 0)},${safeNum(a.wip, 0)},${safeNum(a.failed, 0)},${safeNum(a.total, 0)},${a.success_rate ?? ""}`
+      );
     }
 
-    const failedTarget = 20;
+    lines.push("");
+    lines.push("Top Shippers");
+    lines.push("shipper_name,delivered,avg_lead_time_hours");
+    for (const s of payload.topShippers ?? []) {
+      lines.push(`"${(s.shipper_name ?? "").replaceAll('"', '""')}",${safeNum(s.delivered, 0)},${s.avg_lead_time_hours ?? ""}`);
+    }
 
-    return withLux({
-      tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-      legend: legendLux,
-      toolbox: toolboxDefault,
-      grid: { left: 110, right: 34, top: 18, bottom: 76, containLabel: true },
-      dataZoom: dataZoomY,
-      xAxis: { type: "value", name: "Đơn hàng", ...axisLux },
-      yAxis: { type: "category", data: names, ...axisLux },
-      series: [
-        {
-          name: "Giao thành công",
-          type: "bar",
-          stack: "total",
-          barMaxWidth: 18,
-          itemStyle: { color: "rgba(16, 185, 129, 0.60)", borderRadius: [10, 10, 10, 10] },
-          data: delivered,
-        },
-        {
-          name: "Đang xử lý",
-          type: "bar",
-          stack: "total",
-          barMaxWidth: 18,
-          itemStyle: { color: "rgba(245, 158, 11, 0.55)", borderRadius: [10, 10, 10, 10] },
-          data: wip,
-        },
-        {
-          name: "Thất bại",
-          type: "bar",
-          stack: "total",
-          barMaxWidth: 18,
-          itemStyle: { color: "rgba(239, 68, 68, 0.55)", borderRadius: [10, 10, 10, 10] },
-          data: failed,
-          markLine: {
-            symbol: "none",
-            label: { formatter: `Mục tiêu thất bại ≤ ${failedTarget}` },
-            lineStyle: { color: "rgba(239, 68, 68, 0.55)" },
-            data: [{ xAxis: failedTarget }],
-          },
-        },
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    saveAs(blob, `courierxpress_reports_${filters.period}.csv`);
+  }, [payload, filters.period]);
+
+  const getChartDataUrl = (ref) => {
+    const inst = ref.current?.getEchartsInstance?.();
+    if (!inst) return null;
+    return inst.getDataURL({ type: "png", pixelRatio: 2, backgroundColor: "#ffffff" });
+  };
+
+  const exportPdf = useCallback(() => {
+    const doc = new jsPDF("p", "mm", "a4");
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+
+    const title = "CourierXpress - Enterprise Reports";
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(title, 14, 16);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Period: ${filters.period} | Service: ${filters.service} | Payment: ${filters.payment} | Status: ${filters.status}`, 14, 22);
+
+    // KPI Table
+    autoTable(doc, {
+      startY: 28,
+      head: [["Metric", "Value"]],
+      body: [
+        ["Revenue", payload.kpi?.revenueFormatted ?? formatVND(payload.kpi?.revenueRaw)],
+        ["Total Orders", String(safeNum(payload.kpi?.orders, 0))],
+        ["Delivered Rate", formatPct(payload.kpi?.deliveredRate, 1)],
+        ["Failed Rate", formatPct(payload.kpi?.failedRate, 1)],
       ],
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [15, 23, 42] },
     });
-  }, [reportsData.agentData, topAgents, toolboxDefault, dataZoomY, axisLux, legendLux]);
 
-  // (T5) Shipper Lead Time — Boxplot clean
-  const optT5_shipperLeadTimeBox = useMemo(() => {
-    const boxData = [
-      [2.9, 3.6, 4.1, 4.8, 6.0],
-      [3.1, 3.9, 4.6, 5.2, 6.4],
-      [3.4, 4.2, 5.0, 5.6, 7.1],
-      [3.8, 4.6, 5.3, 6.0, 7.8],
-      [4.1, 4.9, 5.8, 6.4, 8.6],
-      [3.0, 3.7, 4.4, 5.0, 6.3],
-      [3.2, 3.9, 4.7, 5.3, 6.9],
-    ];
-    const outliers = [
-      [0, 7.2],
-      [1, 7.5],
-      [3, 8.9],
-      [4, 9.4],
+    // Add charts (one per page for clarity)
+    const charts = [
+      { name: "Revenue & Orders Trend", ref: refRevenue },
+      { name: "Delivery Performance", ref: refDelivery },
+      { name: "Service Mix", ref: refService },
+      { name: "Payment Mix", ref: refPayment },
+      { name: "Workflow Funnel", ref: refFunnel },
+      { name: "Backlog Aging (WIP)", ref: refAging },
+      { name: "Top Agents (Highlight)", ref: refAgents },
+      { name: "Top Shippers (Highlight)", ref: refShippers },
     ];
 
-    return withLux({
-      tooltip: { trigger: "item" },
-      legend: legendLux,
-      toolbox: toolboxDefault,
-      grid: { left: 16, right: 34, top: 18, bottom: 76, containLabel: true },
-      dataZoom: dataZoomY,
-      xAxis: { type: "value", name: "Thời gian giao hàng (giờ)", ...axisLux },
-      yAxis: { type: "category", data: topShippers, ...axisLux },
-      series: [
-        {
-          name: "Thời gian giao hàng (Box)",
-          type: "boxplot",
-          itemStyle: {
-            borderWidth: 1,
-            borderColor: "rgba(37, 99, 235, 0.45)",
-            color: "rgba(37, 99, 235, 0.14)",
-          },
-          data: boxData,
-        },
-        {
-          name: "Giá trị ngoại lai",
-          type: "scatter",
-          itemStyle: { color: "rgba(37, 99, 235, 0.85)" },
-          data: outliers,
-          symbolSize: 9,
-        },
-      ],
+    for (const c of charts) {
+      const url = getChartDataUrl(c.ref);
+      if (!url) continue;
+
+      doc.addPage();
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text(c.name, 14, 16);
+
+      const imgW = pageW - 28;
+      const imgH = (imgW * 9) / 16; // 16:9
+      const y = 22;
+
+      doc.addImage(url, "PNG", 14, y, imgW, Math.min(imgH, pageH - 30));
+    }
+
+    // Tables (Top Agents / Top Shippers)
+    doc.addPage();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Top Agents (Table)", 14, 16);
+
+    autoTable(doc, {
+      startY: 22,
+      head: [["Agent", "Delivered", "WIP", "Failed", "Total", "Success %"]],
+      body: (payload.topAgents ?? []).map((a) => [
+        a.agent_name ?? "Unknown",
+        String(safeNum(a.delivered, 0)),
+        String(safeNum(a.wip, 0)),
+        String(safeNum(a.failed, 0)),
+        String(safeNum(a.total, 0)),
+        a.success_rate == null ? "" : String(a.success_rate),
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [15, 23, 42] },
     });
-  }, [topShippers, toolboxDefault, dataZoomY, axisLux, legendLux]);
 
-  // (T6) Failed Risk Matrix — Bubble (clean, low shadow)
-  const optT6_failedBubbleMatrix = useMemo(() => {
-    const services = serviceDist.map((s) => s.name);
-    const payments = paymentDist.map((p) => p.name);
+    doc.addPage();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Top Shippers (Table)", 14, 16);
 
-    const data = [
-      [0, 0, 3.2], [1, 0, 1.4], [2, 0, 0.9],
-      [0, 1, 4.8], [1, 1, 2.1], [2, 1, 1.3],
-      [0, 2, 6.4], [1, 2, 3.0], [2, 2, 1.8],
-    ];
-
-    return withLux({
-      tooltip: {
-        trigger: "item",
-        formatter: (p) => {
-          const pay = payments[p.data[0]];
-          const srv = services[p.data[1]];
-          return `<div style="font-weight:700;margin-bottom:6px;">${srv} • ${pay}</div>
-                  Tỷ lệ thất bại: <b>${p.data[2]}%</b>`;
-        },
-      },
-      toolbox: toolboxDefault,
-      grid: { left: 110, right: 70, top: 18, bottom: 32, containLabel: true },
-      xAxis: { type: "category", data: payments, ...axisLux },
-      yAxis: { type: "category", data: services, ...axisLux },
-      visualMap: {
-        min: 0,
-        max: 10,
-        calculable: true,
-        orient: "vertical",
-        right: 10,
-        top: "middle",
-        inRange: {
-          // ✅ giữ tông tốt nhưng dịu hơn
-          color: ["rgba(16,185,129,0.55)", "rgba(245,158,11,0.62)", "rgba(239,68,68,0.68)"],
-        },
-      },
-      series: [
-        {
-          name: "Failed Risk",
-          type: "scatter",
-          data,
-          symbolSize: (val) => Math.max(10, Math.min(44, val[2] * 6.2)),
-          itemStyle: {
-            borderColor: "rgba(255,255,255,0.75)",
-            borderWidth: 1.5,
-            shadowBlur: 0, // ✅ bỏ glow
-          },
-          label: {
-            show: true,
-            formatter: (p) => `${p.data[2]}%`,
-            color: "rgba(2,6,23,0.78)",
-            fontWeight: 800,
-            backgroundColor: "rgba(255,255,255,0.65)",
-            padding: [2, 6],
-            borderRadius: 6,
-          },
-        },
-      ],
+    autoTable(doc, {
+      startY: 22,
+      head: [["Shipper", "Delivered", "Avg Lead Time (h)"]],
+      body: (payload.topShippers ?? []).map((s) => [
+        s.shipper_name ?? "Unknown",
+        String(safeNum(s.delivered, 0)),
+        s.avg_lead_time_hours == null ? "" : String(s.avg_lead_time_hours),
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [15, 23, 42] },
     });
-  }, [serviceDist, paymentDist, toolboxDefault, axisLux]);
+
+    doc.save(`courierxpress_reports_${filters.period}.pdf`);
+  }, [filters, payload]);
 
   /* ==========================
    * RENDER
    * ========================== */
+  const kpi = payload.kpi ?? {};
+  const topAgent = (payload.topAgents ?? [])[0];
+  const topShipper = (payload.topShippers ?? [])[0];
+
   return (
-    <div className="admin-page" id="report-wrapper">
-      {/* HEADER */}
-      <div className="page-header">
-        <h3 className="fw-bold d-flex align-items-center gap-2">
-          <FaChartBar className="text-primary fs-4" />
-          Báo Cáo Doanh Nghiệp
-        </h3>
+    <div className="admin-page container-fluid p-0">
+      {/* Header */}
+      <div className="page-header d-flex justify-content-between mb-4">
+        <h3 className="fw-bold m-0">Enterprise Reports</h3>
+        <div className="d-flex gap-2">
+          <Button variant="outline-primary" className="d-flex align-items-center gap-2" onClick={exportExcel} disabled={loading || !!err}>
+            <FaFileExcel /> Export Excel
+          </Button>
+          <Button variant="outline-secondary" className="d-flex align-items-center gap-2" onClick={exportCsv} disabled={loading || !!err}>
+            <FaFileCsv /> Export CSV
+          </Button>
+          <Button variant="dark" className="d-flex align-items-center gap-2" onClick={exportPdf} disabled={loading || !!err}>
+            <FaFilePdf /> Export PDF
+          </Button>
+        </div>
       </div>
 
-      {/* KPI - GIỐNG DASHBOARD */}
-      <Row className="g-3 mb-4">
+      {/* Filters */}
+      <Card className="border-0 shadow-sm mb-3">
+        <Card.Body>
+          <Row className="g-3 align-items-end">
+            <Col md={3}>
+              <Form.Label className="small text-muted">Period</Form.Label>
+              <Form.Select value={filters.period} onChange={(e) => onFilter("period", e.target.value)}>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="12m">Last 12 Months</option>
+              </Form.Select>
+            </Col>
+
+            <Col md={3}>
+              <Form.Label className="small text-muted">Service</Form.Label>
+              <Form.Select value={filters.service} onChange={(e) => onFilter("service", e.target.value)}>
+                {Object.keys(SERVICE_LABEL).map((k) => (
+                  <option key={k} value={k}>
+                    {SERVICE_LABEL[k]}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={3}>
+              <Form.Label className="small text-muted">Payment</Form.Label>
+              <Form.Select value={filters.payment} onChange={(e) => onFilter("payment", e.target.value)}>
+                {Object.keys(PAYMENT_LABEL).map((k) => (
+                  <option key={k} value={k}>
+                    {PAYMENT_LABEL[k]}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={2}>
+              <Form.Label className="small text-muted">Status</Form.Label>
+              <Form.Select value={filters.status} onChange={(e) => onFilter("status", e.target.value)}>
+                <option value="all">All</option>
+                {STATUS_META.map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label}
+                  </option>
+                ))}
+              </Form.Select>
+            </Col>
+
+            <Col md={1} className="d-flex justify-content-end">
+              {loading ? (
+                <div className="d-flex align-items-center gap-2 text-muted">
+                  <Spinner size="sm" />
+                </div>
+              ) : err ? (
+                <Badge bg="danger">Error</Badge>
+              ) : (
+                <Badge bg="success">Live</Badge>
+              )}
+            </Col>
+          </Row>
+
+          {err && <div className="mt-3 text-danger small">{err}</div>}
+        </Card.Body>
+      </Card>
+
+      {/* KPI */}
+      <Row className="g-3 mb-3">
         <Col md={3}>
-          <Card
-            className="kpi-item border-0 shadow-sm text-white"
-            style={{ background: "linear-gradient(135deg,#43a047,#8bc34a)" }}
-          >
+          <Card className="kpi-item border-0 shadow-sm text-white" style={{ background: "linear-gradient(135deg,#007bff,#35a0ff)" }}>
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <p className="m-0 opacity-75 small">Doanh thu</p>
-                  <h2 className="fw-bold my-1">{loading ? "..." : `${kpi.revenueB}B`}</h2>
+                  <p className="m-0 opacity-75 small">Revenue</p>
+                  <h2 className="fw-bold my-1">{loading ? "…" : (kpi.revenueFormatted ?? formatVND(kpi.revenueRaw))}</h2>
                 </div>
                 <FaMoneyBillWave className="fs-1 opacity-50" />
               </div>
             </Card.Body>
           </Card>
         </Col>
+
         <Col md={3}>
-          <Card
-            className="kpi-item border-0 shadow-sm text-white"
-            style={{ background: "linear-gradient(135deg,#007bff,#35a0ff)" }}
-          >
+          <Card className="kpi-item border-0 shadow-sm text-white" style={{ background: "linear-gradient(135deg,#43a047,#8bc34a)" }}>
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <p className="m-0 opacity-75 small">Tổng đơn</p>
-                  <h2 className="fw-bold my-1">{loading ? "..." : kpi.orders.toLocaleString("vi-VN")}</h2>
+                  <p className="m-0 opacity-75 small">Total Orders</p>
+                  <h2 className="fw-bold my-1">{loading ? "…" : formatInt(kpi.orders)}</h2>
                 </div>
                 <FaTruck className="fs-1 opacity-50" />
               </div>
             </Card.Body>
           </Card>
         </Col>
+
         <Col md={3}>
-          <Card
-            className="kpi-item border-0 shadow-sm text-white"
-            style={{ background: "linear-gradient(135deg,#ff9800,#ffc107)" }}
-          >
+          <Card className="kpi-item border-0 shadow-sm text-white" style={{ background: "linear-gradient(135deg,#ffc107,#ffde59)" }}>
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <p className="m-0 opacity-75 small">Tỷ lệ giao thành công</p>
-                  <h2 className="fw-bold my-1">{loading ? "..." : `${kpi.deliveredRate}%`}</h2>
+                  <p className="m-0 opacity-75 small">Delivered Rate</p>
+                  <h2 className="fw-bold my-1">{loading ? "…" : formatPct(kpi.deliveredRate, 1)}</h2>
                 </div>
                 <FaCheck className="fs-1 opacity-50" />
               </div>
             </Card.Body>
           </Card>
         </Col>
+
         <Col md={3}>
-          <Card
-            className="kpi-item border-0 shadow-sm text-white"
-            style={{ background: "linear-gradient(135deg,#e53935,#ff5252)" }}
-          >
+          <Card className="kpi-item border-0 shadow-sm text-white" style={{ background: "linear-gradient(135deg,#e53935,#ff5252)" }}>
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <p className="m-0 opacity-75 small">Tỷ lệ thất bại</p>
-                  <h2 className="fw-bold my-1">{loading ? "..." : `${kpi.cancelRate}%`}</h2>
+                  <p className="m-0 opacity-75 small">Failed Rate</p>
+                  <h2 className="fw-bold my-1">{loading ? "…" : formatPct(kpi.failedRate, 1)}</h2>
                 </div>
                 <FaExclamationTriangle className="fs-1 opacity-50" />
               </div>
@@ -1029,172 +956,331 @@ export default function Reports() {
         </Col>
       </Row>
 
-      {/* FILTERS - DƯỚI KPI */}
-      <div className="filter-panel d-flex gap-2 mb-4 flex-wrap align-items-center">
-          {/* TRỤC CHÍNH: Time Period */}
-          <select
-            className="form-select form-select-sm"
-            value={filters.period}
-            onChange={(e) => setFilters((p) => ({ ...p, period: e.target.value }))}
-          >
-            <option value="7d">7 ngày</option>
-            <option value="30d">30 ngày</option>
-            <option value="12m">12 tháng</option>
-          </select>
-
-          {/* TRỤC PHỤ #1: View Mode */}
-          <select
-            className="form-select form-select-sm"
-            value={filters.view}
-            onChange={(e) => {
-              const newView = e.target.value;
-              setFilters((p) => ({
-                ...p,
-                view: newView,
-                // Reset contextual filters when changing view
-                service: newView === "service" ? p.service : "all",
-                payment: newView === "payment" ? p.payment : "all",
-                status: newView === "workflow" ? p.status : "all",
-              }));
-            }}
-          >
-            <option value="overall">Tổng quan</option>
-            <option value="service">Theo Dịch vụ</option>
-            <option value="payment">Theo Thanh toán</option>
-            <option value="workflow">Theo Quy trình</option>
-          </select>
-
-          {/* CONTEXTUAL FILTERS - Chỉ hiện khi cần */}
-          {filters.view === "service" && (
-            <select
-              className="form-select form-select-sm"
-              value={filters.service}
-              onChange={(e) => setFilters((p) => ({ ...p, service: e.target.value }))}
-            >
-              <option value="all">Tất cả dịch vụ</option>
-              <option value="standard">Tiêu chuẩn</option>
-              <option value="express">Hỏa tốc</option>
-              <option value="sameday">Siêu tốc</option>
-            </select>
-          )}
-
-          {filters.view === "payment" && (
-            <select
-              className="form-select form-select-sm"
-              value={filters.payment}
-              onChange={(e) => setFilters((p) => ({ ...p, payment: e.target.value }))}
-            >
-              <option value="all">Tất cả phương thức</option>
-              <option value="cash">Tiền mặt</option>
-              <option value="banking">Chuyển khoản</option>
-              <option value="wallet">Ví điện tử</option>
-            </select>
-          )}
-
-          {filters.view === "workflow" && (
-            <select
-              className="form-select form-select-sm"
-              value={filters.status}
-              onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
-            >
-              <option value="all">Tất cả trạng thái</option>
-              {STATUS.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          )}
-
-          <Button size="sm" variant="dark" onClick={exportPDF} className="ms-auto">
-            <FaFilePdf className="me-2" /> Xuất PDF
-          </Button>
-          <Button size="sm" variant="success" onClick={exportCSV}>
-            <FaFileCsv className="me-2" /> Xuất CSV
-          </Button>
-          <Button size="sm" variant="primary" onClick={exportXLSX}>
-            <FaFileExcel className="me-2" /> Xuất Excel
-          </Button>
-        </div>
-
-      {/* 4 BÁO CÁO CHIẾN LƯỢC */}
-      <Row className="g-3 mb-3">
-        <Col md={8}>
-          <Card className="card-lux p-3">
-            <h6 className="fw-bold mb-2">Báo cáo 1 — Đơn hàng theo Trạng thái (Stacked Area)</h6>
-            <ReactECharts option={optR1_ordersStatusArea} {...echartCommonProps} style={{ height: 360, width: "100%" }} />
+      {/* Reports (8) */}
+      <Row className="g-3">
+        <Col lg={8}>
+          <Card className="chart-wrapper border-0 shadow-sm">
+            <Card.Body>
+              <ReactECharts ref={refRevenue} option={optRevenueOrders} style={{ height: 400 }} />
+            </Card.Body>
           </Card>
         </Col>
-        <Col md={4}>
-          <Card className="card-lux p-3">
-            <h6 className="fw-bold mb-2">Báo cáo 3 — Phân bố Dịch vụ (Donut)</h6>
-            <ReactECharts option={optR3_serviceMixDonut} {...echartCommonProps} style={{ height: 360, width: "100%" }} />
+
+        <Col lg={4}>
+          <Card className="chart-wrapper border-0 shadow-sm">
+            <Card.Body>
+              <ReactECharts ref={refService} option={optServiceMix} style={{ height: 400 }} />
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col lg={8}>
+          <Card className="chart-wrapper border-0 shadow-sm">
+            <Card.Body>
+              <ReactECharts ref={refDelivery} option={optDeliveryPerformance} style={{ height: 400 }} />
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col lg={4}>
+          <Card className="chart-wrapper border-0 shadow-sm">
+            <Card.Body>
+              <ReactECharts ref={refPayment} option={optPaymentMix} style={{ height: 400 }} />
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col lg={6}>
+          <Card className="chart-wrapper border-0 shadow-sm">
+            <Card.Body>
+              <ReactECharts ref={refFunnel} option={optWorkflowFunnel} style={{ height: 360 }} />
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col lg={6}>
+          <Card className="chart-wrapper border-0 shadow-sm">
+            <Card.Body>
+              <ReactECharts ref={refAging} option={optBacklogAging} style={{ height: 360 }} />
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Top Agents */}
+        <Col lg={12}>
+          <Card className="chart-wrapper border-0 shadow-sm">
+            <Card.Body>
+              <Row className="g-3" style={{ minHeight: 600, alignItems: "stretch" }}>
+                <Col lg={8} style={{ display: "flex", flexDirection: "column" }}>
+                  <ReactECharts ref={refAgents} option={optTopAgents} style={{ height: "100%", minHeight: 600, flex: 1 }} />
+                </Col>
+                <Col lg={4} style={{ display: "flex", flexDirection: "column" }}>
+                  <Card className="border-0 spotlight-card" style={{ 
+                    background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(0, 123, 255, 0.1)"
+                  }}>
+                    <Card.Body style={{ padding: "24px" }}>
+                      <div className="spotlight-header" style={{
+                        fontSize: "0.875rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        color: "#64748b",
+                        marginBottom: "20px",
+                        paddingBottom: "12px",
+                        borderBottom: "2px solid rgba(0, 123, 255, 0.15)"
+                      }}>
+                        ⭐ Agent Spotlight
+                      </div>
+                      {topAgent ? (
+                        <>
+                          <div className="spotlight-name" style={{
+                            fontSize: "1.5rem",
+                            fontWeight: 800,
+                            color: "#1e293b",
+                            marginBottom: "8px",
+                            background: "linear-gradient(135deg, #007bff 0%, #3b82f6 100%)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            backgroundClip: "text"
+                          }}>
+                            {topAgent.agent_name}
+                          </div>
+                          <div className="spotlight-metric" style={{
+                            fontSize: "0.9rem",
+                            color: "#475569",
+                            marginBottom: "20px",
+                            padding: "10px 14px",
+                            background: "rgba(0, 123, 255, 0.05)",
+                            borderRadius: "10px",
+                            border: "1px solid rgba(0, 123, 255, 0.1)"
+                          }}>
+                            <span style={{ fontWeight: 600, color: "#1e40af" }}>Success Rate:</span>{" "}
+                            <span style={{ fontWeight: 700, color: "#007bff" }}>
+                              {topAgent.success_rate == null ? "—" : `${topAgent.success_rate}%`}
+                            </span>
+                          </div>
+                          <div className="mt-3">
+                            <div className="small" style={{ 
+                              color: "#64748b", 
+                              fontWeight: 600,
+                              marginBottom: "8px",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.3px",
+                              fontSize: "0.75rem"
+                            }}>
+                              Delivered Progress
+                            </div>
+                            <ProgressBar 
+                              now={safeNum(topAgent.delivered, 0)} 
+                              max={Math.max(1, safeNum(topAgent.total, 0))}
+                              style={{
+                                height: "12px",
+                                borderRadius: "10px",
+                                backgroundColor: "rgba(0, 123, 255, 0.1)",
+                                overflow: "hidden"
+                              }}
+                              className="spotlight-progress"
+                            />
+                            <div style={{
+                              marginTop: "8px",
+                              fontSize: "0.85rem",
+                              color: "#64748b",
+                              display: "flex",
+                              justifyContent: "space-between"
+                            }}>
+                              <span>{formatInt(topAgent.delivered)} delivered</span>
+                              <span style={{ fontWeight: 600, color: "#007bff" }}>
+                                of {formatInt(topAgent.total)} total
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-muted small" style={{
+                          padding: "20px",
+                          textAlign: "center",
+                          color: "#94a3b8",
+                          fontStyle: "italic"
+                        }}>
+                          No agent data in this period.
+                        </div>
+                      )}
+
+                      <hr />
+                      <div className="fw-bold mb-2">Top Agents (Table)</div>
+                      <div style={{ maxHeight: 240, overflow: "auto" }}>
+                        <Table size="sm" bordered hover responsive className="mb-0">
+                          <thead>
+                            <tr>
+                              <th>Agent</th>
+                              <th className="text-end">Delivered</th>
+                              <th className="text-end">WIP</th>
+                              <th className="text-end">Failed</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(payload.topAgents ?? []).map((a) => (
+                              <tr key={a.agent_id}>
+                                <td>{a.agent_name}</td>
+                                <td className="text-end">{formatInt(a.delivered)}</td>
+                                <td className="text-end">{formatInt(a.wip)}</td>
+                                <td className="text-end">{formatInt(a.failed)}</td>
+                              </tr>
+                            ))}
+                            {(payload.topAgents ?? []).length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="text-center text-muted">No data</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </Table>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        {/* Top Shippers */}
+        <Col lg={12}>
+          <Card className="chart-wrapper border-0 shadow-sm">
+            <Card.Body>
+              <Row className="g-3" style={{ minHeight: 655, alignItems: "stretch" }}>
+                <Col lg={8} style={{ display: "flex", flexDirection: "column" }}>
+                  <ReactECharts ref={refShippers} option={optTopShippers} style={{ height: "100%", minHeight: 655, flex: 1 }} />
+                </Col>
+                <Col lg={4} style={{ display: "flex", flexDirection: "column" }}>
+                  <Card className="border-0 spotlight-card" style={{ 
+                    background: "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                    boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(34, 197, 94, 0.1)"
+                  }}>
+                    <Card.Body style={{ padding: "24px" }}>
+                      <div className="spotlight-header" style={{
+                        fontSize: "0.875rem",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        color: "#64748b",
+                        marginBottom: "20px",
+                        paddingBottom: "12px",
+                        borderBottom: "2px solid rgba(34, 197, 94, 0.15)"
+                      }}>
+                        🚚 Shipper Spotlight
+                      </div>
+                      {topShipper ? (
+                        <>
+                          <div className="spotlight-name" style={{
+                            fontSize: "1.5rem",
+                            fontWeight: 800,
+                            color: "#1e293b",
+                            marginBottom: "8px",
+                            background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            backgroundClip: "text"
+                          }}>
+                            {topShipper.shipper_name}
+                          </div>
+                          <div className="spotlight-metric" style={{
+                            fontSize: "0.9rem",
+                            color: "#475569",
+                            marginBottom: "20px",
+                            padding: "10px 14px",
+                            background: "rgba(34, 197, 94, 0.05)",
+                            borderRadius: "10px",
+                            border: "1px solid rgba(34, 197, 94, 0.1)"
+                          }}>
+                            <span style={{ fontWeight: 600, color: "#15803d" }}>Avg Lead Time:</span>{" "}
+                            <span style={{ fontWeight: 700, color: "#22c55e" }}>
+                              {topShipper.avg_lead_time_hours == null ? "—" : `${topShipper.avg_lead_time_hours}h`}
+                            </span>
+                          </div>
+                          <div className="mt-3" style={{
+                            padding: "16px",
+                            background: "linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.03) 100%)",
+                            borderRadius: "12px",
+                            border: "1px solid rgba(34, 197, 94, 0.15)"
+                          }}>
+                            <div className="small" style={{ 
+                              color: "#64748b", 
+                              fontWeight: 600,
+                              marginBottom: "8px",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.3px",
+                              fontSize: "0.75rem"
+                            }}>
+                              Total Delivered
+                            </div>
+                            <div className="fw-bold" style={{
+                              fontSize: "2rem",
+                              fontWeight: 800,
+                              color: "#22c55e",
+                              lineHeight: 1.2
+                            }}>
+                              {formatInt(topShipper.delivered)}
+                            </div>
+                            <div style={{
+                              marginTop: "4px",
+                              fontSize: "0.8rem",
+                              color: "#64748b"
+                            }}>
+                              orders completed
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-muted small" style={{
+                          padding: "20px",
+                          textAlign: "center",
+                          color: "#94a3b8",
+                          fontStyle: "italic"
+                        }}>
+                          No shipper data in this period.
+                        </div>
+                      )}
+
+                      <hr />
+                      <div className="fw-bold mb-2">Top Shippers (Table)</div>
+                      <div style={{ maxHeight: 240, overflow: "auto" }}>
+                        <Table size="sm" bordered hover responsive className="mb-0">
+                          <thead>
+                            <tr>
+                              <th>Shipper</th>
+                              <th className="text-end">Delivered</th>
+                              <th className="text-end">Avg h</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(payload.topShippers ?? []).map((s) => (
+                              <tr key={s.shipper_id}>
+                                <td>{s.shipper_name}</td>
+                                <td className="text-end">{formatInt(s.delivered)}</td>
+                                <td className="text-end">{s.avg_lead_time_hours == null ? "—" : s.avg_lead_time_hours}</td>
+                              </tr>
+                            ))}
+                            {(payload.topShippers ?? []).length === 0 && (
+                              <tr>
+                                <td colSpan={3} className="text-center text-muted">No data</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </Table>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+            </Card.Body>
           </Card>
         </Col>
       </Row>
-
-      <Row className="g-3 mb-4">
-        <Col md={8}>
-          <Card className="card-lux p-3">
-            <h6 className="fw-bold mb-2">Báo cáo 2 — Doanh thu & Đơn hàng (Dual Axis)</h6>
-            <ReactECharts option={optR2_revenueOrdersDual} {...echartCommonProps} style={{ height: 360, width: "100%" }} />
-          </Card>
-        </Col>
-        <Col md={4}>
-          <Card className="card-lux p-3">
-            <h6 className="fw-bold mb-2">Báo cáo 4 — Phân bố Thanh toán (Rose)</h6>
-            <ReactECharts option={optR4_paymentRose} {...echartCommonProps} style={{ height: 360, width: "100%" }} />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 6 BẢNG PHÂN TÍCH VẬN HÀNH */}
-      <Row className="g-3 mb-3">
-        <Col md={7}>
-          <Card className="card-lux p-3">
-            <h6 className="fw-bold mb-2">Bảng 1 — Tuân thủ SLA (100% Stacked Bar)</h6>
-            <ReactECharts option={optT1_slaStacked100} {...echartCommonProps} style={{ height: 340, width: "100%" }} />
-          </Card>
-        </Col>
-        <Col md={5}>
-          <Card className="card-lux p-3">
-            <h6 className="fw-bold mb-2">Bảng 2 — Chuyển đổi Quy trình & Rò rỉ</h6>
-            <ReactECharts option={optT2_workflowConversion} {...echartCommonProps} style={{ height: 340, width: "100%" }} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row className="g-3 mb-3">
-        <Col md={6}>
-          <Card className="card-lux p-3">
-            <h6 className="fw-bold mb-2">Bảng 3 — Tồn đọng theo Thời gian (Stacked Distribution)</h6>
-            <ReactECharts option={optT3_agingBacklogStacked} {...echartCommonProps} style={{ height: 340, width: "100%" }} />
-          </Card>
-        </Col>
-        <Col md={6}>
-          <Card className="card-lux p-3">
-            <h6 className="fw-bold mb-2">Bảng 4 — Năng suất & Chất lượng Đại lý</h6>
-            <ReactECharts option={optT4_agentQuality} {...echartCommonProps} style={{ height: 340, width: "100%" }} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row className="g-3 mb-3">
-        <Col md={7}>
-          <Card className="card-lux p-3">
-            <h6 className="fw-bold mb-2">Bảng 5 — Thời gian giao hàng Shipper (Boxplot)</h6>
-            <ReactECharts option={optT5_shipperLeadTimeBox} {...echartCommonProps} style={{ height: 340, width: "100%" }} />
-          </Card>
-        </Col>
-        <Col md={5}>
-          <Card className="card-lux p-3">
-            <h6 className="fw-bold mb-2">Bảng 6 — Ma trận Rủi ro Thất bại (Bubble)</h6>
-            <ReactECharts option={optT6_failedBubbleMatrix} {...echartCommonProps} style={{ height: 340, width: "100%" }} />
-          </Card>
-        </Col>
-      </Row>
-
-      
     </div>
   );
 }

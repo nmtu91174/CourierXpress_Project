@@ -23,6 +23,7 @@ require_once __DIR__ . "/../../core/Response.php";
 require_once __DIR__ . "/../../middleware/require_login.php";
 require_once __DIR__ . "/../../middleware/require_role.php";
 require_once __DIR__ . "/../../services/OrderService.php";
+require_once __DIR__ . "/../../services/NotificationService.php";
 
 // ==========================
 // AUTH
@@ -49,6 +50,22 @@ if ($orderId <= 0 || $agentId <= 0) {
 // ASSIGN AGENT
 // ==========================
 try {
+    // Get order info before assignment
+    $getOrder = $conn->prepare("SELECT order_code, customer_id, status FROM orders WHERE id = ?");
+    $getOrder->bind_param("i", $orderId);
+    $getOrder->execute();
+    $orderResult = $getOrder->get_result();
+    $orderData = $orderResult->fetch_assoc();
+    $getOrder->close();
+
+    if (!$orderData) {
+        Response::error("Order not found");
+    }
+
+    $orderCode = $orderData["order_code"];
+    $customerId = (int)$orderData["customer_id"];
+    $oldStatus = (int)$orderData["status"];
+
     $service = new OrderService($conn);
 
     // Giao toàn bộ transaction cho Service
@@ -57,6 +74,12 @@ try {
         $agentId,
         $adminId
     );
+
+    // ==========================
+    // CREATE NOTIFICATIONS (RBAC)
+    // ==========================
+    $notificationService = new NotificationService($conn);
+    $notificationService->emit('agent_assigned', $orderId, $adminId, $role);
 
     Response::success("Admin phân công agent thành công");
 

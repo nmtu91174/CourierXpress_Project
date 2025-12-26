@@ -1,4 +1,5 @@
-import { FaTruck, FaCheckCircle, FaTimesCircle, FaEye } from "react-icons/fa";
+import { FaTruck, FaCheckCircle, FaTimesCircle, FaEye, FaBox } from "react-icons/fa";
+import { Card, Row, Col } from "react-bootstrap";
 import orders from "../../data/userOrders.json";
 import "../../assets/styles/user_profile.css";
 
@@ -25,25 +26,77 @@ export default function UserOrdersPagePro() {
           <p className="text-muted">Theo dõi toàn bộ lịch sử giao hàng của bạn</p>
         </div>
 
-        {/* Stats mini */}
-        <div className="orders-stats">
-          <div className="stat-card">
-            <h5>Tổng đơn</h5>
-            <p>{orders.length}</p>
-          </div>
-          <div className="stat-card success">
-            <h5>Đã giao</h5>
-            <p>{orders.filter(o => o.status === "Đã giao").length}</p>
-          </div>
-          <div className="stat-card warning">
-            <h5>Đang giao</h5>
-            <p>{orders.filter(o => o.status === "Đang giao").length}</p>
-          </div>
-          <div className="stat-card danger">
-            <h5>Đã hủy</h5>
-            <p>{orders.filter(o => o.status === "Đã hủy").length}</p>
-          </div>
-        </div>
+        {/* Stats KPI - White Cards */}
+        <Row className="mb-4 g-3">
+          <Col md={3}>
+            <Card className="border-0 shadow-sm" style={{ backgroundColor: "#ffffff" }}>
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div className="text-uppercase small fw-semibold text-muted mb-2" style={{ letterSpacing: "0.5px" }}>
+                      Tổng đơn
+                    </div>
+                    <h2 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "32px" }}>
+                      {orders.length}
+                    </h2>
+                  </div>
+                  <FaBox size={40} className="text-primary" style={{ opacity: 0.8 }} />
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={3}>
+            <Card className="border-0 shadow-sm" style={{ backgroundColor: "#ffffff" }}>
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div className="text-uppercase small fw-semibold text-muted mb-2" style={{ letterSpacing: "0.5px" }}>
+                      Đã giao
+                    </div>
+                    <h2 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "32px" }}>
+                      {orders.filter(o => o.status === "Đã giao").length}
+                    </h2>
+                  </div>
+                  <FaCheckCircle size={40} className="text-success" style={{ opacity: 0.8 }} />
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={3}>
+            <Card className="border-0 shadow-sm" style={{ backgroundColor: "#ffffff" }}>
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div className="text-uppercase small fw-semibold text-muted mb-2" style={{ letterSpacing: "0.5px" }}>
+                      Đang giao
+                    </div>
+                    <h2 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "32px" }}>
+                      {orders.filter(o => o.status === "Đang giao").length}
+                    </h2>
+                  </div>
+                  <FaTruck size={40} className="text-warning" style={{ opacity: 0.8 }} />
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={3}>
+            <Card className="border-0 shadow-sm" style={{ backgroundColor: "#ffffff" }}>
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div className="text-uppercase small fw-semibold text-muted mb-2" style={{ letterSpacing: "0.5px" }}>
+                      Đã hủy
+                    </div>
+                    <h2 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "32px" }}>
+                      {orders.filter(o => o.status === "Đã hủy").length}
+                    </h2>
+                  </div>
+                  <FaTimesCircle size={40} className="text-danger" style={{ opacity: 0.8 }} />
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
 
         {/* Orders Table */}
         <div className="profile-card mt-4">

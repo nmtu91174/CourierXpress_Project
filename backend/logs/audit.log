@@ -34,3 +34,44 @@ time=2025-12-25T10:05:04+00:00 event=CREATE_FOLLOWUP_ORDER actor_id=1 actor_role
 [2025-12-25 10:17:48] user=1 role=admin action=ASSIGN_SHIPPER order=11 note=shipper=4
 [2025-12-25 10:18:01] user=1 role=admin action=ASSIGN_SHIPPER order=12 note=shipper=4
 [2025-12-25 10:18:07] user=1 role=admin action=UPDATE_STATUS order=13 note=Cập nhật đơn hàng
+[2025-12-25 18:36:26] user=2 role=agent action=ASSIGN_SHIPPER order=280 note=shipper=38
+[2025-12-25 18:36:44] user=2 role=agent action=ASSIGN_SHIPPER order=292 note=shipper=38
+[2025-12-25 18:48:42] user=1 role=admin action=ASSIGN_SHIPPER order=218 note=shipper=4
+[2025-12-25 18:49:32] user=1 role=admin action=ASSIGN_SHIPPER order=130 note=shipper=4
+[2025-12-25 20:03:42] user=2 role=agent action=ASSIGN_SHIPPER order=269 note=shipper=4
+[2025-12-25 20:15:23] user=1 role=admin action=ASSIGN_AGENT order=474 note=agent=2
+[2025-12-25 20:15:36] user=1 role=admin action=ASSIGN_SHIPPER order=474 note=shipper=4
+[2025-12-25 20:25:36] user=1 role=admin action=CREATE_ORDER order=506 note=ORD0506
+[2025-12-25 20:26:05] user=1 role=admin action=ASSIGN_AGENT order=506 note=agent=7
+[2025-12-25 20:26:38] user=1 role=admin action=ASSIGN_SHIPPER order=506 note=shipper=4
+[2025-12-25 20:32:50] user=1 role=admin action=ASSIGN_AGENT order=246 note=agent=2
+[2025-12-25 20:33:11] user=1 role=admin action=ASSIGN_AGENT order=326 note=agent=2
+[2025-12-25 20:33:42] user=1 role=admin action=ASSIGN_SHIPPER order=326 note=shipper=4
+[2025-12-25 20:59:48] user=1 role=admin action=CREATE_ORDER order=507 note=ORD0507
+[2025-12-25 21:04:12] user=1 role=admin action=CREATE_ORDER order=508 note=ORD0508
+time=2025-12-25T21:05:05+00:00 event=CANCEL_ORDER actor_id=1 actor_role=admin resource=order resource_id=468 cancel_type=soft previous_status=1 outcome=SUCCESS message="Cancel order ORD002463"
+[2025-12-25 21:23:29] user=1 role=admin action=ASSIGN_AGENT order=421 note=agent=10
+[2025-12-25 21:36:37] user=1 role=admin action=UPDATE_STATUS order=4 note=Cập nhật đơn hàng
+[2025-12-25 21:36:42] user=1 role=admin action=UPDATE_STATUS order=3 note=Cập nhật đơn hàng
+[2025-12-25 21:37:17] user=1 role=admin action=ASSIGN_SHIPPER order=3 note=shipper=4
+[2025-12-25 21:43:08] user=1 role=admin action=ASSIGN_SHIPPER order=4 note=shipper=4
+[2025-12-25 21:43:21] user=1 role=admin action=ASSIGN_SHIPPER order=2 note=shipper=4
+[2025-12-25 21:48:18] user=1 role=admin action=ASSIGN_SHIPPER order=957 note=shipper=4
+[2025-12-25 21:53:51] user=1 role=admin action=ASSIGN_AGENT order=802 note=agent=7
+[2025-12-25 21:54:19] user=1 role=admin action=ASSIGN_SHIPPER order=1986 note=shipper=4
+[2025-12-25 21:54:32] user=1 role=admin action=ASSIGN_SHIPPER order=1803 note=shipper=38
+time=2025-12-25T22:15:28+00:00 event=UPDATE_USER actor_id=5 actor_role=customer target_user=5
+[2025-12-25 22:25:32] user=1 role=admin action=ASSIGN_AGENT order=1051 note=agent=7
+[2025-12-25 22:25:49] user=1 role=admin action=ASSIGN_AGENT order=511 note=agent=7
+[2025-12-25 22:26:01] user=1 role=admin action=ASSIGN_SHIPPER order=511 note=shipper=27
+[2025-12-25 22:29:04] user=1 role=admin action=ASSIGN_AGENT order=1978 note=agent=8
+[2025-12-25 22:39:15] user=2 role=agent action=ASSIGN_SHIPPER order=1277 note=shipper=46
+[2025-12-25 22:39:21] user=2 role=agent action=ASSIGN_SHIPPER order=629 note=shipper=36
+[2025-12-25 22:41:28] user=1 role=admin action=ASSIGN_SHIPPER order=1442 note=shipper=4
+[2025-12-25 22:57:33] user=1 role=admin action=ASSIGN_AGENT order=559 note=agent=9
+[2025-12-25 23:27:12] user=1 role=admin action=ASSIGN_SHIPPER order=577 note=shipper=41
+[2025-12-25 23:27:42] user=1 role=admin action=ASSIGN_SHIPPER order=1535 note=shipper=4
+[2025-12-25 23:40:27] user=1 role=admin action=ASSIGN_SHIPPER order=1474 note=shipper=4
+[2025-12-25 23:48:04] user=2 role=agent action=ASSIGN_SHIPPER order=151 note=shipper=4
+[2025-12-26 00:09:45] user=1 role=admin action=ASSIGN_AGENT order=2008 note=agent=2
+[2025-12-26 00:09:53] user=1 role=admin action=ASSIGN_SHIPPER order=2008 note=shipper=4

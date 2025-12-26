@@ -61,7 +61,7 @@ $sql = "
     FROM orders o
     WHERE o.shipper_id = ?
       AND o.status = 3
-    ORDER BY o.created_at ASC
+    ORDER BY o.updated_at DESC, o.created_at DESC
 ";
 
 $stmt = $conn->prepare($sql);

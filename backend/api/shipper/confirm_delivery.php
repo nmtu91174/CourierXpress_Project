@@ -43,6 +43,7 @@ require_once __DIR__ . "/../../db.php";
 require_once __DIR__ . "/../../core/Response.php";
 require_once __DIR__ . "/../../middleware/require_login.php";
 require_once __DIR__ . "/../../middleware/require_role.php";
+require_once __DIR__ . "/../../services/NotificationService.php";
 
 // ==========================
 // AUTH
@@ -69,7 +70,7 @@ if (!isset($_FILES["image"]) || $_FILES["image"]["error"] !== UPLOAD_ERR_OK) {
 // CHECK ORDER
 // ==========================
 $orderStmt = $conn->prepare("
-    SELECT id, shipper_id, status
+    SELECT id, shipper_id, status, order_code, customer_id
     FROM orders
     WHERE id = ?
 ");
@@ -124,12 +125,14 @@ try {
     $conn->begin_transaction();
 
     // 1. Update orders
+    // Enterprise: status=5 (DELIVERED) must have is_locked=1 per schema constraint
     $updateStmt = $conn->prepare("
         UPDATE orders
         SET
             status = 5,
             delivered_at = NOW(),
-            delivery_proof = ?
+            delivery_proof = ?,
+            is_locked = 1
         WHERE id = ?
     ");
     $updateStmt->bind_param("si", $relativePath, $orderId);
@@ -155,6 +158,12 @@ try {
     $hisStmt->close();
 
     $conn->commit();
+
+    // ==========================
+    // CREATE NOTIFICATIONS (RBAC)
+    // ==========================
+    $notificationService = new NotificationService($conn);
+    $notificationService->emit('shipper_delivered', $orderId, $shipperId, 'shipper');
 
     Response::success("Xác nhận giao hàng thành công", [
         "order_id" => $orderId,

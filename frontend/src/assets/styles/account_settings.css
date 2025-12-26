@@ -10,10 +10,40 @@
 /* Container - full width like OrderManagement/AgentsManagement */
 .settings-container {
   width: 100%;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
   max-width: 100%;
   box-sizing: border-box;
+}
+
+/* Tablet: Limit max-width for customer and shipper */
+@media (min-width: 768px) and (max-width: 1199px) {
+  /* Customer and Shipper: same width */
+  .account-settings-page[data-role="customer"] .settings-container,
+  .account-settings-page[data-role="shipper"] .settings-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+}
+
+/* Desktop: Limit max-width ONLY for customer and shipper - centered container */
+@media (min-width: 1200px) {
+  /* Customer and Shipper: same width */
+  .account-settings-page[data-role="customer"] .settings-container,
+  .account-settings-page[data-role="shipper"] .settings-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+  
+  /* Admin/Agent: full width (no max-width) */
+  .account-settings-page[data-role="admin"] .settings-container,
+  .account-settings-page[data-role="agent"] .settings-container {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
 }
 
 /* Mobile: Consistent container width */

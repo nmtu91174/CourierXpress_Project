@@ -28,7 +28,7 @@ export default function OrderDetailPanel({
   const [loadingImages, setLoadingImages] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [allImages, setAllImages] = useState([]); // Combined pickup + delivery images
+  const [allImages, setAllImages] = useState([]); // Combined pickup + delivery + failed images
   const [fullOrderDetail, setFullOrderDetail] = useState(null); // Full order detail from API
 
   // Fetch full order detail from API when order.id changes
@@ -81,7 +81,7 @@ export default function OrderDetailPanel({
     }
   };
 
-  // Update allImages when orderImages changes
+  // Update allImages when orderImages changes (include pickup, delivery, and failed images)
   useEffect(() => {
     setAllImages([...orderImages]);
   }, [orderImages]);
@@ -290,15 +290,18 @@ export default function OrderDetailPanel({
   // Separate images by type (URLs already normalized in fetchOrderImages)
   const pickupImages = orderImages.filter(img => img.type === "pickup");
   const deliveryImages = orderImages.filter(img => img.type === "delivery");
+  const failedImages = orderImages.filter(img => img.type === "delivery_failed");
 
   // Handle image click - open modal
   const handleImageClick = (imageIndex, imageType) => {
-    // Calculate index in allImages array
+    // Calculate index in allImages array (pickup -> delivery -> failed)
     let globalIndex = 0;
     if (imageType === "pickup") {
       globalIndex = imageIndex;
-    } else {
+    } else if (imageType === "delivery") {
       globalIndex = pickupImages.length + imageIndex;
+    } else if (imageType === "failed") {
+      globalIndex = pickupImages.length + deliveryImages.length + imageIndex;
     }
     setSelectedImageIndex(globalIndex);
     setShowImageModal(true);
@@ -543,7 +546,7 @@ export default function OrderDetailPanel({
         </section>
 
         {/* ẢNH SẢN PHẨM */}
-        {(pickupImages.length > 0 || deliveryImages.length > 0) && (
+        {(pickupImages.length > 0 || deliveryImages.length > 0 || failedImages.length > 0) && (
           <section className="panel-section luxury-section">
             <h6 className="section-title luxury-section-title">
               <FaImage className="me-2" />
@@ -584,7 +587,7 @@ export default function OrderDetailPanel({
                 </div>
               )}
               {deliveryImages.length > 0 && (
-                <div>
+                <div className={failedImages.length > 0 ? "mb-3" : ""}>
                   <small className="text-muted d-block mb-2">
                     <strong>Delivery Images ({deliveryImages.length})</strong>
                   </small>
@@ -606,6 +609,39 @@ export default function OrderDetailPanel({
                         <img
                           src={img.image_url}
                           alt={`Delivery ${idx + 1}`}
+                          className="luxury-preview-img"
+                          onError={(e) => {
+                            e.target.src = "https://via.placeholder.com/150?text=Image+Error";
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {failedImages.length > 0 && (
+                <div>
+                  <small className="text-muted d-block mb-2">
+                    <strong className="text-danger">Failed Proof Images ({failedImages.length})</strong>
+                  </small>
+                  <div className="luxury-image-grid">
+                    {failedImages.map((img, idx) => (
+                      <div 
+                        key={idx} 
+                        className="luxury-image-item"
+                        onClick={() => handleImageClick(idx, "failed")}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleImageClick(idx, "failed");
+                          }
+                        }}
+                      >
+                        <img
+                          src={img.image_url}
+                          alt={`Failed Proof ${idx + 1}`}
                           className="luxury-preview-img"
                           onError={(e) => {
                             e.target.src = "https://via.placeholder.com/150?text=Image+Error";

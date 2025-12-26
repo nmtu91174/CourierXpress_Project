@@ -32,13 +32,10 @@ require_role(["admin"]);
 // Enterprise KPI Mapping:
 // - Total Agents: Tổng số agents
 // - Active Agents: users.status = 'active'
-// - Total Pending Approvals: Tổng số order_approvals.status = 'pending' (workload chờ agent duyệt)
+// - Unassigned Orders: Tổng số orders có status=1 (booked) và agent_id=NULL (chưa assign agent)
 // - Inactive Agents: users.status = 'inactive'
 // 
-// NOTE: Không có "pending_agents" vì users.status chỉ có 'active'/'inactive'
-// Thay vào đó, dùng "total_pending_approvals" để phản ánh workload thực tế
-// FIX: Tách query để tránh duplicate khi LEFT JOIN order_approvals
-// Query 1: Count agents (không join order_approvals)
+// Query 1: Count agents
 $stmt = $conn->prepare("
     SELECT 
         COUNT(*) AS total_agents,
@@ -53,22 +50,22 @@ $result = $stmt->get_result();
 $stats = $result->fetch_assoc();
 $stmt->close();
 
-// Query 2: Count pending approvals (riêng biệt để tránh duplicate)
+// Query 2: Count unassigned orders (orders with status=1 and agent_id=NULL)
 $stmt2 = $conn->prepare("
-    SELECT COUNT(*) AS total_pending_approvals
-    FROM order_approvals
-    WHERE status = 'pending'
+    SELECT COUNT(*) AS unassigned_orders
+    FROM orders
+    WHERE status = 1 AND agent_id IS NULL
 ");
 
 $stmt2->execute();
 $result2 = $stmt2->get_result();
-$approvalStats = $result2->fetch_assoc();
+$orderStats = $result2->fetch_assoc();
 $stmt2->close();
 
 $response = [
     "total_agents" => (int)$stats["total_agents"],
     "active_agents" => (int)$stats["active_agents"],
-    "total_pending_approvals" => (int)$approvalStats["total_pending_approvals"],
+    "unassigned_orders" => (int)$orderStats["unassigned_orders"],
     "inactive_agents" => (int)$stats["inactive_agents"],
 ];
 

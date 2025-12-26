@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
   Card,
@@ -57,10 +57,13 @@ export default function Dashboard() {
   // =============================
   // 2. STATE – DATA TỪ API
   // =============================
-  const [allOrders, setAllOrders] = useState([]);       // dùng cho filter + chart + KPI
+  const [allOrders, setAllOrders] = useState([]);       // dùng cho filter + table (booked/approved only, paginated)
+  const [allOrdersForCharts, setAllOrdersForCharts] = useState([]); // dùng cho charts + workload (ALL orders)
+  const [allBookedApprovedOrders, setAllBookedApprovedOrders] = useState([]); // TẤT CẢ orders booked/approved cho modal (không pagination)
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [userRole, setUserRole] = useState("admin");    // Get from localStorage
   const [agents, setAgents] = useState([]);             // Danh sách agents
+  const [agentsForFilter, setAgentsForFilter] = useState([]); // Agents có orders approved (cho filter)
   const [shippers, setShippers] = useState([]);          // Danh sách shippers
   const [systemLogs, setSystemLogs] = useState([]);     // Nhật ký hệ thống (lỗi kỹ thuật - DEV ONLY)
   const [businessLogs, setBusinessLogs] = useState([]);  // Nhật ký nghiệp vụ (lỗi business - ADMIN)
@@ -71,6 +74,16 @@ export default function Dashboard() {
   const [totalRevenue, setTotalRevenue] = useState("₫ 0");
   const [successRate, setSuccessRate] = useState("0%");
   const [cancelRate, setCancelRate] = useState("0%");
+
+  // =============================
+  // 2.2. PAGINATION STATE (Dashboard)
+  // =============================
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10); // Default: 10 orders per page
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const navigate = useNavigate();
 
   // =============================
   // 2.1. FILTER STATE (Enterprise Filters) - Phải khai báo trước useEffect
@@ -90,20 +103,20 @@ export default function Dashboard() {
   const [searchText, setSearchText] = useState("");
 
   // =============================
-  // 3. FETCH TẤT CẢ ĐƠN HÀNG
+  // 3. FETCH DASHBOARD ORDERS (booked + approved với pagination)
   // =============================
-  const fetchOrders = async () => {
+  const fetchLatestOrders = async (page = currentPage, limit = pageSize) => {
     try {
       const user = JSON.parse(localStorage.getItem("user")) || {};
       setUserRole(user.role || "admin");
 
       const params = new URLSearchParams({
-        page: 1,
-        limit: 100,
+        page: page.toString(),
+        limit: limit.toString(),
       });
 
       const res = await fetch(
-        `http://localhost:8888/api/admin/get_orders.php?${params.toString()}`,
+        `http://localhost:8888/api/admin/dashboard_lastest_order.php?${params.toString()}`,
         {
           method: "GET",
           credentials: "include",
@@ -125,46 +138,130 @@ export default function Dashboard() {
       const json = await res.json();
 
       if (json.status === "success") {
-        const data = Array.isArray(json.data?.items)
-          ? json.data.items
-          : [];
-
-        setAllOrders(data);
+        const data = json.data || {};
+        const items = Array.isArray(data.items) ? data.items : [];
+        const pagination = data.pagination || {};
+        
+        setAllOrders(items);
+        setTotalCount(pagination.total || 0);
+        setTotalPages(pagination.totalPages || 1);
+        setCurrentPage(pagination.page || 1);
         setLoadingOrders(false);
-
-        // ===== KPI =====
-        const total = data.length;
-        const delivered = data.filter(o => Number(o.status) === 5).length;
-        const cancelled = data.filter(o => Number(o.status) === 7).length; // Status 7 = Cancelled
-
-        setTotalOrders(total);
-
-        const revenue = data.reduce(
-          (sum, o) => sum + Number(o.total_shipping_fee || 0),
-          0
-        );
-
-        setTotalRevenue(
-          revenue.toLocaleString("vi-VN", {
-            style: "currency",
-            currency: "VND",
-          })
-        );
-
-        setSuccessRate(total ? Math.round((delivered / total) * 100) + "%" : "0%");
-        setCancelRate(total ? Math.round((cancelled / total) * 100) + "%" : "0%");
       } else {
         setLoadingOrders(false);
       }
     } catch (err) {
-      console.error("Lỗi load orders:", err);
+      console.error("Lỗi load dashboard orders:", err);
       setLoadingOrders(false);
     }
   };
 
+  // =============================
+  // 3.1. FETCH ALL ORDERS FOR CHARTS (ALL statuses, not just booked/approved)
+  // =============================
+  const fetchAllOrdersForCharts = async () => {
+    try {
+      // Fetch all orders (high limit to get all orders for charts)
+      const res = await fetch(
+        `http://localhost:8888/api/admin/get_orders.php?page=1&limit=10000`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem("user");
+          window.location.href = "/login";
+          return;
+        }
+        console.error("API Error fetching all orders for charts:", res.status);
+        return;
+      }
+
+      const json = await res.json();
+      if (json.status === "success") {
+        const items = Array.isArray(json.data?.items) ? json.data.items : [];
+        setAllOrdersForCharts(items);
+      }
+    } catch (err) {
+      console.error("Lỗi load all orders for charts:", err);
+    }
+  };
+
+  // =============================
+  // 3.1.1. FETCH ALL BOOKED/APPROVED ORDERS FOR MODAL (không pagination)
+  // =============================
+  const fetchAllBookedApprovedOrders = async () => {
+    try {
+      // Fetch TẤT CẢ orders booked/approved (KHÔNG pagination) cho modal dropdown
+      // Dùng API riêng get_quick_assign_orders.php để lấy tất cả orders
+      const res = await fetch(
+        `http://localhost:8888/api/admin/get_quick_assign_orders.php?type=all`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem("user");
+          window.location.href = "/login";
+          return;
+        }
+        console.error("API Error fetching all booked/approved orders:", res.status);
+        return;
+      }
+
+      const json = await res.json();
+      if (json.status === "success") {
+        const items = Array.isArray(json.data?.items) ? json.data.items : [];
+        setAllBookedApprovedOrders(items);
+        console.log(`✅ Loaded ${items.length} orders for modal (booked + approved)`, items);
+      } else {
+        console.error("API returned error:", json);
+      }
+    } catch (err) {
+      console.error("Lỗi load all booked/approved orders:", err);
+    }
+  };
+
+  // =============================
+  // 3.2. FETCH DASHBOARD KPI (Total Revenue từ tất cả orders)
+  // =============================
+  const fetchDashboardKPI = async () => {
+    try {
+      const res = await fetch(
+        `http://localhost:8888/api/admin/get_reports_data.php?period=1y&view=overall`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === "success" && json.data?.kpi) {
+          const kpi = json.data.kpi;
+          setTotalOrders(kpi.orders || 0);
+          setTotalRevenue(kpi.revenueFormatted || "₫ 0");
+          setSuccessRate(kpi.deliveredRate ? `${kpi.deliveredRate}%` : "0%");
+          setCancelRate(kpi.failedRate ? `${kpi.failedRate}%` : "0%");
+        }
+      }
+    } catch (err) {
+      console.error("Lỗi load dashboard KPI:", err);
+    }
+  };
+
   useEffect(() => {
-    fetchOrders();
-  }, []); // Chỉ fetch một lần khi mount, không phụ thuộc vào filter
+    fetchLatestOrders(currentPage, pageSize);
+    fetchDashboardKPI();
+    fetchAllOrdersForCharts(); // Fetch all orders for charts
+    fetchAllBookedApprovedOrders(); // Fetch all booked/approved orders for modal
+  }, [currentPage, pageSize]); // Refetch khi page hoặc pageSize thay đổi
 
   // =============================
   // 3.1. FETCH AGENTS & SHIPPERS
@@ -209,7 +306,61 @@ export default function Dashboard() {
   }, []);
 
   // =============================
-  // 3.2. FETCH SYSTEM LOGS & NOTIFICATIONS
+  // 3.1.1. CALCULATE AGENTS FOR FILTER (Only agents with approved orders)
+  // =============================
+  useEffect(() => {
+    // Filter agents that have approved orders (status = 2)
+    const agentsWithApprovedOrders = agents.filter(agent => {
+      return allOrdersForCharts.some(order => 
+        Number(order.agent_id) === Number(agent.id) && 
+        Number(order.status) === 2 // APPROVED
+      );
+    });
+    setAgentsForFilter(agentsWithApprovedOrders);
+  }, [agents, allOrdersForCharts]);
+
+  // =============================
+  // 3.2. FETCH BUSINESS LOGS (Real-time warnings from DB)
+  // =============================
+  useEffect(() => {
+    const fetchBusinessLogs = async () => {
+      try {
+        const res = await fetch(
+          "http://localhost:8888/api/admin/get_business_logs.php",
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+        
+        if (!res.ok) {
+          if (res.status === 401) {
+            localStorage.removeItem("user");
+            window.location.href = "/login";
+            return;
+          }
+          console.error("API Error fetching business logs:", res.status);
+          return;
+        }
+        
+        const json = await res.json();
+        if (json.status === "success") {
+          const warnings = Array.isArray(json.data?.warnings) ? json.data.warnings : [];
+          setBusinessLogs(warnings);
+        }
+      } catch (err) {
+        console.error("Lỗi load business logs:", err);
+      }
+    };
+    
+    fetchBusinessLogs();
+    // Refresh business logs mỗi 30 giây
+    const interval = setInterval(fetchBusinessLogs, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // =============================
+  // 3.2.1. FETCH SYSTEM LOGS & NOTIFICATIONS
   // =============================
   useEffect(() => {
     const fetchLogs = async () => {
@@ -342,9 +493,8 @@ export default function Dashboard() {
           if (appJson.status === "success" && appJson.data?.content) {
             const lines = appJson.data.content.split("\n").filter((l) => l.trim());
             
-            // Tách thành 2 loại: System Logs (kỹ thuật) và Business Logs (nghiệp vụ)
+            // System Logs (kỹ thuật) - chỉ lấy từ app logs
             const systemErrors = [];
-            const businessErrors = [];
             
             lines
               .filter((line) => line.includes("[ERROR]"))
@@ -355,27 +505,17 @@ export default function Dashboard() {
                 const errorMatch = line.match(/\[ERROR\]\s*(.+)/);
                 const message = errorMatch ? errorMatch[1].trim() : line;
                 
-                // Map lỗi kỹ thuật sang business message
-                const businessMessage = mapBusinessMessage(message);
-                const isBusinessError = businessMessage !== message; // Nếu message thay đổi = business error
-                
                 const logEntry = {
                   time: timeMatch ? timeMatch[1] : "",
                   message: message,
-                  businessMessage: businessMessage,
                   fullMessage: line,
                 };
                 
-                if (isBusinessError) {
-                  businessErrors.push(logEntry);
-                } else {
-                  systemErrors.push(logEntry);
-                }
+                systemErrors.push(logEntry);
               });
             
-            // Chỉ lấy 10 mới nhất mỗi loại
+            // Chỉ lấy 10 mới nhất
             setSystemLogs(systemErrors.slice(0, 10));
-            setBusinessLogs(businessErrors.slice(0, 10));
           }
         }
       } catch (err) {
@@ -390,8 +530,10 @@ export default function Dashboard() {
   }, [agents, shippers]); // Thêm dependencies để re-parse khi agents/shippers thay đổi
 
   // =============================
-  // 3.3. MAP BUSINESS MESSAGE
+  // 3.3. MAP BUSINESS MESSAGE (DEPRECATED - Business logs now come from API)
   // =============================
+  // NOTE: This function is kept for backward compatibility but not used anymore
+  // Business logs are now fetched from get_business_logs.php API
   const mapBusinessMessage = (technicalMessage) => {
     const msg = technicalMessage.toLowerCase();
     
@@ -577,44 +719,47 @@ export default function Dashboard() {
   const [confirmAssignAgent, setConfirmAssignAgent] = useState(false);
   const [confirmAssignShipper, setConfirmAssignShipper] = useState(false);
 
-  // Calculate workload for agents and shippers from allOrders
+  // Calculate workload for agents and shippers from ALL orders (not just booked/approved)
   const agentsWithWorkload = useMemo(() => {
     return agents.map(agent => {
-      const activeOrders = allOrders.filter(o => 
+      const activeOrders = allOrdersForCharts.filter(o => 
         Number(o.agent_id) === Number(agent.id) && 
         [1, 2, 3, 4].includes(Number(o.status)) // Non-terminal statuses
       ).length;
       return { ...agent, active_orders_count: activeOrders };
     });
-  }, [agents, allOrders]);
+  }, [agents, allOrdersForCharts]);
 
   const shippersWithWorkload = useMemo(() => {
     return shippers.map(shipper => {
-      const activeOrders = allOrders.filter(o => 
+      const activeOrders = allOrdersForCharts.filter(o => 
         Number(o.shipper_id) === Number(shipper.id) && 
         [1, 2, 3, 4].includes(Number(o.status)) // Non-terminal statuses
       ).length;
       return { ...shipper, active_orders_count: activeOrders };
     });
-  }, [shippers, allOrders]);
+  }, [shippers, allOrdersForCharts]);
 
   // Get orders available for assignment (for dropdown)
-  // Enterprise: Only show orders eligible for agent assignment (agent_id IS NULL)
+  // Dùng allBookedApprovedOrders (TẤT CẢ orders, không phải chỉ page hiện tại)
   const ordersForAgentAssignment = useMemo(() => {
-    return allOrders.filter(o => {
+    return allBookedApprovedOrders.filter(o => {
       const status = Number(o.status);
-      const hasAgent = o.agent_id !== null && o.agent_id !== undefined && Number(o.agent_id) !== 0;
-      
-      // Only BOOKED (1) orders without agent are eligible for assignment
-      // Exclude terminal statuses (CANCELLED=7, FAILED=6, DELIVERED=5)
-      return status === 1 && !hasAgent && status !== 5 && status !== 6 && status !== 7;
+      // Show all BOOKED (1) orders - can assign agent to any booked order
+      return status === 1;
     });
-  }, [allOrders]);
+  }, [allBookedApprovedOrders]);
 
   const ordersForShipperAssignment = useMemo(() => {
-    // Only orders that are APPROVED (status=2) and don't have shipper yet
-    return allOrders.filter(o => Number(o.status) === 2 && (!o.shipper_id || Number(o.shipper_id) === 0));
-  }, [allOrders]);
+    // Show ONLY APPROVED (status=2) orders WITHOUT shipper - can assign shipper only to approved orders without shipper
+    // Chỉ hiển thị orders đã có agent (agent_id IS NOT NULL) và chưa có shipper (shipper_id IS NULL hoặc = 0)
+    return allBookedApprovedOrders.filter(o => {
+      const status = Number(o.status);
+      const hasAgent = o.agent_id !== null && o.agent_id !== undefined && Number(o.agent_id) !== 0;
+      const noShipper = !o.shipper_id || o.shipper_id === null || o.shipper_id === undefined || Number(o.shipper_id) === 0;
+      return status === 2 && hasAgent && noShipper; // APPROVED, đã có agent, và chưa có shipper
+    });
+  }, [allBookedApprovedOrders]);
 
   // OrderInfoDisplay component (reusable)
   const OrderInfoDisplay = ({ order, iconColor = "text-warning" }) => {
@@ -624,6 +769,10 @@ export default function Dashboard() {
       if (!address) return "N/A";
       return address.split(",").pop()?.trim() || address;
     };
+
+    // Find agent name from agents list
+    const agent = order.agent_id ? agents.find(a => Number(a.id) === Number(order.agent_id)) : null;
+    const agentName = agent ? agent.name : (order.agent_name || null);
 
     return (
       <div className="luxury-order-info mb-4 p-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "8px", border: "1px solid #dee2e6" }}>
@@ -636,6 +785,9 @@ export default function Dashboard() {
           <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaCalendarAlt className="me-1" /> Created Date</small><div className="fw-bold">{order.created_at ? new Date(order.created_at).toLocaleString("en-US") : "N/A"}</div></div></Col>
           <Col md={6}><div className="luxury-info-item"><small className="text-muted d-block mb-1">Status</small><div style={{ display: "inline-block" }}><StatusBadge status={order.status} /></div></div></Col>
           <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaRoute className="me-1" /> Service Type</small><div className="fw-bold">{order.service_type_name || "Standard"}</div></div></Col>
+          {agentName && (
+            <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaUserTie className="me-1" /> Assigned Agent</small><div className="fw-bold text-primary">{agentName}</div></div></Col>
+          )}
           <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Pickup Area</small><div className="small fw-semibold">{getArea(order.sender_address || order.senderAddress)}</div></div></Col>
           <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Delivery Area</small><div className="small fw-semibold">{getArea(order.receiver_address || order.receiverAddress)}</div></div></Col>
           {order.weight && (
@@ -694,7 +846,8 @@ export default function Dashboard() {
         setSelectedOrderForAssign(null);
         
         // Refresh orders
-        await fetchOrders();
+        await fetchLatestOrders(currentPage, pageSize);
+        await fetchAllOrdersForCharts();
       } else {
         Swal.fire("Error", data.message || "Cannot assign agent", "error");
       }
@@ -735,7 +888,8 @@ export default function Dashboard() {
         setSelectedOrderForAssign(null);
         
         // Refresh orders
-        await fetchOrders();
+        await fetchLatestOrders(currentPage, pageSize);
+        await fetchAllOrdersForCharts();
       } else {
         Swal.fire("Error", data.message || "Cannot assign shipper", "error");
       }
@@ -760,7 +914,7 @@ export default function Dashboard() {
       cancelled: 0,   // 7
     };
 
-    allOrders.forEach((o) => {
+    allOrdersForCharts.forEach((o) => {
       switch (Number(o.status)) {
         case 1: // BOOKED
           counts.booked++;
@@ -789,7 +943,7 @@ export default function Dashboard() {
     });
 
     return counts;
-  }, [allOrders]);
+  }, [allOrdersForCharts]);
 
   const optionOrderStatusPie = {
     tooltip: { trigger: "item" },
@@ -853,7 +1007,7 @@ export default function Dashboard() {
       d.setDate(today.getDate() - i);
       const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
 
-      const count = allOrders.filter((o) => {
+      const count = allOrdersForCharts.filter((o) => {
         if (!o.created_at) return false;
         const dateStr = o.created_at.slice(0, 10);
         return dateStr === key;
@@ -869,7 +1023,7 @@ export default function Dashboard() {
     }
 
     return { labels, values };
-  }, [allOrders]);
+  }, [allOrdersForCharts]);
 
   const optionOrders7Days = {
     tooltip: { trigger: "axis" },
@@ -1069,8 +1223,9 @@ export default function Dashboard() {
         filterDateFrom={filterDateFrom}
         filterDateTo={filterDateTo}
         searchText={searchText}
-        agents={agents}
+        agents={agentsForFilter}
         shippers={shippers}
+        isDashboardMode={true}
         onStatusChange={setFilterStatus}
         onStatusGroupChange={setFilterStatusGroup}
         onBranchChange={setFilterBranch}
@@ -1107,12 +1262,148 @@ export default function Dashboard() {
         onRowClick={openPanel}
         onViewDetail={openPanel}
         onAssignShipper={(order) => {
-          // Handle assign shipper - sẽ implement modal sau
-          console.log("Assign shipper for order:", order);
-          // TODO: Open assign modal
+          // Redirect to OrderManagement với focusOrderId để highlight và scroll
+          const orderStatus = Number(order.status);
+          const filterState = {
+            focusOrderId: order.id,
+            openAssign: true, // Open assign modal
+            // Optional: Apply filter để hiển thị orders tương tự (nhưng không bắt buộc)
+            // status: orderStatus === 1 ? "1" : orderStatus === 2 ? "2" : "all",
+            // service_type: order.service_type || "all",
+          };
+          
+          navigate("/admin/orders", { state: filterState });
+        }}
+        onAssignAgent={(order) => {
+          // Redirect to OrderManagement với focusOrderId để highlight và scroll
+          const orderStatus = Number(order.status);
+          const filterState = {
+            focusOrderId: order.id,
+            openAssignAgent: true, // Open assign agent modal
+            // Optional: Apply filter để hiển thị orders tương tự (nhưng không bắt buộc)
+            // status: orderStatus === 1 ? "1" : "all",
+            // service_type: order.service_type || "all",
+          };
+          
+          navigate("/admin/orders", { state: filterState });
         }}
         userRole={userRole}
       />
+
+      {/* ===================== PAGINATION UI (Dashboard) ===================== */}
+      <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+        {/* Page size selector */}
+        <div className="d-flex align-items-center mb-2">
+          <span className="me-2 small text-muted">Rows per page:</span>
+          <Form.Select
+            size="sm"
+            style={{ width: "90px" }}
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1); // Reset page when page size changes
+            }}
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+          </Form.Select>
+        </div>
+
+        {/* Pagination controls - Luxury Style */}
+        <div className="d-flex align-items-center gap-3 mb-2">
+          <Button
+            className="luxury-pagination-btn"
+            variant="outline-primary"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            style={{
+              minWidth: "100px",
+              padding: "8px 20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(37, 99, 235, 0.3)",
+              background: currentPage === 1 
+                ? "rgba(0, 0, 0, 0.05)" 
+                : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
+              color: currentPage === 1 ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+              fontWeight: 600,
+              transition: "all 0.3s ease",
+              boxShadow: currentPage === 1 ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage !== 1) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.25))";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.25)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage !== 1) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.15)";
+              }
+            }}
+          >
+            ← Previous
+          </Button>
+
+          <span 
+            className="small"
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              background: "linear-gradient(135deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.08))",
+              border: "1px solid rgba(15, 23, 42, 0.1)",
+              fontWeight: 600,
+              color: "#0b1220",
+            }}
+          >
+            Page <strong style={{ color: "#2563eb" }}>{currentPage}</strong> of <strong style={{ color: "#2563eb" }}>{totalPages || 1}</strong>
+            {totalCount > 0 && (
+              <span className="text-muted ms-2">({totalCount} orders)</span>
+            )}
+          </span>
+
+          <Button
+            className="luxury-pagination-btn"
+            variant="outline-primary"
+            size="sm"
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            style={{
+              minWidth: "100px",
+              padding: "8px 20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(37, 99, 235, 0.3)",
+              background: (currentPage === totalPages || totalPages === 0)
+                ? "rgba(0, 0, 0, 0.05)" 
+                : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
+              color: (currentPage === totalPages || totalPages === 0) ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+              fontWeight: 600,
+              transition: "all 0.3s ease",
+              boxShadow: (currentPage === totalPages || totalPages === 0) ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage !== totalPages && totalPages !== 0) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.25))";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.25)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage !== totalPages && totalPages !== 0) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.15)";
+              }
+            }}
+          >
+            Next →
+          </Button>
+        </div>
+      </div>
 
 
       {/* ================= NOTIFS & LOGS (từ API) ================= */}
@@ -1121,7 +1412,7 @@ export default function Dashboard() {
           <Card className="card-lux">
             <Card.Body>
               <h6 className="fw-bold mb-3 d-flex align-items-center">
-                <FaBell className="me-2 text-warning" style={{ fontSize: "1.1rem" }} />
+                <FaBell className="me-2" style={{ fontSize: "1.1rem", color: "#2563eb" }} />
                 Recent Notifications
               </h6>
               <ListGroup variant="flush">
@@ -1152,19 +1443,41 @@ export default function Dashboard() {
                         timeStr = notif.time;
                       }
                     }
-                    return (
-                      <ListGroup.Item key={idx} className="d-flex align-items-start">
-                        <FaInfoCircle className="me-2 mt-1 text-info" style={{ fontSize: "0.85rem", flexShrink: 0 }} />
-                        <div className="flex-grow-1">
-                          <div className="small">{notif.message || notif.event}</div>
-                          {timeStr && (
-                            <div className="text-muted" style={{ fontSize: "0.75rem", marginTop: "2px" }}>
-                              {timeStr}
-                            </div>
-                          )}
-                        </div>
-                      </ListGroup.Item>
-                    );
+                      const handleNotificationClick = () => {
+                        if (notif.orderId) {
+                          // Navigate to OrderManagement with highlight
+                          navigate("/admin/orders", {
+                            state: {
+                              focusOrderId: parseInt(notif.orderId),
+                              source: "notification",
+                            },
+                          });
+                        }
+                      };
+                      
+                      return (
+                        <ListGroup.Item 
+                          key={idx} 
+                          className={`d-flex align-items-start ${notif.orderId ? 'cursor-pointer' : ''}`}
+                          style={{ cursor: notif.orderId ? "pointer" : "default" }}
+                          onClick={handleNotificationClick}
+                        >
+                          <FaInfoCircle className="me-2 mt-1" style={{ fontSize: "0.85rem", flexShrink: 0, color: "#2563eb" }} />
+                          <div className="flex-grow-1">
+                            <div className="small">{notif.message || notif.event}</div>
+                            {timeStr && (
+                              <div className="text-muted" style={{ fontSize: "0.75rem", marginTop: "2px" }}>
+                                {timeStr}
+                              </div>
+                            )}
+                            {notif.orderId && (
+                              <div className="text-primary small mt-1" style={{ fontSize: "0.7rem" }}>
+                                Click to view order
+                              </div>
+                            )}
+                          </div>
+                        </ListGroup.Item>
+                      );
                   })
                 ) : (
                   <ListGroup.Item className="text-muted">
@@ -1180,47 +1493,50 @@ export default function Dashboard() {
           <Card className="card-lux">
             <Card.Body>
               <h6 className="fw-bold mb-3 d-flex align-items-center">
-                <FaHistory className="me-2 text-primary" style={{ fontSize: "1.1rem" }} />
+                <FaHistory className="me-2" style={{ fontSize: "1.1rem", color: "#2563eb" }} />
                 Business Logs
               </h6>
               <ListGroup variant="flush">
                 {businessLogs.length > 0 ? (
-                  businessLogs.map((log, idx) => {
-                    // Parse time từ format [2025-12-13 17:29:30]
-                    let timeStr = "";
-                    if (log.time) {
-                      try {
-                        const date = new Date(log.time.replace(/\[|\]/g, ""));
-                        if (!isNaN(date.getTime())) {
-                          timeStr = date.toLocaleString("vi-VN", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          });
-                        } else {
-                          // Fallback: parse format [YYYY-MM-DD HH:MM:SS]
-                          const match = log.time.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})/);
-                          if (match) {
-                            const [datePart, timePart] = match.slice(1);
-                            const [hour, minute] = timePart.split(":");
-                            timeStr = `${datePart.split("-").reverse().join("/")} ${hour}:${minute}`;
-                          }
-                        }
-                      } catch (e) {
-                        timeStr = log.time;
+                  businessLogs.map((warning, idx) => {
+                    const handleClick = () => {
+                      if (warning.order_id) {
+                        // Navigate to OrderManagement with filter and highlight
+                        navigate("/admin/orders", {
+                          state: {
+                            focusOrderId: warning.order_id,
+                            openAssign: warning.type === "approved_no_shipper",
+                            openAssignAgent: warning.type === "booked_no_agent",
+                          },
+                        });
+                      } else if (warning.shipper_id) {
+                        // Navigate to OrderManagement with shipper filter
+                        navigate("/admin/orders", {
+                          state: {
+                            filterShipper: warning.shipper_id,
+                          },
+                        });
                       }
-                    }
+                    };
+                    
                     return (
-                      <ListGroup.Item key={idx} className="text-danger d-flex align-items-start">
-                        <FaExclamationTriangle className="me-2 mt-1" style={{ fontSize: "0.85rem", flexShrink: 0 }} />
+                      <ListGroup.Item 
+                        key={idx} 
+                        className="d-flex align-items-start"
+                        style={{ 
+                          cursor: (warning.order_id || warning.shipper_id) ? "pointer" : "default",
+                          color: "#1e40af"
+                        }}
+                        onClick={handleClick}
+                      >
+                        <FaExclamationTriangle className="me-2 mt-1" style={{ fontSize: "0.85rem", flexShrink: 0, color: "#2563eb" }} />
                         <div className="flex-grow-1">
-                          <div className="small">
-                            <span className="fw-semibold">[WARNING]</span> {log.businessMessage}
+                          <div style={{ fontSize: "0.85rem", lineHeight: "1.4", color: "#1e40af" }}>
+                            <span className="fw-semibold">⚠️</span> {warning.message}
                           </div>
-                          {timeStr && (
-                            <div className="text-muted" style={{ fontSize: "0.75rem", marginTop: "2px" }}>
-                              {timeStr}
+                          {(warning.order_id || warning.shipper_id) && (
+                            <div className="text-muted small mt-1" style={{ fontSize: "0.7rem" }}>
+                              Click to view details
                             </div>
                           )}
                         </div>
@@ -1228,8 +1544,12 @@ export default function Dashboard() {
                     );
                   })
                 ) : (
-                  <ListGroup.Item className="text-muted">
-                    No business warnings
+                  <ListGroup.Item className="text-success text-center py-3">
+                    <div className="d-flex flex-column align-items-center">
+                      <FaCheckCircle className="mb-2" style={{ fontSize: "1.5rem", color: "#28a745" }} />
+                      <div className="fw-semibold">✅ No operational issues detected</div>
+                      <div className="text-muted small mt-1">System is operating normally</div>
+                    </div>
                   </ListGroup.Item>
                 )}
               </ListGroup>
@@ -1281,11 +1601,39 @@ export default function Dashboard() {
                   </Form.Label>
                   <Form.Select 
                     value={assignAgentData.order_id} 
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const orderId = e.target.value;
                       setAssignAgentData({ ...assignAgentData, order_id: orderId });
-                      const order = ordersForAgentAssignment.find(o => String(o.id) === orderId);
-                      setSelectedOrderForAssign(order || null);
+                      
+                      if (orderId) {
+                        // Fetch full order detail from API
+                        try {
+                          const res = await fetch(`http://localhost:8888/api/admin/get_order_detail.php?order_id=${orderId}`, {
+                            credentials: "include",
+                          });
+                          if (res.ok) {
+                            const json = await res.json();
+                            if (json.status === "success" && json.data) {
+                              setSelectedOrderForAssign(json.data);
+                            } else {
+                              // Fallback to local order data
+                              const order = ordersForAgentAssignment.find(o => String(o.id) === orderId);
+                              setSelectedOrderForAssign(order || null);
+                            }
+                          } else {
+                            // Fallback to local order data
+                            const order = ordersForAgentAssignment.find(o => String(o.id) === orderId);
+                            setSelectedOrderForAssign(order || null);
+                          }
+                        } catch (err) {
+                          console.error("Error fetching order detail:", err);
+                          // Fallback to local order data
+                          const order = ordersForAgentAssignment.find(o => String(o.id) === orderId);
+                          setSelectedOrderForAssign(order || null);
+                        }
+                      } else {
+                        setSelectedOrderForAssign(null);
+                      }
                     }} 
                     size="lg" 
                     className="luxury-select"
@@ -1433,11 +1781,39 @@ export default function Dashboard() {
                   </Form.Label>
                   <Form.Select 
                     value={assignShipperData.order_id} 
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const orderId = e.target.value;
                       setAssignShipperData({ ...assignShipperData, order_id: orderId });
-                      const order = ordersForShipperAssignment.find(o => String(o.id) === orderId);
-                      setSelectedOrderForAssign(order || null);
+                      
+                      if (orderId) {
+                        // Fetch full order detail from API
+                        try {
+                          const res = await fetch(`http://localhost:8888/api/admin/get_order_detail.php?order_id=${orderId}`, {
+                            credentials: "include",
+                          });
+                          if (res.ok) {
+                            const json = await res.json();
+                            if (json.status === "success" && json.data) {
+                              setSelectedOrderForAssign(json.data);
+                            } else {
+                              // Fallback to local order data
+                              const order = ordersForShipperAssignment.find(o => String(o.id) === orderId);
+                              setSelectedOrderForAssign(order || null);
+                            }
+                          } else {
+                            // Fallback to local order data
+                            const order = ordersForShipperAssignment.find(o => String(o.id) === orderId);
+                            setSelectedOrderForAssign(order || null);
+                          }
+                        } catch (err) {
+                          console.error("Error fetching order detail:", err);
+                          // Fallback to local order data
+                          const order = ordersForShipperAssignment.find(o => String(o.id) === orderId);
+                          setSelectedOrderForAssign(order || null);
+                        }
+                      } else {
+                        setSelectedOrderForAssign(null);
+                      }
                     }} 
                     size="lg" 
                     className="luxury-select"

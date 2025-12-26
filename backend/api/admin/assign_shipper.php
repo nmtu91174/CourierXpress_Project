@@ -21,6 +21,7 @@ require_once __DIR__ . "/../../core/Response.php";
 require_once __DIR__ . "/../../middleware/require_login.php";
 require_once __DIR__ . "/../../middleware/require_role.php";
 require_once __DIR__ . "/../../services/OrderService.php";
+require_once __DIR__ . "/../../services/NotificationService.php";
 
 // ==========================
 // AUTH
@@ -48,9 +49,30 @@ if ($orderId <= 0 || $shipperId <= 0) {
 // ASSIGN SHIPPER
 // ==========================
 try {
+    // Get order info before assignment
+    $getOrder = $conn->prepare("SELECT order_code, customer_id FROM orders WHERE id = ?");
+    $getOrder->bind_param("i", $orderId);
+    $getOrder->execute();
+    $orderResult = $getOrder->get_result();
+    $orderData = $orderResult->fetch_assoc();
+    $getOrder->close();
+
+    if (!$orderData) {
+        Response::error("Order not found");
+    }
+
+    $orderCode = $orderData["order_code"];
+    $customerId = (int)$orderData["customer_id"];
+
     $service = new OrderService($conn);
     // Gọi với role gốc, OrderService sẽ tự xử lý convert 'admin' -> 'system' trong logHistory
     $service->assignShipper($orderId, $shipperId, $actorId, $role, $note);
+
+    // ==========================
+    // CREATE NOTIFICATIONS (RBAC)
+    // ==========================
+    $notificationService = new NotificationService($conn);
+    $notificationService->emit('shipper_assigned', $orderId, $actorId, $role);
 
     Response::success("Phân công shipper thành công");
 

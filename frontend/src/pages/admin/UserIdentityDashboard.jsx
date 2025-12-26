@@ -28,19 +28,14 @@ export default function UserIdentityDashboard() {
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
-  // Check authentication (for admin/agent context)
+  // Check authentication (supports all roles now)
   useEffect(() => {
     const currentUser = JSON.parse(localStorage.getItem("user") || "null");
     if (!currentUser) {
       navigate("/login", { replace: true });
       return;
     }
-    // Ensure user is admin or agent (should be handled by ProtectedRoute, but double-check)
-    const role = currentUser.role?.toLowerCase();
-    if (role !== "admin" && role !== "agent") {
-      navigate("/user/profile", { replace: true });
-      return;
-    }
+    // Role-based routing handled by ProtectedRoute
   }, [navigate]);
 
   // Get current user ID from localStorage
@@ -49,6 +44,9 @@ export default function UserIdentityDashboard() {
 
   // Use profile hook
   const { user, loading, error, updateProfile, refresh } = useUserProfile(userId);
+  
+  // Get user role for CSS targeting (use user from hook if available, otherwise fallback to localStorage)
+  const userRole = user?.role?.toLowerCase() || currentUser?.role?.toLowerCase() || "";
 
   // Load stats from real API (role-based)
   useEffect(() => {
@@ -115,8 +113,8 @@ export default function UserIdentityDashboard() {
             setStatsLoading(false);
           });
       }
-      // Customer/User: Fetch orders created by this user
-      else {
+      // Customer: Fetch orders created by this user
+      else if (role === "customer") {
         fetch(`http://localhost:8888/api/admin/get_orders.php?page=1&limit=1000&customer_id=${user.id}`, {
           method: "GET",
           credentials: "include",
@@ -139,8 +137,42 @@ export default function UserIdentityDashboard() {
             }
           })
           .catch((err) => {
-            console.error("Failed to load user stats:", err);
+            console.error("Failed to load customer stats:", err);
             setStats({ total_orders: 0, in_transit: 0, delivered: 0, failed: 0 });
+          })
+          .finally(() => {
+            setStatsLoading(false);
+          });
+      }
+      // Shipper: Fetch orders assigned to this shipper
+      else if (role === "shipper") {
+        fetch(`http://localhost:8888/api/admin/get_orders.php?page=1&limit=1000&shipper_id=${user.id}`, {
+          method: "GET",
+          credentials: "include",
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.status === "success") {
+              const orders = data.data?.items || data.data || [];
+              const total = orders.length;
+              const inTransit = orders.filter((o) => [3, 4].includes(Number(o.status))).length;
+              const delivered = orders.filter((o) => Number(o.status) === 5).length;
+              const failed = orders.filter((o) => Number(o.status) === 6).length;
+              
+              const successRate = total > 0 ? ((delivered / total) * 100).toFixed(1) + "%" : "0%";
+              
+              setStats({
+                total_orders: total,
+                in_transit: inTransit,
+                delivered: delivered,
+                failed: failed,
+                success_rate: successRate,
+              });
+            }
+          })
+          .catch((err) => {
+            console.error("Failed to load shipper stats:", err);
+            setStats({ total_orders: 0, in_transit: 0, delivered: 0, failed: 0, success_rate: "0%" });
           })
           .finally(() => {
             setStatsLoading(false);
@@ -236,7 +268,7 @@ export default function UserIdentityDashboard() {
   };
 
   return (
-    <div className="user-identity-dashboard admin-page">
+    <div className="user-identity-dashboard admin-page" data-role={userRole}>
       <div className="dashboard-container">
         {/* Error Alert */}
         {error && (

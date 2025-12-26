@@ -1,6 +1,6 @@
 <?php
-// backend/api/admin/dashboard_latest_orders.php
-// Dashboard – Recent Orders (Snapshot only)
+// backend/api/admin/get_quick_assign_orders.php
+// API riêng cho Quick Assign Modal - Fetch TẤT CẢ orders booked/approved (KHÔNG pagination)
 
 // CORS Headers
 require_once __DIR__ . "/../../core/Cors.php";
@@ -37,19 +37,34 @@ require_once __DIR__ . "/../../middleware/require_role.php";
 // AUTH
 // ==========================
 require_login();
-require_role(["admin"]); // Dashboard chỉ cho admin
+require_role(["admin"]); // Chỉ admin mới có quyền assign
 
 // ==========================
-// GET PARAMETERS (Pagination)
+// GET PARAMETERS
 // ==========================
-$page = max(1, (int)($_GET["page"] ?? 1));
-$limit = max(1, min(20, (int)($_GET["limit"] ?? 10))); // Default 10, max 20
-$offset = ($page - 1) * $limit;
+$type = $_GET["type"] ?? "all"; // "booked", "approved", "all"
 
 // ==========================
-// QUERY – LẤY ĐƠN CẦN HÀNH ĐỘNG (booked + approved)
-// Dashboard chỉ hiển thị orders cần xử lý
+// QUERY – LẤY TẤT CẢ ORDERS (KHÔNG PAGINATION)
 // ==========================
+$whereConditions = [];
+$params = [];
+$types = "";
+
+if ($type === "booked") {
+    // Chỉ lấy orders booked (status = 1)
+    $whereConditions[] = "o.status = 1";
+} elseif ($type === "approved") {
+    // Chỉ lấy orders approved (status = 2) và đã có agent
+    $whereConditions[] = "o.status = 2";
+    $whereConditions[] = "o.agent_id IS NOT NULL AND o.agent_id != 0";
+} else {
+    // Lấy cả booked và approved
+    $whereConditions[] = "o.status IN (1, 2)";
+}
+
+$whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+
 $sql = "
     SELECT 
         o.id,
@@ -65,11 +80,23 @@ $sql = "
         o.agent_id,
         o.shipper_id,
         o.service_type,
-        o.total_shipping_fee
+        o.total_shipping_fee,
+        o.cod_amount,
+        o.weight,
+        o.length,
+        o.width,
+        o.height,
+        o.notes,
+        o.payment_method_id,
+        pm.name AS payment_method_name,
+        st.name AS service_type_name,
+        u_agent.name AS agent_name
     FROM orders o
-    WHERE o.status IN (1, 2)  -- CHỈ booked (1) và approved (2)
+    LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id
+    LEFT JOIN service_types st ON o.service_type = st.id
+    LEFT JOIN users u_agent ON o.agent_id = u_agent.id
+    " . $whereClause . "
     ORDER BY o.updated_at DESC, o.created_at DESC
-    LIMIT ? OFFSET ?
 ";
 
 $stmt = $conn->prepare($sql);
@@ -77,7 +104,10 @@ if (!$stmt) {
     Response::serverError("Database query error: " . $conn->error);
 }
 
-$stmt->bind_param("ii", $limit, $offset);
+if (!empty($params)) {
+    $stmt->bind_param($types, ...$params);
+}
+
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -90,36 +120,31 @@ if ($result) {
         $row["shipper_id"] = $row["shipper_id"] ? (int)$row["shipper_id"] : null;
         $row["service_type"] = $row["service_type"] ? (int)$row["service_type"] : null;
         $row["total_shipping_fee"] = (float)($row["total_shipping_fee"] ?? 0);
+        $row["cod_amount"] = (float)($row["cod_amount"] ?? 0);
+        $row["weight"] = $row["weight"] ? (int)$row["weight"] : null; // weight is INT in DB
+        $row["length"] = $row["length"] ? (float)$row["length"] : null;
+        $row["width"] = $row["width"] ? (float)$row["width"] : null;
+        $row["height"] = $row["height"] ? (float)$row["height"] : null;
+        $row["notes"] = $row["notes"] ?? null; // notes field
         $row["created_at"] = date("Y-m-d H:i:s", strtotime($row["created_at"]));
         $orders[] = $row;
     }
+} else {
+    error_log("get_quick_assign_orders.php: Query returned no result");
 }
 $stmt->close();
 
 // ==========================
-// COUNT TOTAL (for pagination)
-// ==========================
-$countSql = "SELECT COUNT(*) AS total FROM orders WHERE status IN (1, 2)";
-$countResult = $conn->query($countSql);
-$totalCount = 0;
-if ($countResult) {
-    $countRow = $countResult->fetch_assoc();
-    $totalCount = (int)($countRow["total"] ?? 0);
-}
-
-$totalPages = $limit > 0 ? ceil($totalCount / $limit) : 1;
-
-// ==========================
 // RESPONSE
 // ==========================
-Response::success("Dashboard orders loaded", [
+// Log for debugging
+error_log("get_quick_assign_orders.php: type=$type, found " . count($orders) . " orders");
+
+Response::success("Quick assign orders loaded", [
     "items" => $orders,
-    "pagination" => [
-        "page" => $page,
-        "limit" => $limit,
-        "total" => $totalCount,
-        "totalPages" => $totalPages,
-    ],
+    "total" => count($orders),
+    "type" => $type
 ]);
 
 $conn->close();
+

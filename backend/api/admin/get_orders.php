@@ -42,7 +42,8 @@ $role   = $GLOBALS['auth_user']['role'];
 // PAGINATION
 // ==========================
 $page  = max(1, (int)($_GET["page"]  ?? 1));
-$limit = min(100, max(1, (int)($_GET["limit"] ?? 10)));
+// Increase max limit to 10000 for OrderManagement to fetch all orders
+$limit = min(10000, max(1, (int)($_GET["limit"] ?? 10)));
 $offset = ($page - 1) * $limit;
 
 // ==========================
@@ -263,6 +264,11 @@ $sqlList = "
         o.previous_status,
         o.cancelled_at,
         o.cancelled_by,
+        o.failed_at,
+        o.failed_by,
+        o.failed_issue_id,
+        o.failed_reason,
+        o.is_locked,
         o.weight,
         o.service_type,
         inv.invoice_number,
@@ -279,7 +285,7 @@ $sqlList = "
     LEFT JOIN users u_shipper ON o.shipper_id = u_shipper.id
     LEFT JOIN service_types st ON o.service_type = st.id
     " . $whereClause . "
-    ORDER BY o.created_at DESC
+    ORDER BY o.updated_at DESC, o.created_at DESC
     LIMIT ? OFFSET ?
 ";
 

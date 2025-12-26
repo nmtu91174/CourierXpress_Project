@@ -20,6 +20,8 @@ export default function UserMenu({ user = null }) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -91,7 +93,12 @@ export default function UserMenu({ user = null }) {
       navigate("/admin/profile");
     } else if (role === "agent") {
       navigate("/agent/profile");
+    } else if (role === "shipper") {
+      navigate("/shipper/profile");
+    } else if (role === "customer") {
+      navigate("/customer/profile");
     } else {
+      // default fallback
       navigate("/user/profile");
     }
   };
@@ -104,7 +111,12 @@ export default function UserMenu({ user = null }) {
       navigate("/admin/account-settings");
     } else if (role === "agent") {
       navigate("/agent/account-settings");
+    } else if (role === "shipper") {
+      navigate("/shipper/account-settings");
+    } else if (role === "customer") {
+      navigate("/customer/account-settings");
     } else {
+      // default fallback
       navigate("/user/account-settings");
     }
   };
@@ -132,8 +144,35 @@ export default function UserMenu({ user = null }) {
     return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
-  // Notification count (placeholder - will be connected to real notifications later)
-  const notificationCount = 0; // TODO: Connect to notification system
+  // Fetch notification counts (unread and total) for badges
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchNotificationCounts = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8888/api/users/get_notification_count.php`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
+        const result = await response.json();
+        if (result.status === "success") {
+          setUnreadCount(result.data.unread_count || 0);
+          setTotalCount(result.data.total_count || 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch notification counts:", error);
+      }
+    };
+
+    fetchNotificationCounts();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchNotificationCounts, 30000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   return (
     <>
@@ -196,6 +235,10 @@ export default function UserMenu({ user = null }) {
                   navigate("/admin/notifications");
                 } else if (role === "agent") {
                   navigate("/agent/notifications");
+                } else if (role === "shipper") {
+                  navigate("/shipper/notifications");
+                } else if (role === "customer") {
+                  navigate("/customer/notifications");
                 } else {
                   navigate("/user/notifications");
                 }
@@ -203,13 +246,13 @@ export default function UserMenu({ user = null }) {
             >
               <div className="user-menu-item-icon">
                 <FaBell />
-                {notificationCount > 0 && (
-                  <span className="notification-badge">{notificationCount}</span>
+                {unreadCount > 0 && (
+                  <span className="notification-badge notification-badge-red">{unreadCount > 99 ? '99+' : unreadCount}</span>
                 )}
               </div>
               <span className="user-menu-item-text">Notifications</span>
-              {notificationCount > 0 && (
-                <span className="user-menu-item-badge">{notificationCount}</span>
+              {totalCount > 0 && (
+                <span className="notification-badge notification-badge-blue">{totalCount > 99 ? '99+' : totalCount}</span>
               )}
             </button>
 

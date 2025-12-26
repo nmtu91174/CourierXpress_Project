@@ -44,6 +44,7 @@ require_once __DIR__ . "/../../db.php";
 require_once __DIR__ . "/../../core/Response.php";
 require_once __DIR__ . "/../../middleware/require_login.php";
 require_once __DIR__ . "/../../middleware/require_role.php";
+require_once __DIR__ . "/../../services/NotificationService.php";
 
 // ==========================
 // AUTH
@@ -77,7 +78,7 @@ if (!isset($_FILES["image"]) || $_FILES["image"]["error"] !== UPLOAD_ERR_OK) {
 // CHECK ORDER
 // ==========================
 $orderStmt = $conn->prepare("
-    SELECT id, shipper_id, status, weight, total_amount
+    SELECT id, shipper_id, status, weight, total_amount, order_code, customer_id
     FROM orders
     WHERE id = ?
 ");
@@ -193,6 +194,12 @@ try {
     $hisStmt->close();
 
     $conn->commit();
+
+    // ==========================
+    // CREATE NOTIFICATIONS (RBAC)
+    // ==========================
+    $notificationService = new NotificationService($conn);
+    $notificationService->emit('shipper_pickup', $orderId, $shipperId, 'shipper');
 
     Response::success("Xác nhận lấy hàng thành công", [
         "order_id" => $orderId,

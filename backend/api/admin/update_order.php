@@ -21,6 +21,7 @@ require_once __DIR__ . "/../../core/Response.php";
 require_once __DIR__ . "/../../middleware/require_login.php";
 require_once __DIR__ . "/../../middleware/require_role.php";
 require_once __DIR__ . "/../../services/OrderService.php";
+require_once __DIR__ . "/../../services/NotificationService.php";
 
 // ==========================
 // AUTH
@@ -55,6 +56,22 @@ if ($role === "customer" && $newStatus !== null) {
 // UPDATE
 // ==========================
 try {
+    // Get current order info before update
+    $getOrder = $conn->prepare("SELECT status, order_code, customer_id FROM orders WHERE id = ?");
+    $getOrder->bind_param("i", $orderId);
+    $getOrder->execute();
+    $orderResult = $getOrder->get_result();
+    $orderData = $orderResult->fetch_assoc();
+    $getOrder->close();
+
+    if (!$orderData) {
+        Response::error("Order not found");
+    }
+
+    $oldStatus = (int)$orderData["status"];
+    $orderCode = $orderData["order_code"];
+    $customerId = (int)$orderData["customer_id"];
+
     $service = new OrderService($conn);
 
     // 👉 Update status (workflow)
@@ -66,6 +83,18 @@ try {
             $role,
             $note
         );
+        
+        // ==========================
+        // CREATE NOTIFICATIONS FOR STATUS CHANGES (RBAC)
+        // ==========================
+        if ($newStatus !== $oldStatus) {
+            $notificationService = new NotificationService($conn);
+            
+            // Status 1 -> 2: Order Approved
+            if ($oldStatus === 1 && $newStatus === 2) {
+                $notificationService->emit('agent_approved', $orderId, $userId, $role);
+            }
+        }
     }
 
     Response::success("Cập nhật đơn hàng thành công");

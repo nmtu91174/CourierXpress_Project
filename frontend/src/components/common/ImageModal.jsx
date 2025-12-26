@@ -1,6 +1,7 @@
 // frontend/src/components/common/ImageModal.jsx
 import React, { useState, useEffect } from "react";
 import { FaTimes, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import StatusBadge from "./StatusBadge";
 import "../../assets/styles/imageModal.css";
 
 /**
@@ -77,6 +78,21 @@ export default function ImageModal({
   const currentImage = images[currentIndex];
   const imageUrl = getImageUrl(currentImage?.image_url);
 
+  // Get status for badge based on image type
+  const getImageTypeStatus = (imageType) => {
+    if (!imageType) return null;
+    // Map image type to order status for StatusBadge
+    // pickup -> status 4 (IN_PROGRESS / PICKED_UP)
+    // delivery -> status 5 (DELIVERED)
+    // delivery_failed -> status 6 (FAILED)
+    if (imageType === "pickup") return 4; // IN_PROGRESS / PICKED_UP
+    if (imageType === "delivery") return 5; // DELIVERED
+    if (imageType === "delivery_failed") return 6; // FAILED
+    return null; // unknown -> no status badge
+  };
+
+  const imageStatus = getImageTypeStatus(currentImage?.type);
+
   return (
     <>
       {/* Overlay */}
@@ -86,11 +102,9 @@ export default function ImageModal({
       <div className="image-modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="image-modal-header">
-          <div className="image-modal-title">
-            {currentImage?.type && (
-              <span className="image-type-badge">
-                {currentImage.type === "pickup" ? "Pickup" : "Delivery"}
-              </span>
+          <div className="image-modal-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {imageStatus !== null && (
+              <StatusBadge status={imageStatus} />
             )}
             <span>
               Image {currentIndex + 1} of {images.length}

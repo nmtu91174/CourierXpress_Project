@@ -22,14 +22,13 @@ export default function AgentsManagement() {
   const [kpiStats, setKpiStats] = useState({
     total_agents: 0,
     active_agents: 0,
-    total_pending_approvals: 0, // Changed from pending_agents (agent status doesn't have 'pending')
+    unassigned_orders: 0,
     inactive_agents: 0,
   });
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterWorkload, setFilterWorkload] = useState("all");
-  const [filterApproval, setFilterApproval] = useState("all");
 
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
@@ -53,7 +52,6 @@ export default function AgentsManagement() {
       const params = new URLSearchParams();
       if (filterStatus !== "all") params.append("status", filterStatus);
       if (filterWorkload !== "all") params.append("workload", filterWorkload);
-      if (filterApproval !== "all") params.append("approval", filterApproval);
       if (search.trim()) params.append("search", search.trim());
 
       const res = await fetch(`http://localhost:8888/api/admin/get_agents_with_kpi.php?${params.toString()}`, {
@@ -97,7 +95,7 @@ export default function AgentsManagement() {
 
   useEffect(() => {
     fetchAgents();
-  }, [filterStatus, filterWorkload, filterApproval, search]);
+  }, [filterStatus, filterWorkload, search]);
 
   // GSAP Animation - Only run once on mount (like OrderManagement)
   useEffect(() => {
@@ -283,7 +281,7 @@ export default function AgentsManagement() {
   };
 
   return (
-    <div className="admin-page agents-management-page">
+    <div className="admin-page container-fluid p-0 agents-management-page">
       {/* HEADER */}
       <div className="page-header">
         <h3 className="fw-bold m-0">Agent Management</h3>
@@ -330,8 +328,8 @@ export default function AgentsManagement() {
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <p className="m-0 opacity-75 small">Total Pending Approvals</p>
-                  <h2 className="fw-bold my-1">{kpiStats.total_pending_approvals}</h2>
+                  <p className="m-0 opacity-75 small">Unassigned Orders</p>
+                  <h2 className="fw-bold my-1">{kpiStats.unassigned_orders}</h2>
                 </div>
                 <FaExclamationTriangle className="fs-1 opacity-50" />
               </div>
@@ -384,19 +382,7 @@ export default function AgentsManagement() {
                 <option value="overloaded">Overloaded (≥5 orders)</option>
               </Form.Select>
             </Col>
-            <Col md={3}>
-              <Form.Label className="small fw-bold">Approval</Form.Label>
-              <Form.Select 
-                size="sm" 
-                value={filterApproval} 
-                onChange={(e) => setFilterApproval(e.target.value)}
-              >
-                <option value="all">All</option>
-                <option value="has_pending">Has Pending Orders</option>
-                <option value="no_pending">No Pending</option>
-              </Form.Select>
-            </Col>
-            <Col md={3}>
+            <Col md={4}>
               <Form.Label className="small fw-bold">Search</Form.Label>
               <div className="d-flex gap-2">
                 <Form.Control
@@ -422,16 +408,15 @@ export default function AgentsManagement() {
           <Table hover responsive className="lux-table align-middle">
             <thead>
               <tr>
-                <th>Agent</th>
-                <th>Phone</th>
-                <th>Status</th>
-                <th className="text-center">Total Orders</th>
-                <th className="text-center">In Progress</th>
-                <th className="text-center">Completed</th>
-                <th className="text-center">Failed</th>
-                <th className="text-center">Pending</th>
-                <th>Created Date</th>
-                <th className="text-center">Actions</th>
+                <th style={{ minWidth: '200px' }}>Agent</th>
+                <th style={{ minWidth: '120px' }}>Phone</th>
+                <th style={{ minWidth: '100px' }}>Status</th>
+                <th className="text-center" style={{ minWidth: '120px' }}>Total Orders</th>
+                <th className="text-center" style={{ minWidth: '130px' }}>In Progress</th>
+                <th className="text-center" style={{ minWidth: '120px' }}>Completed</th>
+                <th className="text-center" style={{ minWidth: '100px' }}>Failed</th>
+                <th style={{ minWidth: '150px' }}>Created Date</th>
+                <th className="text-center" style={{ minWidth: '130px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -457,16 +442,6 @@ export default function AgentsManagement() {
                     </td>
                     <td className="text-center" data-label="Failed">
                       <Badge bg="danger">{agent.failed_orders}</Badge>
-                    </td>
-                    <td className="text-center" data-label="Pending">
-                      {agent.pending_approvals > 0 ? (
-                        <Badge bg="warning" text="dark">
-                          <FaExclamationTriangle className="me-1" />
-                          {agent.pending_approvals}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted">0</span>
-                      )}
                     </td>
                     <td data-label="Created">{formatDate(agent.created_at)}</td>
                     <td data-label="Actions">
@@ -504,7 +479,7 @@ export default function AgentsManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={10} className="text-center text-muted py-4">
+                  <td colSpan={9} className="text-center text-muted py-4">
                     No agents found
                   </td>
                 </tr>
@@ -799,14 +774,6 @@ export default function AgentsManagement() {
       </Card>
                     </Col>
                   </Row>
-                  {selectedAgent.pending_approvals > 0 && (
-                    <div className="mt-3">
-                      <Badge bg="warning" text="dark" className="p-2">
-                        <FaClock className="me-2" />
-                        {selectedAgent.pending_approvals} orders pending approval
-                      </Badge>
-                    </div>
-                  )}
                 </Col>
               </Row>
             </div>

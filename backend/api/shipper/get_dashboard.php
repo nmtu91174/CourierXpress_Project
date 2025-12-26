@@ -90,7 +90,7 @@ try {
         FROM orders
         WHERE shipper_id = ?
           AND status = 3
-        ORDER BY created_at DESC
+        ORDER BY updated_at DESC, created_at DESC
         LIMIT 5
     ";
 
@@ -123,7 +123,7 @@ try {
         FROM orders
         WHERE shipper_id = ?
           AND status = 4
-        ORDER BY created_at DESC
+        ORDER BY updated_at DESC, created_at DESC
         LIMIT 10
     ";
 
@@ -151,11 +151,12 @@ try {
             receiver_name,
             receiver_address,
             status,
-            shipper_id
+            shipper_id,
+            created_at
         FROM orders
         WHERE shipper_id = ?
           AND status = 5
-        ORDER BY created_at DESC
+        ORDER BY updated_at DESC, created_at DESC
         LIMIT 10
     ";
 
@@ -174,13 +175,51 @@ try {
     }
 
     // =====================================================
-    // 5️⃣ RESPONSE (KHỚP 100% FRONTEND)
+    // 5️⃣ FAILED ORDERS (STATUS = 6)
+    // =====================================================
+    $sqlFailed = "
+        SELECT
+            id,
+            order_code,
+            receiver_name,
+            receiver_address,
+            receiver_phone,
+            sender_address,
+            status,
+            shipper_id,
+            failed_at,
+            failed_reason,
+            created_at
+        FROM orders
+        WHERE shipper_id = ?
+          AND status = 6
+        ORDER BY failed_at DESC, created_at DESC
+        LIMIT 50
+    ";
+
+    $stmtFailed = $conn->prepare($sqlFailed);
+    $stmtFailed->bind_param("i", $shipperId);
+    $stmtFailed->execute();
+    $failedOrdersRaw = $stmtFailed->get_result()->fetch_all(MYSQLI_ASSOC);
+    
+    // Ensure shipper_id is integer
+    $failedOrders = [];
+    foreach ($failedOrdersRaw as $order) {
+        $order["id"] = (int)$order["id"];
+        $order["status"] = (int)$order["status"];
+        $order["shipper_id"] = (int)$order["shipper_id"];
+        $failedOrders[] = $order;
+    }
+
+    // =====================================================
+    // 6️⃣ RESPONSE (KHỚP 100% FRONTEND)
     // =====================================================
     Response::success("Dashboard data fetched", [
         "stats"            => $stats,
         "waiting_orders"   => $waitingOrders,
         "active_orders"    => $activeOrders,
-        "completed_orders" => $completedOrders
+        "completed_orders" => $completedOrders,
+        "failed_orders"    => $failedOrders
     ]);
 } catch (Exception $e) {
     error_log("GET_DASHBOARD_ERROR: " . $e->getMessage());

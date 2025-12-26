@@ -1,7 +1,8 @@
 // frontend/src/pages/agent/MyOrders.jsx
 // My Orders - Task Execution View (Agent's personal orders only)
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card, Row, Col, Button, Form } from "react-bootstrap";
 import Swal from "sweetalert2";
 import {
@@ -49,6 +50,18 @@ export default function MyOrders() {
   // Filter state (simplified for My Orders)
   const [searchText, setSearchText] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // =============================
+  // PAGINATION STATE
+  // =============================
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // =============================
+  // NAVIGATION STATE
+  // =============================
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // =============================
   // 3. FETCH ORDERS (Only orders assigned to current agent)
@@ -218,6 +231,24 @@ export default function MyOrders() {
   }, [allOrders, filterStatus, searchText]);
 
   // =============================
+  // PAGINATED ORDERS
+  // =============================
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, searchText]);
+
+  // Calculate paginated orders
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredOrders.slice(startIndex, endIndex);
+  }, [filteredOrders, currentPage, pageSize]);
+
+  // Total pages for pagination
+  const totalPages = Math.ceil(filteredOrders.length / pageSize);
+
+  // =============================
   // 5. DETAIL PANEL
   // =============================
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -229,6 +260,125 @@ export default function MyOrders() {
   };
 
   const closePanel = () => setShowPanel(false);
+
+  // =============================
+  // 5.1. SCROLL NAVIGATE STATE (for notification redirect)
+  // =============================
+  const [focusedOrderId, setFocusedOrderId] = useState(null);
+  const [navigationIntent, setNavigationIntent] = useState(null);
+  const processedRedirectRef = useRef(false);
+
+  // =============================
+  // 5.2. STEP 1: RECEIVE NAVIGATION INTENT (query param ?highlight=order_id)
+  // =============================
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const highlightOrderId = searchParams.get('highlight');
+    
+    if (highlightOrderId && !processedRedirectRef.current) {
+      const targetOrderId = Number(highlightOrderId);
+      processedRedirectRef.current = true;
+      
+      // Save navigation intent to state
+      setNavigationIntent({
+        orderId: targetOrderId,
+      });
+      
+      // Set focused order ID for highlighting
+      setFocusedOrderId(targetOrderId);
+      
+      // Clean up URL immediately
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search, navigate, location.pathname]);
+
+  // =============================
+  // 5.3. STEP 2: PROCESS NAVIGATION INTENT (AFTER ORDERS LOAD)
+  // =============================
+  useEffect(() => {
+    // Wait for navigation intent and orders to be ready
+    if (!navigationIntent || loadingOrders || filteredOrders.length === 0) {
+      return;
+    }
+
+    const { orderId } = navigationIntent;
+    const targetOrderId = Number(orderId);
+
+    // Find order in filteredOrders
+    const orderIndex = filteredOrders.findIndex(o => Number(o.id) === targetOrderId);
+    if (orderIndex === -1) {
+      // Order not found - clear intent and state
+      setNavigationIntent(null);
+      navigate(location.pathname, { replace: true });
+      processedRedirectRef.current = false;
+      return;
+    }
+
+    // Calculate target page
+    const targetPage = Math.floor(orderIndex / pageSize) + 1;
+    
+    // Change page if needed
+    if (targetPage !== currentPage) {
+      setCurrentPage(targetPage);
+      // Wait for page to update before continuing
+      return;
+    }
+
+    // Page is correct, now scroll and highlight
+    const targetOrder = filteredOrders.find(o => Number(o.id) === targetOrderId);
+    if (targetOrder) {
+      // Scroll to order and highlight (wait for DOM to render)
+      setTimeout(() => {
+        const orderRow = document.querySelector(`[data-order-id="${targetOrderId}"]`);
+        if (orderRow) {
+          orderRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Set highlight AFTER scroll completes
+          requestAnimationFrame(() => {
+            setFocusedOrderId(targetOrderId);
+          });
+        } else {
+          // Fallback: scroll to table
+          const tableElement = document.querySelector('.lux-table-wrapper');
+          if (tableElement) tableElement.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Clear navigation state AFTER processing is complete
+        setTimeout(() => {
+          setNavigationIntent(null);
+          navigate(location.pathname, { replace: true });
+          processedRedirectRef.current = false;
+        }, 400);
+      }, 300);
+    } else {
+      // Order not found - clear intent
+      setNavigationIntent(null);
+      navigate(location.pathname, { replace: true });
+      processedRedirectRef.current = false;
+    }
+  }, [navigationIntent, filteredOrders, loadingOrders, currentPage, pageSize, navigate, location.pathname]);
+
+  // =============================
+  // 5.4. AUTO-FADE HIGHLIGHT AFTER 5 SECONDS
+  // =============================
+  useEffect(() => {
+    if (!focusedOrderId) return;
+    
+    const timer = setTimeout(() => {
+      setFocusedOrderId(null);
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, [focusedOrderId]);
+
+  // =============================
+  // 5.5. RESET HIGHLIGHT WHEN FILTER/SEARCH CHANGES
+  // =============================
+  useEffect(() => {
+    if (focusedOrderId) {
+      setFocusedOrderId(null);
+    }
+  }, [filterStatus, searchText]);
 
   // =============================
   // 6. MODAL ASSIGN SHIPPER
@@ -430,13 +580,143 @@ export default function MyOrders() {
       {/* ================= TABLE ================= */}
       <OrderTable
         loading={loadingOrders}
-        orders={filteredOrders}
+        orders={paginatedOrders}
         onRowClick={openPanel}
         onViewDetail={openPanel}
         onAssignShipper={handleAssignShipper}
         userRole="agent"
         showAgentColumn={false} // My Orders doesn't need Assigned Agent column
+        focusedOrderId={focusedOrderId}
+        onUserInteraction={() => setFocusedOrderId(null)}
       />
+
+      {/* ===================== PAGINATION UI ===================== */}
+      <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+        {/* Page size selector */}
+        <div className="d-flex align-items-center mb-2">
+          <span className="me-2 small text-muted">Rows per page:</span>
+          <Form.Select
+            size="sm"
+            style={{ width: "90px" }}
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1); // Reset page when page size changes
+            }}
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </Form.Select>
+        </div>
+
+        {/* Pagination controls - Luxury Style */}
+        <div className="d-flex align-items-center gap-3 mb-2">
+          <Button
+            className="luxury-pagination-btn"
+            variant="outline-primary"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => {
+              // Reset navigation intent when user manually changes page
+              setCurrentPage(prev => Math.max(prev - 1, 1));
+              setFocusedOrderId(null);
+              setNavigationIntent(null);
+              processedRedirectRef.current = false;
+            }}
+            style={{
+              minWidth: "100px",
+              padding: "8px 20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(37, 99, 235, 0.3)",
+              background: currentPage === 1 
+                ? "rgba(0, 0, 0, 0.05)" 
+                : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
+              color: currentPage === 1 ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+              fontWeight: 600,
+              transition: "all 0.3s ease",
+              boxShadow: currentPage === 1 ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage !== 1) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.25))";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.25)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage !== 1) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.15)";
+              }
+            }}
+          >
+            ← Previous
+          </Button>
+
+          <span 
+            className="small"
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              background: "linear-gradient(135deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.08))",
+              border: "1px solid rgba(15, 23, 42, 0.1)",
+              fontWeight: 600,
+              color: "#0b1220",
+            }}
+          >
+            Page <strong style={{ color: "#2563eb" }}>{currentPage}</strong> of <strong style={{ color: "#2563eb" }}>{totalPages || 1}</strong>
+            {filteredOrders.length > 0 && (
+              <span className="text-muted ms-2">({filteredOrders.length} orders)</span>
+            )}
+          </span>
+
+          <Button
+            className="luxury-pagination-btn"
+            variant="outline-primary"
+            size="sm"
+            disabled={currentPage === totalPages || totalPages === 0}
+            onClick={() => {
+              // Reset navigation intent when user manually changes page
+              setCurrentPage(prev => Math.min(prev + 1, totalPages));
+              setFocusedOrderId(null);
+              setNavigationIntent(null);
+              processedRedirectRef.current = false;
+            }}
+            style={{
+              minWidth: "100px",
+              padding: "8px 20px",
+              borderRadius: "8px",
+              border: "1px solid rgba(37, 99, 235, 0.3)",
+              background: (currentPage === totalPages || totalPages === 0)
+                ? "rgba(0, 0, 0, 0.05)" 
+                : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
+              color: (currentPage === totalPages || totalPages === 0) ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+              fontWeight: 600,
+              transition: "all 0.3s ease",
+              boxShadow: (currentPage === totalPages || totalPages === 0) ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage !== totalPages && totalPages !== 0) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.25))";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.25)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage !== totalPages && totalPages !== 0) {
+                e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.15)";
+              }
+            }}
+          >
+            Next →
+          </Button>
+        </div>
+      </div>
 
       {/* ================= DETAIL PANEL ================= */}
       <OrderDetailPanel

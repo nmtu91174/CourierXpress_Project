@@ -61,7 +61,7 @@ import OrderHistoryShipper from "./pages/shipper/OrderHistoryShipper.jsx";
 const PublicLayout = ({ children }) => (
   <>
     <Header />
-    <main style={{ minHeight: '80vh' }}>
+    <main style={{ minHeight: '80vh', backgroundColor: '#f5f7fa' }}>
       {children}
     </main>
     <Footer />
@@ -153,6 +153,51 @@ export default function App() {
       {/* ================= CUSTOMER (LOGIN) ================= */}
 
       <Route
+        path="/customer"
+        element={
+          <ProtectedRoute allowed={['customer']}>
+            <PublicLayout>
+              <Navigate to="/customer/profile" replace />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/customer/profile"
+        element={
+          <ProtectedRoute allowed={['customer']}>
+            <PublicLayout>
+              <UserIdentityDashboard />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/customer/account-settings"
+        element={
+          <ProtectedRoute allowed={['customer']}>
+            <PublicLayout>
+              <AccountSettingsPage />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/customer/notifications"
+        element={
+          <ProtectedRoute allowed={['customer']}>
+            <PublicLayout>
+              <NotificationsPage />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Legacy route - redirect to new route */}
+      <Route
         path="/user/profile"
         element={
           <ProtectedRoute allowed={['customer', 'shipper']}>
@@ -225,6 +270,50 @@ export default function App() {
       </Route>
 
       {/* ================= SHIPPER ================= */}
+
+      <Route
+        path="/shipper"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout>
+              <Navigate to="/shipper/home" replace />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/shipper/profile"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout>
+              <UserIdentityDashboard />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/shipper/account-settings"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout>
+              <AccountSettingsPage />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/shipper/notifications"
+        element={
+          <ProtectedRoute allowed={['shipper']}>
+            <PublicLayout>
+              <NotificationsPage />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/shipper/home"

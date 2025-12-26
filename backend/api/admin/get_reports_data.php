@@ -1,6 +1,10 @@
 <?php
 // backend/api/admin/get_reports_data.php
-// API endpoint để lấy dữ liệu reports từ database
+// Enterprise Reports API (English) - Workflow aligned
+// - 4 KPI
+// - 8 meaningful reports
+// - Removed SLA compliance
+// - Revenue in VND (e.g., 262.000 ₫)
 
 // ==========================
 // CORS HEADERS
@@ -29,89 +33,138 @@ require_login();
 require_role(["admin"]);
 
 // ==========================
+// HELPERS
+// ==========================
+function vnd_format($amount)
+{
+    $n = (float)$amount;
+    return number_format($n, 0, ",", ".") . " ₫";
+}
+
+function clamp_period($p)
+{
+    $ok = ["7d", "30d", "12m", "1y"];
+    return in_array($p, $ok, true) ? $p : "7d";
+}
+
+// ==========================
 // GET PARAMETERS
 // ==========================
-$period  = $_GET["period"]  ?? "7d";      // 7d, 30d, 12m
-$view    = $_GET["view"]    ?? "overall"; // overall, service, payment, workflow
-$service = $_GET["service"] ?? "all";
-$payment = $_GET["payment"] ?? "all";
-$status  = $_GET["status"]  ?? "all";
+$period  = clamp_period($_GET["period"] ?? "7d");
+$service = $_GET["service"] ?? "all";  // all|standard|express|sameday
+$payment = $_GET["payment"] ?? "all";  // all|cash|banking|momo
+$status  = $_GET["status"]  ?? "all";  // all|BOOKED|APPROVED|ASSIGNED|PICKED_UP|DELIVERED|FAILED
+
+// Accept view for compatibility (not required)
+$view = $_GET["view"] ?? "overall";
 
 // ==========================
-// BUILD DATE RANGE (FIXED alias o.)
+// MAP FILTERS (safe ints)
 // ==========================
-$dateCondition = "";
-$dateFormat    = "";
+$serviceMap = [
+    "standard" => 1,
+    "express"  => 2,
+    "sameday"  => 3,
+];
 
-switch ($period) {
-    case "7d":
-        $dateCondition = "DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-        $dateFormat    = "%Y-%m-%d";
-        break;
-    case "30d":
-        $dateCondition = "DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)";
-        $dateFormat    = "%Y-%m-%d";
-        break;
-    case "12m":
-        $dateCondition = "DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)";
-        $dateFormat    = "%Y-%m";
-        break;
-    default:
-        $dateCondition = "DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)";
-        $dateFormat    = "%Y-%m-%d";
-}
+$paymentMap = [
+    "cash"    => 1,
+    "banking" => 2,
+    "momo"    => 3,
+];
+
+$statusMap = [
+    "BOOKED"    => 1,
+    "APPROVED"  => 2,
+    "ASSIGNED"  => 3,
+    "PICKED_UP" => 4,
+    "DELIVERED" => 5,
+    "FAILED"    => 6,
+];
 
 // ==========================
-// BUILD WHERE CONDITIONS
+// BUILD DATE RANGE + BUCKETS
 // ==========================
-$whereConditions = [$dateCondition];
+$now = new DateTime("now");
+$today = new DateTime("today");
 
-// Service filter
-if ($view === "service" && $service !== "all") {
-    $serviceMap = [
-        "standard" => 1,
-        "express"  => 2,
-        "sameday"  => 3,
-    ];
-    if (isset($serviceMap[$service])) {
-        $whereConditions[] = "o.service_type = " . (int)$serviceMap[$service];
+$dateFormat = "%Y-%m-%d";
+$timeBuckets = [];
+
+if ($period === "12m") {
+    // last 12 months incl current month
+    $start = new DateTime("first day of this month 00:00:00");
+    $start->modify("-11 months");
+    $end = new DateTime("first day of next month 00:00:00");
+
+    $dateFormat = "%Y-%m";
+
+    $cursor = clone $start;
+    while ($cursor < $end) {
+        $timeBuckets[] = $cursor->format("Y-m");
+        $cursor->modify("+1 month");
+    }
+} else if ($period === "1y") {
+    // Current year (from Jan 1st of current year to now)
+    $start = new DateTime("first day of January " . $now->format("Y") . " 00:00:00");
+    $end = (clone $today);
+    $end->modify("+1 day"); // exclusive
+
+    $dateFormat = "%Y-%m";
+
+    $cursor = clone $start;
+    while ($cursor < $end) {
+        $timeBuckets[] = $cursor->format("Y-m");
+        $cursor->modify("+1 month");
+    }
+} else {
+    $days = ($period === "30d") ? 30 : 7;
+    // Make exactly N buckets ending today
+    $start = (clone $today);
+    $start->modify("-" . ($days - 1) . " days");
+    $end = (clone $today);
+    $end->modify("+1 day"); // exclusive
+
+    $dateFormat = "%Y-%m-%d";
+
+    $cursor = clone $start;
+    while ($cursor < $end) {
+        $timeBuckets[] = $cursor->format("Y-m-d");
+        $cursor->modify("+1 day");
     }
 }
 
-// Payment filter (FIXED momo)
-if ($view === "payment" && $payment !== "all") {
-    $paymentMap = [
-        "cash"    => 1,
-        "banking" => 2,
-        "momo"    => 3,
-    ];
-    if (isset($paymentMap[$payment])) {
-        $whereConditions[] = "o.payment_method_id = " . (int)$paymentMap[$payment];
-    }
-}
-
-// Workflow filter (FIXED status map)
-if ($view === "workflow" && $status !== "all") {
-    $statusMap = [
-        "BOOKED"     => 1,
-        "APPROVED"   => 2,
-        "ASSIGNED"   => 3,
-        "PICKED_UP"  => 4,
-        "DELIVERED"  => 5,
-        "FAILED"     => 6,
-    ];
-    if (isset($statusMap[$status])) {
-        $whereConditions[] = "o.status = " . (int)$statusMap[$status];
-    }
-}
-
-$whereClause = "WHERE " . implode(" AND ", $whereConditions);
+$startSql = $start->format("Y-m-d H:i:s");
+$endSql   = $end->format("Y-m-d H:i:s");
 
 // ==========================
-// KPI STATS
+// WHERE CONDITIONS
+// ==========================
+$where = [];
+$where[] = "o.created_at >= '$startSql' AND o.created_at < '$endSql'";
+
+// Apply service filter
+if ($service !== "all" && isset($serviceMap[$service])) {
+    $where[] = "o.service_type = " . (int)$serviceMap[$service];
+}
+
+// Apply payment filter
+if ($payment !== "all" && isset($paymentMap[$payment])) {
+    $where[] = "o.payment_method_id = " . (int)$paymentMap[$payment];
+}
+
+// Apply status filter
+if ($status !== "all" && isset($statusMap[$status])) {
+    $where[] = "o.status = " . (int)$statusMap[$status];
+}
+
+$whereClause = "WHERE " . implode(" AND ", $where);
+
+// ==========================
+// KPI
 // ==========================
 $kpiSql = "
-    SELECT 
+    SELECT
         COUNT(*) AS total_orders,
         SUM(CASE WHEN o.status = 5 THEN 1 ELSE 0 END) AS delivered,
         SUM(CASE WHEN o.status = 6 THEN 1 ELSE 0 END) AS failed,
@@ -121,124 +174,164 @@ $kpiSql = "
 ";
 
 $kpiResult = $conn->query($kpiSql);
-$kpiData   = $kpiResult->fetch_assoc();
+$kpiRow = $kpiResult ? $kpiResult->fetch_assoc() : null;
 
-$totalOrders  = (int)$kpiData["total_orders"];
-$delivered    = (int)$kpiData["delivered"];
-$failed       = (int)$kpiData["failed"];
-$totalRevenue = (float)$kpiData["total_revenue"];
+$totalOrders  = (int)($kpiRow["total_orders"] ?? 0);
+$delivered    = (int)($kpiRow["delivered"] ?? 0);
+$failed       = (int)($kpiRow["failed"] ?? 0);
+$totalRevenue = (float)($kpiRow["total_revenue"] ?? 0);
 
-$deliveredRate = $totalOrders > 0 ? round(($delivered / $totalOrders) * 100) : 0;
-$cancelRate    = $totalOrders > 0 ? round(($failed / $totalOrders) * 100) : 0;
+$deliveredRate = $totalOrders > 0 ? round(($delivered / $totalOrders) * 100, 1) : 0;
+$failedRate    = $totalOrders > 0 ? round(($failed / $totalOrders) * 100, 1) : 0;
 
 // ==========================
-// ORDERS BY STATUS OVER TIME
+// STATUS OVER TIME
 // ==========================
 $statusTimeSql = "
-    SELECT 
-        DATE_FORMAT(o.created_at, '$dateFormat') AS date_bucket,
-        o.status,
+    SELECT
+        DATE_FORMAT(o.created_at, '$dateFormat') AS bucket,
+        o.status AS status,
         COUNT(*) AS count
     FROM orders o
     $whereClause
-    GROUP BY date_bucket, o.status
-    ORDER BY date_bucket ASC, o.status ASC
+    GROUP BY bucket, o.status
+    ORDER BY bucket ASC, o.status ASC
 ";
 
+$statusTimeData = [];
 $statusTimeResult = $conn->query($statusTimeSql);
-$statusTimeData   = [];
-while ($row = $statusTimeResult->fetch_assoc()) {
-    $statusTimeData[] = $row;
+if ($statusTimeResult) {
+    while ($row = $statusTimeResult->fetch_assoc()) {
+        $statusTimeData[] = [
+            "bucket" => $row["bucket"],
+            "status" => (int)$row["status"],
+            "count"  => (int)$row["count"],
+        ];
+    }
 }
 
 // ==========================
 // REVENUE & ORDERS OVER TIME
 // ==========================
 $revenueTimeSql = "
-    SELECT 
-        DATE_FORMAT(o.created_at, '$dateFormat') AS date_bucket,
-        COUNT(*) AS orders_count,
+    SELECT
+        DATE_FORMAT(o.created_at, '$dateFormat') AS bucket,
+        COUNT(*) AS orders,
         COALESCE(SUM(o.total_shipping_fee), 0) AS revenue
     FROM orders o
     $whereClause
-    GROUP BY date_bucket
-    ORDER BY date_bucket ASC
+    GROUP BY bucket
+    ORDER BY bucket ASC
 ";
 
+$revenueTimeData = [];
 $revenueTimeResult = $conn->query($revenueTimeSql);
-$revenueTimeData   = [];
-while ($row = $revenueTimeResult->fetch_assoc()) {
-    $revenueTimeData[] = $row;
+if ($revenueTimeResult) {
+    while ($row = $revenueTimeResult->fetch_assoc()) {
+        $revenueTimeData[] = [
+            "bucket"  => $row["bucket"],
+            "orders"  => (int)$row["orders"],
+            "revenue" => (float)$row["revenue"],
+        ];
+    }
 }
 
 // ==========================
-// SERVICE DISTRIBUTION
+// SERVICE MIX (English labels)
 // ==========================
-$serviceDistSql = "
-    SELECT 
-        st.name AS service_name,
+$serviceMixSql = "
+    SELECT
+        o.service_type AS service_type_id,
         COUNT(*) AS count
     FROM orders o
-    LEFT JOIN service_types st ON o.service_type = st.id
     $whereClause
-    GROUP BY st.id, st.name
+    GROUP BY o.service_type
     ORDER BY count DESC
 ";
 
-$serviceDistResult = $conn->query($serviceDistSql);
-$serviceDistData   = [];
-while ($row = $serviceDistResult->fetch_assoc()) {
-    $serviceDistData[] = $row;
+$serviceMix = [];
+$serviceMixResult = $conn->query($serviceMixSql);
+if ($serviceMixResult) {
+    while ($row = $serviceMixResult->fetch_assoc()) {
+        $sid = (int)($row["service_type_id"] ?? 0);
+        $name = "Unknown";
+        if ($sid === 1) $name = "Standard";
+        else if ($sid === 2) $name = "Express";
+        else if ($sid === 3) $name = "Same-day";
+
+        $serviceMix[] = [
+            "id"    => $sid,
+            "name"  => $name,
+            "count" => (int)$row["count"],
+        ];
+    }
 }
 
 // ==========================
-// PAYMENT DISTRIBUTION
+// PAYMENT MIX (English labels)
 // ==========================
-$paymentDistSql = "
-    SELECT 
-        pm.name AS payment_name,
+$paymentMixSql = "
+    SELECT
+        o.payment_method_id AS payment_method_id,
         COUNT(*) AS count
     FROM orders o
-    LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id
     $whereClause
-    GROUP BY pm.id, pm.name
+    GROUP BY o.payment_method_id
     ORDER BY count DESC
 ";
 
-$paymentDistResult = $conn->query($paymentDistSql);
-$paymentDistData   = [];
-while ($row = $paymentDistResult->fetch_assoc()) {
-    $paymentDistData[] = $row;
+$paymentMix = [];
+$paymentMixResult = $conn->query($paymentMixSql);
+if ($paymentMixResult) {
+    while ($row = $paymentMixResult->fetch_assoc()) {
+        $pid = (int)($row["payment_method_id"] ?? 0);
+        $name = "Unknown";
+        if ($pid === 1) $name = "Cash";
+        else if ($pid === 2) $name = "Bank Transfer";
+        else if ($pid === 3) $name = "MoMo";
+
+        $paymentMix[] = [
+            "id"    => $pid,
+            "name"  => $name,
+            "count" => (int)$row["count"],
+        ];
+    }
 }
 
 // ==========================
-// WORKFLOW CONVERSION
+// WORKFLOW FUNNEL (ensure all stages exist)
 // ==========================
-$workflowSql = "
-    SELECT 
-        s.id AS status_id,
-        s.description AS status_name,
-        COUNT(*) AS count
+$wfSql = "
+    SELECT o.status AS status_id, COUNT(*) AS count
     FROM orders o
-    LEFT JOIN statuses s ON o.status = s.id
     $whereClause
-    GROUP BY s.id, s.description
-    ORDER BY s.id ASC
+    GROUP BY o.status
 ";
 
-$workflowResult = $conn->query($workflowSql);
-$workflowData   = [];
-while ($row = $workflowResult->fetch_assoc()) {
-    $workflowData[] = $row;
+$wfCounts = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0];
+$wfResult = $conn->query($wfSql);
+if ($wfResult) {
+    while ($row = $wfResult->fetch_assoc()) {
+        $sid = (int)($row["status_id"] ?? 0);
+        if (isset($wfCounts[$sid])) $wfCounts[$sid] = (int)$row["count"];
+    }
 }
 
+$workflowFunnel = [
+    ["id" => 1, "stage" => "Booked",    "count" => $wfCounts[1]],
+    ["id" => 2, "stage" => "Approved",  "count" => $wfCounts[2]],
+    ["id" => 3, "stage" => "Assigned",  "count" => $wfCounts[3]],
+    ["id" => 4, "stage" => "Picked Up", "count" => $wfCounts[4]],
+    ["id" => 5, "stage" => "Delivered", "count" => $wfCounts[5]],
+    ["id" => 6, "stage" => "Failed",    "count" => $wfCounts[6]],
+];
+
 // ==========================
-// AGING BACKLOG (WIP only)
+// BACKLOG AGING (WIP only, within same timeframe)
 // ==========================
 $agingSql = "
-    SELECT 
-        o.status,
-        s.description AS status_name,
+    SELECT
+        o.status AS status_id,
         CASE
             WHEN TIMESTAMPDIFF(HOUR, o.created_at, NOW()) < 2  THEN '<2h'
             WHEN TIMESTAMPDIFF(HOUR, o.created_at, NOW()) < 6  THEN '2-6h'
@@ -249,129 +342,170 @@ $agingSql = "
         END AS aging_bucket,
         COUNT(*) AS count
     FROM orders o
-    LEFT JOIN statuses s ON o.status = s.id
-    WHERE o.status IN (1,2,3,4)
-      AND DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    GROUP BY o.status, s.description, aging_bucket
-    ORDER BY o.status ASC, aging_bucket ASC
+    $whereClause
+      AND o.status IN (1,2,3,4)
+    GROUP BY o.status, aging_bucket
+    ORDER BY o.status ASC
 ";
 
+$agingData = [];
 $agingResult = $conn->query($agingSql);
-$agingData   = [];
-while ($row = $agingResult->fetch_assoc()) {
-    $agingData[] = $row;
+if ($agingResult) {
+    while ($row = $agingResult->fetch_assoc()) {
+        $sid = (int)$row["status_id"];
+        $statusName = "Unknown";
+        if ($sid === 1) $statusName = "Booked";
+        else if ($sid === 2) $statusName = "Approved";
+        else if ($sid === 3) $statusName = "Assigned";
+        else if ($sid === 4) $statusName = "Picked Up";
+
+        $agingData[] = [
+            "status_id"    => $sid,
+            "status_name"  => $statusName,
+            "aging_bucket" => $row["aging_bucket"],
+            "count"        => (int)$row["count"],
+        ];
+    }
 }
 
 // ==========================
-// AGENT QUALITY
+// TOP AGENTS (highlight)
 // ==========================
 $agentSql = "
-    SELECT 
+    SELECT
         u.id AS agent_id,
         u.name AS agent_name,
         SUM(CASE WHEN o.status = 5 THEN 1 ELSE 0 END) AS delivered,
         SUM(CASE WHEN o.status IN (1,2,3,4) THEN 1 ELSE 0 END) AS wip,
-        SUM(CASE WHEN o.status = 6 THEN 1 ELSE 0 END) AS failed
+        SUM(CASE WHEN o.status = 6 THEN 1 ELSE 0 END) AS failed,
+        COUNT(o.id) AS total
     FROM users u
-    LEFT JOIN orders o 
+    LEFT JOIN orders o
       ON o.agent_id = u.id
-     AND DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+     AND o.created_at >= '$startSql' AND o.created_at < '$endSql'
+" . (
+    ($service !== "all" && isset($serviceMap[$service])) ? " AND o.service_type = " . (int)$serviceMap[$service] : ""
+) . (
+    ($payment !== "all" && isset($paymentMap[$payment])) ? " AND o.payment_method_id = " . (int)$paymentMap[$payment] : ""
+) . "
     WHERE u.role = 'agent'
     GROUP BY u.id, u.name
-    HAVING (delivered + wip + failed) > 0
+    HAVING total > 0
+    ORDER BY delivered DESC, total DESC
+    LIMIT 10
+";
+
+$topAgents = [];
+$agentResult = $conn->query($agentSql);
+if ($agentResult) {
+    while ($row = $agentResult->fetch_assoc()) {
+        $del = (int)$row["delivered"];
+        $fail = (int)$row["failed"];
+        $sr = ($del + $fail) > 0 ? round(($del / ($del + $fail)) * 100, 1) : null;
+
+        $topAgents[] = [
+            "agent_id"      => (int)$row["agent_id"],
+            "agent_name"    => $row["agent_name"] ?: "Unknown",
+            "delivered"     => $del,
+            "wip"           => (int)$row["wip"],
+            "failed"        => $fail,
+            "total"         => (int)$row["total"],
+            "success_rate"  => $sr,
+        ];
+    }
+}
+
+// ==========================
+// TOP SHIPPERS (highlight) - delivered + avg lead time
+// Lead time = first ASSIGNED(3) -> first DELIVERED(5) per order
+// ==========================
+$topShippersSql = "
+    SELECT
+        u.id AS shipper_id,
+        u.name AS shipper_name,
+        COUNT(o.id) AS delivered,
+        AVG(CASE 
+            WHEN a.assigned_at IS NOT NULL 
+             AND d.delivered_at IS NOT NULL 
+             AND TIMESTAMPDIFF(HOUR, a.assigned_at, d.delivered_at) >= 0
+            THEN TIMESTAMPDIFF(HOUR, a.assigned_at, d.delivered_at)
+            ELSE NULL
+        END) AS avg_lead_time_hours
+    FROM users u
+    JOIN orders o
+      ON o.shipper_id = u.id
+     AND o.status = 5
+     AND o.created_at >= '$startSql' AND o.created_at < '$endSql'
+" . (
+    ($service !== "all" && isset($serviceMap[$service])) ? " AND o.service_type = " . (int)$serviceMap[$service] : ""
+) . (
+    ($payment !== "all" && isset($paymentMap[$payment])) ? " AND o.payment_method_id = " . (int)$paymentMap[$payment] : ""
+) . "
+    LEFT JOIN (
+        SELECT order_id, MIN(created_at) AS assigned_at
+        FROM order_history
+        WHERE status_id = 3
+        GROUP BY order_id
+    ) a ON a.order_id = o.id
+    LEFT JOIN (
+        SELECT order_id, MIN(created_at) AS delivered_at
+        FROM order_history
+        WHERE status_id = 5
+        GROUP BY order_id
+    ) d ON d.order_id = o.id
+    WHERE u.role = 'shipper'
+    GROUP BY u.id, u.name
+    HAVING delivered > 0
     ORDER BY delivered DESC
     LIMIT 10
 ";
 
-$agentResult = $conn->query($agentSql);
-$agentData   = [];
-while ($row = $agentResult->fetch_assoc()) {
-    $agentData[] = $row;
-}
-
-// ==========================
-// SHIPPER LEAD TIME
-// ==========================
-$shipperSql = "
-    SELECT 
-        u.id AS shipper_id,
-        u.name AS shipper_name,
-        TIMESTAMPDIFF(HOUR, 
-            MIN(CASE WHEN oh1.status_id = 3 THEN oh1.created_at END),
-            MIN(CASE WHEN oh2.status_id = 5 THEN oh2.created_at END)
-        ) AS lead_time_hours
-    FROM users u
-    LEFT JOIN orders o 
-      ON o.shipper_id = u.id
-     AND DATE(o.created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    LEFT JOIN order_history oh1 ON oh1.order_id = o.id AND oh1.status_id = 3
-    LEFT JOIN order_history oh2 ON oh2.order_id = o.id AND oh2.status_id = 5
-    WHERE u.role = 'shipper'
-      AND o.status = 5
-    GROUP BY u.id, u.name, o.id
-    HAVING lead_time_hours IS NOT NULL
-    ORDER BY u.name
-    LIMIT 10
-";
-
-$shipperResult = $conn->query($shipperSql);
-$shipperData   = [];
-while ($row = $shipperResult->fetch_assoc()) {
-    $shipperData[] = $row;
-}
-
-// ==========================
-// FAILED RISK MATRIX
-// ==========================
-$failedRiskSql = "
-    SELECT 
-        st.id AS service_type_id,
-        st.name AS service_name,
-        pm.id AS payment_method_id,
-        pm.name AS payment_name,
-        COUNT(*) AS total_orders,
-        SUM(CASE WHEN o.status = 6 THEN 1 ELSE 0 END) AS failed_orders
-    FROM orders o
-    LEFT JOIN service_types st ON o.service_type = st.id
-    LEFT JOIN payment_methods pm ON o.payment_method_id = pm.id
-    $whereClause
-    GROUP BY st.id, st.name, pm.id, pm.name
-    HAVING total_orders > 0
-";
-
-$failedRiskResult = $conn->query($failedRiskSql);
-$failedRiskData   = [];
-while ($row = $failedRiskResult->fetch_assoc()) {
-    $failedRate = $row["total_orders"] > 0
-        ? round(($row["failed_orders"] / $row["total_orders"]) * 100, 1)
-        : 0;
-
-    $failedRiskData[] = [
-        "service_id"    => $row["service_type_id"],
-        "service_name"  => $row["service_name"],
-        "payment_id"    => $row["payment_method_id"],
-        "payment_name"  => $row["payment_name"],
-        "failed_rate"   => $failedRate,
-    ];
+$topShippers = [];
+$shipperResult = $conn->query($topShippersSql);
+if ($shipperResult) {
+    while ($row = $shipperResult->fetch_assoc()) {
+        $avgLeadTime = null;
+        if ($row["avg_lead_time_hours"] !== null && $row["avg_lead_time_hours"] !== "") {
+            $avgLeadTime = round((float)$row["avg_lead_time_hours"], 1);
+        }
+        
+        $topShippers[] = [
+            "shipper_id" => (int)$row["shipper_id"],
+            "shipper_name" => $row["shipper_name"] ?: "Unknown",
+            "delivered" => (int)$row["delivered"],
+            "avg_lead_time_hours" => $avgLeadTime,
+        ];
+    }
+} else {
+    // Log error for debugging
+    error_log("Top Shippers Query Error: " . $conn->error);
 }
 
 // ==========================
 // RESPONSE
 // ==========================
 Response::success("Reports data", [
-    "kpi" => [
-        "revenueB"      => round($totalRevenue / 1000000000, 2),
-        "orders"        => $totalOrders,
-        "deliveredRate" => $deliveredRate,
-        "cancelRate"    => $cancelRate,
+    "meta" => [
+        "period" => $period,
+        "service" => $service,
+        "payment" => $payment,
+        "status" => $status,
+        "generatedAt" => $now->format(DateTime::ATOM),
     ],
-    "statusTimeData"  => $statusTimeData,
+    "kpi" => [
+        "revenueRaw" => $totalRevenue,
+        "revenueFormatted" => vnd_format($totalRevenue),
+        "orders" => $totalOrders,
+        "deliveredRate" => $deliveredRate,
+        "failedRate" => $failedRate,
+    ],
+    "timeBuckets" => $timeBuckets,
     "revenueTimeData" => $revenueTimeData,
-    "serviceDist"     => $serviceDistData,
-    "paymentDist"     => $paymentDistData,
-    "workflowData"    => $workflowData,
-    "agingData"       => $agingData,
-    "agentData"       => $agentData,
-    "shipperData"     => $shipperData,
-    "failedRiskData"  => $failedRiskData,
+    "statusTimeData" => $statusTimeData,
+    "serviceMix" => $serviceMix,
+    "paymentMix" => $paymentMix,
+    "workflowFunnel" => $workflowFunnel,
+    "backlogAging" => $agingData,
+    "topAgents" => $topAgents,
+    "topShippers" => $topShippers,
 ]);

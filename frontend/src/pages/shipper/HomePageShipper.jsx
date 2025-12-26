@@ -143,39 +143,63 @@ const ShipperHome = () => {
         </p>
 
         {/* ================================
-            Dashboard Stats (Dynamic)
+            Dashboard Stats (Dynamic) - White KPI Cards
             ================================ */}
-        <Row className="mb-4">
+        <Row className="mb-4 g-3">
           <Col md={4}>
-            <Card className="shadow-sm p-3 stat-card">
-              <FaTasks size={35} className="text-primary mb-2" />
-              <h5 className="fw-bold">Đơn mới gán</h5>
-              {/* [FIX] dùng waiting_accept */}
-              <p className="text-muted">
-                {stats.waiting_accept || 0} đơn cần nhận
-              </p>
+            <Card className="border-0 shadow-sm" style={{ backgroundColor: "#ffffff" }}>
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div className="text-uppercase small fw-semibold text-muted mb-2" style={{ letterSpacing: "0.5px" }}>
+                      Đơn mới gán
+                    </div>
+                    <h2 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "32px" }}>
+                      {stats.waiting_accept || 0}
+                    </h2>
+                    <div className="small text-muted">đơn cần nhận</div>
+                  </div>
+                  <FaTasks size={40} className="text-primary" style={{ opacity: 0.8 }} />
+                </div>
+              </Card.Body>
             </Card>
           </Col>
 
           <Col md={4}>
-            <Card className="shadow-sm p-3 stat-card">
-              <FaClock size={35} className="text-warning mb-2" />
-              <h5 className="fw-bold">Đang thực hiện</h5>
-              {/* [FIX] dùng active */}
-              <p className="text-muted">
-                {stats.active || 0} đơn đang lấy/giao
-              </p>
+            <Card className="border-0 shadow-sm" style={{ backgroundColor: "#ffffff" }}>
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div className="text-uppercase small fw-semibold text-muted mb-2" style={{ letterSpacing: "0.5px" }}>
+                      Đang thực hiện
+                    </div>
+                    <h2 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "32px" }}>
+                      {stats.active || 0}
+                    </h2>
+                    <div className="small text-muted">đơn đang lấy/giao</div>
+                  </div>
+                  <FaClock size={40} className="text-warning" style={{ opacity: 0.8 }} />
+                </div>
+              </Card.Body>
             </Card>
           </Col>
 
           <Col md={4}>
-            <Card className="shadow-sm p-3 stat-card">
-              <FaCheckCircle size={35} className="text-success mb-2" />
-              <h5 className="fw-bold">Đã hoàn thành</h5>
-              {/* [FIX] dùng completed */}
-              <p className="text-muted">
-                {stats.completed || 0} đơn giao thành công
-              </p>
+            <Card className="border-0 shadow-sm" style={{ backgroundColor: "#ffffff" }}>
+              <Card.Body className="p-4">
+                <div className="d-flex justify-content-between align-items-start">
+                  <div>
+                    <div className="text-uppercase small fw-semibold text-muted mb-2" style={{ letterSpacing: "0.5px" }}>
+                      Đã hoàn thành
+                    </div>
+                    <h2 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "32px" }}>
+                      {stats.completed || 0}
+                    </h2>
+                    <div className="small text-muted">đơn giao thành công</div>
+                  </div>
+                  <FaCheckCircle size={40} className="text-success" style={{ opacity: 0.8 }} />
+                </div>
+              </Card.Body>
             </Card>
           </Col>
         </Row>
