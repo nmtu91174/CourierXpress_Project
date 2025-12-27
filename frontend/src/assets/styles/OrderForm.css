@@ -1,0 +1,253 @@
+/* =========================
+   ROOT THEME (SCOPED)
+========================= */
+.logistics-order-container {
+    --brand-orange: #f97316;
+    --brand-blue: #0f4c81;
+    --brand-light-blue: #e6f0f8;
+    --bg-light: #f8fafc;
+    --border-soft: #e2e8f0;
+    --text-dark: #0f172a;
+    --text-muted: #64748b;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text-dark);
+    background: var(--bg-light);
+    padding: 24px;
+}
+
+/* =========================
+   MESSAGE BAR
+========================= */
+.logistics-order-container .message-bar {
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.logistics-order-container .message-bar.success {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.logistics-order-container .message-bar.error {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+/* =========================
+   FORM GRID (3 COLUMNS)
+========================= */
+.logistics-order-container .order-form-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    align-items: stretch;
+}
+
+/* =========================
+   FORM SECTION (CARD)
+========================= */
+.logistics-order-container .form-section {
+    background: white;
+    border-radius: 18px;
+    padding: 20px 22px;
+    border: 1px solid var(--border-soft);
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.logistics-order-container .form-section.highlight {
+    border: 2px solid rgba(249, 115, 22, 0.35);
+}
+
+/* =========================
+   SECTION TITLES
+========================= */
+.logistics-order-container h3 {
+    margin: 0 0 16px;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--brand-blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* =========================
+   INPUT GROUP
+========================= */
+.logistics-order-container .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+.logistics-order-container label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+}
+
+/* =========================
+   INPUTS & SELECTS
+========================= */
+.logistics-order-container input,
+.logistics-order-container select,
+.logistics-order-container textarea {
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-soft);
+    font-size: 0.85rem;
+    outline: none;
+    transition: 0.2s ease;
+    background: white;
+}
+
+.logistics-order-container input:focus,
+.logistics-order-container select:focus,
+.logistics-order-container textarea:focus {
+    border-color: var(--brand-orange);
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+}
+
+/* =========================
+   FLEX ROW (DISTRICT / SIZE)
+========================= */
+.logistics-order-container .flex-row {
+    display: flex;
+    gap: 10px;
+}
+
+.logistics-order-container .flex-row input,
+.logistics-order-container .flex-row select {
+    flex: 1;
+}
+
+/* =========================
+   PAYER SELECTOR
+========================= */
+.logistics-order-container .payer-selector {
+    border: 1px dashed var(--border-soft);
+}
+
+.logistics-order-container .payer-selector input {
+    margin-right: 6px;
+}
+
+/* =========================
+   CUSTOM UPLOAD AREA
+========================= */
+.logistics-order-container .custom-upload-area {
+    border: 2px dashed var(--border-soft);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    background: linear-gradient(
+        180deg,
+        #ffffff,
+        var(--brand-light-blue)
+    );
+    transition: 0.25s ease;
+}
+
+.logistics-order-container .custom-upload-area:hover {
+    border-color: var(--brand-orange);
+    background: #fff7ed;
+}
+
+/* =========================
+   IMAGE PREVIEW
+========================= */
+.logistics-order-container .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.logistics-order-container .preview-img {
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid var(--border-soft);
+}
+
+/* =========================
+   FEE SUMMARY
+========================= */
+.logistics-order-container .fee-summary {
+    background: #f8fafc;
+    border-radius: 14px;
+    padding: 14px;
+    border: 1px solid var(--border-soft);
+}
+
+.logistics-order-container .fee-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+}
+
+/* =========================
+   GRAND TOTAL
+========================= */
+.logistics-order-container .grand-total-box {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 16px;
+    background: linear-gradient(
+        135deg,
+        var(--brand-orange),
+        #fb923c
+    );
+    color: white;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(249, 115, 22, 0.35);
+}
+
+/* =========================
+   SUBMIT BUTTON
+========================= */
+.logistics-order-container .btn-submit {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 14px;
+    border: none;
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: white;
+    cursor: pointer;
+    background: linear-gradient(
+        135deg,
+        var(--brand-blue),
+        #1d6fa5
+    );
+    transition: 0.25s ease;
+}
+
+.logistics-order-container .btn-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(15, 76, 129, 0.35);
+}
+
+.logistics-order-container .btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* =========================
+   RESPONSIVE (TABLET)
+========================= */
+@media (max-width: 1200px) {
+    .logistics-order-container .order-form-wrapper {
+        grid-template-columns: 1fr;
+    }
+}

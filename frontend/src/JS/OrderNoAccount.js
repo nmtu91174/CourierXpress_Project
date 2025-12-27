@@ -382,128 +382,165 @@ export const useOrderLogic = () => {
 
     // --- Submission Logic ---
     const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setMessage(null);
-        
-        // 1. Validation 
-        const requiredFields = ['sender_name', 'sender_phone', 'receiver_name', 'receiver_phone', 
-                                 'receiver_email', 'category_id', 'weight', 'length', 'width', 'height', 
-                                 'fromStreet', 'fromDistrict', 'toStreet', 'toDistrict'];
-        
-        for (const field of requiredFields) {
-             if (!formData[field] || (typeof formData[field] === 'number' && formData[field] <= 0)) {
-                 setMessage({ status: 'error', text: `Vui lòng điền đầy đủ trường bắt buộc: ${fieldMap[field] || field}.` });
-                 setLoading(false);
-                 return;
-             }
-        }
-        
-        // 2. Tính lại khoảng cách (hoặc tính lần đầu)
-        let finalDistance = distanceKm;
-        if (!finalDistance || finalDistance === "Đang tính...") {
-            finalDistance = await handleCalculateDistance();
-            if (!finalDistance) {
-                setLoading(false);
-                return; 
-            }
-        }
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
 
-        // 3. Tính toán phí lần cuối
-        const currentFeeCalculation = calculateFees(formData, finalDistance, fees, serviceTypes); 
-        
-        const loggedUser = JSON.parse(localStorage.getItem("user"));
+    // 1. Validation 
+    const requiredFields = ['sender_name', 'sender_phone', 'receiver_name', 'receiver_phone', 
+                             'receiver_email', 'category_id', 'weight', 'length', 'width', 'height', 
+                             'fromStreet', 'fromDistrict', 'toStreet', 'toDistrict'];
 
-        // 4. Chuẩn bị FormData 
-        const dataToSend = new FormData();
+    for (const field of requiredFields) {
+         if (!formData[field] || (typeof formData[field] === 'number' && formData[field] <= 0)) {
+             setMessage({ status: 'error', text: `Vui lòng điền đầy đủ trường bắt buộc: ${fieldMap[field] || field}.` });
+             setLoading(false);
+             return;
+         }
+    }
 
-        dataToSend.append("customer_id", loggedUser ? loggedUser.id : 6);
-
-        const fieldsToExclude = ['fromStreet', 'fromWard', 'fromDistrict', 'toStreet', 'toWard', 'toDistrict', 'service_type'];
-
-        Object.keys(formData).forEach(key => {
-            if (!fieldsToExclude.includes(key)) {
-                const finalValue = typeof formData[key] === 'number' ? formData[key].toString() : formData[key];
-                dataToSend.append(key, finalValue);
-            }
-        });
-
-        // Ghép địa chỉ:
-        dataToSend.append('sender_address', `${formData.fromStreet}, ${formData.fromWard}, ${formData.fromDistrict}, Hà Nội`);
-        dataToSend.append('receiver_address', `${formData.toStreet}, ${formData.toWard}, ${formData.toDistrict}, Hà Nội`);
-        
-        // Phí và khoảng cách:
-        dataToSend.append('shipping_distance_km', finalDistance.toString()); 
-        dataToSend.append('service_type_id', formData.service_type.toString()); 
-        dataToSend.append('total_shipping_fee', currentFeeCalculation.total_shipping_fee.toString());
-        dataToSend.append('total_amount_with_cod', currentFeeCalculation.total_amount_with_cod.toString());
-
-        // Thêm chi tiết phí (loại trừ phí COD vì nó đã là trường cod_amount)
-        currentFeeCalculation.fees_detail.forEach(f => {
-            if (f.id !== null && f.amount > 0 && f.code !== 'cod') { 
-                dataToSend.append('fee_ids[]', f.id.toString());
-                dataToSend.append('fee_amounts[]', f.amount.toString());
-            }
-        });
-        
-        // Thêm file
-        selectedFiles.forEach(file => { dataToSend.append('images[]', file); });
-
-        // 5. Gửi đơn hàng
-        try {
-            const response = await fetch(API_URL, { method: 'POST', body: dataToSend });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Server returned status ${response.status}: ${errorText.substring(0, 150)}...`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.status === 'success') {
-                if (!loggedUser) {
-                    emailjs.send(
-                        "service_z6xn9og",
-                        "template_d7keh2g",
-                        {
-                            to_email: data.receiver_email,
-                            tracking_code: data.order_code,
-                        },
-                        "5EwRopnOusFLIkA2N"
-                    );
-                }
-
-                setMessage({
-                    status: 'success',
-                    text: loggedUser
-                        ? "Đã tạo đơn hàng thành công!"
-                        : `Tạo đơn hàng thành công! Mã vận đơn: ${data.order_code}. Bạn đừng lo vì chúng tôi sẽ gửi Email cho bạn!`
-                });
-
-                setFormData({
-                    fromStreet: '', fromWard: '', fromDistrict: '',
-                    toStreet: '', toWard: '', toDistrict: '',
-                    sender_name: '', sender_phone: '',
-                    receiver_name: '', receiver_phone: '', receiver_email: '', 
-                    category_id: '',
-                    weight: 500, length: 10, width: 10, height: 10,
-                    service_type: 1,
-                    payer_type: 1,
-                    cod_amount: 0,
-                    payment_method_id: 1,
-                    note: "",
-                });
-
-                setSelectedFiles([]); setFilePreviews([]); setDistanceKm(null);
-            } else {
-                setMessage({ status: 'error', text: data.message || 'Lỗi không xác định khi tạo đơn.' });
-            }
-        } catch (error) {
-            setMessage({ status: 'error', text: `Lỗi kết nối đến máy chủ: ${error.message}` });
-        } finally {
+    // 2. Tính lại khoảng cách nếu chưa có
+    let finalDistance = distanceKm;
+    if (!finalDistance || finalDistance === "Đang tính...") {
+        finalDistance = await handleCalculateDistance();
+        if (!finalDistance) {
             setLoading(false);
+            return; 
         }
-    };
+    }
+
+    // 3. Tính phí cuối cùng
+    const currentFeeCalculation = calculateFees(formData, finalDistance, fees, serviceTypes); 
+
+    const loggedUser = JSON.parse(localStorage.getItem("user"));
+
+    // 4. Chuẩn bị FormData gửi server
+    const dataToSend = new FormData();
+    dataToSend.append("customer_id", loggedUser ? loggedUser.id : 6);
+
+    const fieldsToExclude = ['fromStreet', 'fromWard', 'fromDistrict', 'toStreet', 'toWard', 'toDistrict', 'service_type'];
+    Object.keys(formData).forEach(key => {
+        if (!fieldsToExclude.includes(key)) {
+            const finalValue = typeof formData[key] === 'number' ? formData[key].toString() : formData[key];
+            dataToSend.append(key, finalValue);
+        }
+    });
+
+    // Ghép địa chỉ
+    dataToSend.append('sender_address', `${formData.fromStreet}, ${formData.fromWard}, ${formData.fromDistrict}, Hà Nội`);
+    dataToSend.append('receiver_address', `${formData.toStreet}, ${formData.toWard}, ${formData.toDistrict}, Hà Nội`);
+    dataToSend.append('shipping_distance_km', finalDistance.toString()); 
+    dataToSend.append('service_type_id', formData.service_type.toString()); 
+    dataToSend.append('total_shipping_fee', currentFeeCalculation.total_shipping_fee.toString());
+    dataToSend.append('total_amount_with_cod', currentFeeCalculation.total_amount_with_cod.toString());
+    dataToSend.append('cod_amount', currentFeeCalculation.cod_amount.toString());
+
+    // Thêm chi tiết phí
+    currentFeeCalculation.fees_detail.forEach(f => {
+        if (f.id !== null && f.amount > 0 && f.code !== 'cod') { 
+            dataToSend.append('fee_ids[]', f.id.toString());
+            dataToSend.append('fee_amounts[]', f.amount.toString());
+        }
+    });
+
+    // Thêm file
+    selectedFiles.forEach(file => { dataToSend.append('images[]', file); });
+
+    // 5. Gửi đơn hàng
+    try {
+        const response = await fetch(API_URL, { method: 'POST', body: dataToSend });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server returned status ${response.status}: ${errorText.substring(0, 150)}...`);
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            const emailData = {
+                to_email: formData.receiver_email,
+                order_code: String(data.order_code),
+
+                sender_name: formData.sender_name,
+                sender_phone: formData.sender_phone,
+                sender_address: `${formData.fromStreet}, ${formData.fromWard}, ${formData.fromDistrict}, Hà Nội`,
+
+                receiver_name: formData.receiver_name,
+                receiver_phone: formData.receiver_phone,
+                receiver_address: `${formData.toStreet}, ${formData.toWard}, ${formData.toDistrict}, Hà Nội`,
+
+                category_name:
+                    categories.find(c => c.id === Number(formData.category_id))?.name
+                    || "Không xác định",
+
+                weight: String(formData.weight),
+                length: String(formData.length),
+                width: String(formData.width),
+                height: String(formData.height),
+
+                cod_amount: currentFeeCalculation.cod_amount
+                    ? currentFeeCalculation.cod_amount.toLocaleString("vi-VN") + " ₫"
+                    : "0 ₫",
+                total_amount: currentFeeCalculation.total_amount_with_cod
+                    ? currentFeeCalculation.total_amount_with_cod.toLocaleString("vi-VN") + " ₫"
+                    : "0 ₫",
+
+                service_type_name:
+                    serviceTypes.find(s => s.id === formData.service_type)?.name
+                    || "Không xác định",
+
+                payment_method:
+                    paymentMethods.find(p => p.id === formData.payment_method_id)?.name
+                    || "Chưa chọn",
+
+                note: formData.note || ""
+                };
+
+
+            if (!loggedUser) {
+                emailjs.send(
+                    "service_z6xn9og",
+                    "template_d7keh2g",
+                    emailData,
+                    "5EwRopnOusFLIkA2N"
+                );
+            }
+
+            setMessage({
+                status: 'success',
+                text: loggedUser
+                    ? "Đã tạo đơn hàng thành công!"
+                    : `Tạo đơn hàng thành công! Mã vận đơn: ${data.order_code}. Email đã được gửi.`
+            });
+
+            // Reset form
+            setFormData({
+                fromStreet: '', fromWard: '', fromDistrict: '',
+                toStreet: '', toWard: '', toDistrict: '',
+                sender_name: '', sender_phone: '',
+                receiver_name: '', receiver_phone: '', receiver_email: '', 
+                category_id: '',
+                weight: 500, length: 10, width: 10, height: 10,
+                service_type: 1,
+                payer_type: 1,
+                cod_amount: 0,
+                payment_method_id: 1,
+                note: "",
+            });
+            setSelectedFiles([]); 
+            setFilePreviews([]); 
+            setDistanceKm(null);
+        } else {
+            setMessage({ status: 'error', text: data.message || 'Lỗi không xác định khi tạo đơn.' });
+        }
+    } catch (error) {
+        setMessage({ status: 'error', text: `Lỗi kết nối đến máy chủ: ${error.message}` });
+    } finally {
+        setLoading(false);
+    }
+};
+
 
 
     return {

@@ -33,23 +33,33 @@ export default function Orders() {
         });
     }, [userId]);
 
-    const getStatusColor = (status) => {
-        const statusMap = {
-            'pending': 'status-pending',
-            'processing': 'status-processing',
-            'completed': 'status-completed',
-            'cancelled': 'status-cancelled'
-        };
-        return statusMap[status] || 'status-default';
+    const getStatusColor = (statusId) => {
+        if (statusId === 1) return "status-pending";    
+        if (statusId === 2) return "status-pending";    
+        if (statusId === 3) return "status-processing";  
+        if (statusId === 4) return "status-processing";  
+        if (statusId === 5) return "status-completed";   
+        if (statusId === 6) return "status-cancelled";  
+        return "status-default";
     };
 
+    const TAB_STATUS_MAP = {
+        pending: [1, 2, 3, 4],   
+        completed: [5],         
+        cancelled: [6]        
+    };
+
+
     // Lọc theo tab
-    const filteredOrders = orders.filter(order => {
+    const filteredOrders = orders
+    .filter(order => {
         if (activeTab === "all") return true;
-        return order.status === activeTab;
-    }).filter(order =>
+        return TAB_STATUS_MAP[activeTab]?.includes(order.status);
+    })
+    .filter(order =>
         order.order_code.toLowerCase().includes(search.toLowerCase())
     );
+
 
     if (!userId) {
         return (
@@ -74,13 +84,18 @@ export default function Orders() {
         );
     }
 
+    const formatVND = (amount) => {
+        return new Intl.NumberFormat("vi-VN", {
+            style: "currency",
+            currency: "VND"
+        }).format(amount);
+    };
+
     return (
         <div className="orders-container">
 
-            {/* Header */}
             <h1 className="page-title">Order History</h1>
 
-            {/* Tabs */}
             <div className="order-tabs">
                 <button 
                     className={activeTab === "all" ? "active" : ""} 
@@ -145,6 +160,7 @@ export default function Orders() {
                             <th>Product</th>
                             <th>Payment</th>
                             <th>Service</th>
+                            <th>Create At</th>
                             <th>Total</th>
                             <th>Status</th>
                             <th>Detail</th> 
@@ -175,16 +191,14 @@ export default function Orders() {
                                 </td>
 
                                 <td className="invoice-icon">
-                                    {order.service_type_name && (
-                                        <div className="service-tooltip">
-                                            <div className="tooltip-content">
-                                                <strong>{order.service_type_name}</strong>
-                                            </div>
-                                        </div>
-                                    )}
+                                    {order.service_type_name || "—"}
                                 </td>
 
-                                <td>${order.total_amount}</td>
+                                <td className="created-at">
+                                    {new Date(order.created_at).toLocaleString("vi-VN")}
+                                </td>
+
+                                <td>{formatVND(order.total_amount)}</td>
 
                                 <td>
                                     <span className={`status ${getStatusColor(order.status)}`}>
