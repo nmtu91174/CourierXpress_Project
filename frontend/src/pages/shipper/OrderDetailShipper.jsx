@@ -538,7 +538,9 @@ const OrderDetailShipper = () => {
             </Col>
             <Col xs={6} md={3}>
               <small className="text-muted d-block">Created at</small>
-              <span>{order.created_at || "Today"}</span>
+              <strong>
+                <span>{order.created_at || "Today"}</span>
+              </strong>
             </Col>
           </Row>
 
