@@ -61,11 +61,15 @@ $sql = "
         o.*,
         c.name AS customer_name,
         a.name AS agent_name,
-        s.name AS shipper_name
+        s.name AS shipper_name,
+        ic.name AS category_name,
+        p.code AS payment_method
     FROM orders o
     LEFT JOIN users c ON o.customer_id = c.id
     LEFT JOIN users a ON o.agent_id = a.id
     LEFT JOIN users s ON o.shipper_id = s.id
+    LEFT JOIN item_categories ic ON o.category_id = ic.id
+    LEFT JOIN payment_methods p ON o.payment_method_id = p.id
     WHERE o.id = ?
 ";
 
@@ -235,10 +239,10 @@ if ((int)$order["status"] === 6) {
 
     $order["delivery_fail_note"] =
         $order["delivery_issue"]["detail"] ?? null;
-     
+
     // Normalize failed_at for frontend
     $order["delivery_fail_at"] = $order["failed_at"] ?? null;
-    
+
     // Add full URL for failed images if they exist
     if (!empty($order["failed_images"])) {
         $baseUrl = "http://localhost:8888/";
