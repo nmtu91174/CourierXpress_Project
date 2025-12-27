@@ -522,12 +522,23 @@ const OrderDetailShipper = () => {
               </strong>
             </Col>
             <Col xs={6} md={3}>
-              <small className="text-muted d-block">Category ID</small>
-              <span>{order.category_id || "N/A"}</span>
+              <small className="text-muted d-block">Category Name</small>
+              <strong>
+                {order.category_name ? (
+                  <>
+                    {order.category_name}
+                    <span className="text-muted ms-1">
+                      (ID: {order.category_id})
+                    </span>
+                  </>
+                ) : (
+                  "N/A"
+                )}
+              </strong>
             </Col>
             <Col xs={6} md={3}>
-              <small className="text-muted d-block">Service Type</small>
-              <span>{order.service_type || "Standard"}</span>
+              <small className="text-muted d-block">Created at</small>
+              <span>{order.created_at || "Today"}</span>
             </Col>
           </Row>
 
@@ -617,29 +628,29 @@ const OrderDetailShipper = () => {
           >
             <thead className="table-light">
               <tr>
-                <th>Payer</th>
-                <th>Shipping Fee</th>
-                <th>COD Amount (Collect)</th>
-                <th>Total Amount</th>
+                <th className="text-center">Payer</th>
+                <th className="text-center">Shipping Fee</th>
+                <th className="text-center">COD Amount (Collect)</th>
+                <th className="text-center">Total Amount</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td className="align-middle">
-                  <Badge bg="secondary" className="fw-normal">
-                    {getPayerLabel(order.payer_type)}
+                  <Badge bg="secondary" className="fw-normal p-2">
+                    <strong>{getPayerLabel(order.payer_type)}</strong>
                   </Badge>
-                  <div className="small text-muted mt-1">
-                    Method ID: {order.payment_method_id || "Cash"}
+                  <div className="small text-muted mt-1 fw-bold">
+                    Payment Method: {order.payment_method || "Cash"}
                   </div>
                 </td>
-                <td className="align-middle">
+                <td className="align-middle fw-bold fs-5">
                   {formatCurrency(order.total_shipping_fee)}
                 </td>
                 <td className="align-middle fw-bold text-danger fs-5">
                   {formatCurrency(order.cod_amount)}
                 </td>
-                <td className="align-middle fw-bold text-primary">
+                <td className="align-middle fw-bold text-primary fs-5">
                   {formatCurrency(order.total_amount)}
                 </td>
               </tr>
