@@ -1,5 +1,16 @@
 // frontend/src/pages/agent/MyOrders.jsx
-// My Orders - Task Execution View (Agent's personal orders only)
+// My Orders - Simplified Order View
+// 
+// PURPOSE:
+// - Simplified view of orders assigned to current agent
+// - Basic filtering (status, search)
+// - Quick access to order details
+// 
+// DIFFERENTIATION:
+// - vs Agent Dashboard: My Orders is simplified (no KPIs, basic filters), Dashboard is comprehensive
+// - vs Assign Shipper: My Orders shows all statuses, Assign Shipper shows only APPROVED without shipper
+// 
+// NOTE: Consider merging this into Agent Dashboard with a "My Orders" filter preset
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";

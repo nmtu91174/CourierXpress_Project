@@ -68,7 +68,14 @@ $sql = "
         o.total_shipping_fee
     FROM orders o
     WHERE o.status IN (1, 2)  -- CHỈ booked (1) và approved (2)
-    ORDER BY o.updated_at DESC, o.created_at DESC
+    ORDER BY 
+      CASE o.status
+        WHEN 2 THEN 1   -- APPROVED (higher priority - needs shipper assignment)
+        WHEN 1 THEN 2   -- BOOKED (new, pending approval)
+        ELSE 99
+      END,
+      o.updated_at DESC,
+      o.created_at DESC
     LIMIT ? OFFSET ?
 ";
 

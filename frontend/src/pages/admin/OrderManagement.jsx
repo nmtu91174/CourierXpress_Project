@@ -1,7 +1,7 @@
 // frontend/src/pages/admin/OrderManagement.jsx
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Card, Button, Row, Col, Modal, Form } from "react-bootstrap";
 import { FaPlus, FaBox, FaShippingFast, FaCheckCircle, FaExclamationTriangle, FaUserTie, FaInfoCircle, FaMapMarkerAlt, FaMoneyBillWave, FaCreditCard, FaCalendarAlt, FaUser, FaPhone, FaWeight, FaRoute, FaImage, FaTag, FaEdit } from "react-icons/fa";
@@ -357,10 +357,95 @@ export default function OrderManagement() {
   }, [shippers, orders]);
   // ===================== END CALCULATE WORKLOAD =====================
 
+  // Calculate distance automatically from addresses (same as OrderNoAccount.js)
+  const calculateDistanceFromAddresses = useCallback(async () => {
+    const { fromStreet, fromWard, fromDistrict, toStreet, toWard, toDistrict } = createData;
+    
+    if (!fromStreet || !fromWard || !fromDistrict || !toStreet || !toWard || !toDistrict) {
+      return null;
+    }
+
+    const API_KEY = "9aed6a93b4d540e6b3b740a688d9921e";
+    
+    try {
+      // Geocode from address
+      const fromParts = [fromStreet.trim(), fromWard.trim(), fromDistrict.trim(), "Hà Nội", "Vietnam"];
+      const fromFull = fromParts.join(", ");
+      const fromUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(fromFull)}&filter=countrycode:vn&format=json&apiKey=${API_KEY}`;
+      
+      const fromRes = await fetch(fromUrl);
+      if (!fromRes.ok) throw new Error("Geoapify geocode error");
+      const fromData = await fromRes.json();
+      if (!fromData.results || fromData.results.length === 0) throw new Error("From address not found");
+      
+      const fromSelected = fromData.results.find(r => {
+        const txt = ((r.formatted || "") + " " + (r.city || "")).toLowerCase();
+        return txt.includes("hà nội") || txt.includes("ha noi");
+      }) || fromData.results[0];
+      
+      const fromLat = Number(fromSelected.lat);
+      const fromLon = Number(fromSelected.lon);
+      if (!fromLat || !fromLon) throw new Error("Cannot get from coordinates");
+
+      // Geocode to address
+      const toParts = [toStreet.trim(), toWard.trim(), toDistrict.trim(), "Hà Nội", "Vietnam"];
+      const toFull = toParts.join(", ");
+      const toUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(toFull)}&filter=countrycode:vn&format=json&apiKey=${API_KEY}`;
+      
+      const toRes = await fetch(toUrl);
+      if (!toRes.ok) throw new Error("Geoapify geocode error");
+      const toData = await toRes.json();
+      if (!toData.results || toData.results.length === 0) throw new Error("To address not found");
+      
+      const toSelected = toData.results.find(r => {
+        const txt = ((r.formatted || "") + " " + (r.city || "")).toLowerCase();
+        return txt.includes("hà nội") || txt.includes("ha noi");
+      }) || toData.results[0];
+      
+      const toLat = Number(toSelected.lat);
+      const toLon = Number(toSelected.lon);
+      if (!toLat || !toLon) throw new Error("Cannot get to coordinates");
+
+      // Get route distance
+      const routeUrl = `https://api.geoapify.com/v1/routing?waypoints=${fromLat},${fromLon}|${toLat},${toLon}&mode=drive&apiKey=${API_KEY}`;
+      const routeRes = await fetch(routeUrl);
+      if (!routeRes.ok) throw new Error("Geoapify routing error");
+      const routeData = await routeRes.json();
+      
+      if (!routeData.features || routeData.features.length === 0) throw new Error("Cannot find route");
+      const props = routeData.features[0].properties;
+      if (!props || typeof props.distance !== "number") throw new Error("Invalid routing result");
+      
+      const km = props.distance / 1000; // Convert meters to km
+      return parseFloat(km.toFixed(2));
+    } catch (err) {
+      console.error("Distance calculation error:", err);
+      return null;
+    }
+  }, [createData]);
+
+  // Auto-calculate distance when addresses are complete
+  useEffect(() => {
+    if (createData.fromStreet && createData.fromWard && createData.fromDistrict &&
+        createData.toStreet && createData.toWard && createData.toDistrict &&
+        !distanceKm) {
+      calculateDistanceFromAddresses().then(km => {
+        if (km && km > 0) {
+          setDistanceKm(km.toString());
+        }
+      }).catch(err => {
+        console.error("Auto-calculate distance failed:", err);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createData.fromStreet, createData.fromWard, createData.fromDistrict,
+      createData.toStreet, createData.toWard, createData.toDistrict]);
+
   // Calculate fees function (from OrderNoAccount.js)
   const calculateFees = useMemo(() => {
     const data = createData;
-    const distance = distanceKm || data.distance_km || 0;
+    // Use distanceKm if available, otherwise 0 (backend will calculate)
+    const distance = distanceKm ? parseFloat(distanceKm) : 0;
     let total_shipping_fee = 0;
     const fees_detail = [];
     // Weight is now in GRAMS (INT) instead of KG (FLOAT)
@@ -377,46 +462,52 @@ export default function OrderManagement() {
     const WEIGHT_FEE_PER_KG = weightFee ? parseFloat(weightFee.amount) : 0;
     const INSURANCE_FEE_AMOUNT = insuranceFee ? parseFloat(insuranceFee.amount) : 0;
 
-    // 1. Base fee
+    // 1. Base Shipping Fee - Always included
     if (baseFee) {
       const currentBaseFee = parseFloat(baseFee.amount);
       total_shipping_fee += currentBaseFee;
-      fees_detail.push({ id: baseFee.id, code: baseFee.code, name: baseFee.name, amount: currentBaseFee });
+      fees_detail.push({ id: baseFee.id, code: baseFee.code, name: "Base Shipping Fee", amount: currentBaseFee });
     }
 
-    // 2. Weight fee (weight is in grams, threshold is 1000g = 1kg)
+    // 2. Weight Surcharge (weight is in grams, threshold is 1000g = 1kg)
     if (weightFee && weight > WEIGHT_THRESHOLD) {
       const extraGrams = weight - WEIGHT_THRESHOLD;
       const extraKg = Math.ceil(extraGrams / 1000); // Convert grams to kg (rounded up)
       const extraWeightFee = extraKg * WEIGHT_FEE_PER_KG;
       if (extraWeightFee > 0) {
         total_shipping_fee += extraWeightFee;
-        fees_detail.push({ id: weightFee.id, code: weightFee.code, name: `${weightFee.name} (${extraKg}kg phụ trội)`, amount: extraWeightFee });
+        fees_detail.push({ id: weightFee.id, code: weightFee.code, name: `Weight Surcharge (${extraKg}kg extra)`, amount: extraWeightFee });
       }
     }
 
-    // 3. Insurance fee
+    // 3. Insurance Fee
     if (insuranceFee && cod_amount > 500000) {
       if (INSURANCE_FEE_AMOUNT > 0) {
         total_shipping_fee += INSURANCE_FEE_AMOUNT;
-        fees_detail.push({ id: insuranceFee.id, code: insuranceFee.code, name: insuranceFee.name, amount: INSURANCE_FEE_AMOUNT });
+        fees_detail.push({ id: insuranceFee.id, code: insuranceFee.code, name: "Insurance Fee", amount: INSURANCE_FEE_AMOUNT });
       }
     }
 
-    // 4. Distance fee
-    if (distance && distanceFee) {
+    // 4. Distance Surcharge - Calculate extra km beyond threshold
+    if (distance && distanceFee && distance > 0) {
       const km = parseFloat(distance);
-      if (km > DISTANCE_THRESHOLD) {
+      if (!isNaN(km) && km > DISTANCE_THRESHOLD) {
+        // Calculate extra km (rounded up to nearest integer)
         const extraKm = Math.ceil(km - DISTANCE_THRESHOLD);
         const extraDistanceFee = extraKm * FEE_PER_EXTRA_KM;
         if (extraDistanceFee > 0) {
           total_shipping_fee += extraDistanceFee;
-          fees_detail.push({ id: distanceFee.id, code: distanceFee.code, name: `Phụ phí Khoảng cách (${extraKm}km phụ trội)`, amount: extraDistanceFee });
+          fees_detail.push({ 
+            id: distanceFee.id, 
+            code: distanceFee.code, 
+            name: `Distance Surcharge (${extraKm}km extra)`, 
+            amount: extraDistanceFee 
+          });
         }
       }
     }
 
-    // 5. Service fee - ALWAYS calculate if service_type is selected
+    // 5. Service Fee - ALWAYS calculate if service_type is selected
     if (service_type && serviceTypes.length > 0) {
       // Convert both to numbers for comparison to avoid type mismatch
       const selectedService = serviceTypes.find(s => Number(s.id) === Number(service_type));
@@ -427,26 +518,52 @@ export default function OrderManagement() {
         fees_detail.push({
           id: SERVICE_SURCHARGE_FEE_ID,
           code: 'service_surcharge',
-          name: `Phụ phí Dịch vụ (${selectedService.name || 'Service Type'})`,
+          name: `Service Fee (${selectedService.name || 'Service Type'})`,
           amount: serviceFee
         });
       }
     }
 
-    const total_amount_with_cod = total_shipping_fee + cod_amount;
+    // Total Shipping Fee = Sum of all shipping fees above
+    // COD Amount is calculated AFTER shipping fee is finalized
 
-    // COD fee (not added to shipping fee)
-    const codFee = fees.find(f => f.type === 'cod');
-    if (codFee && cod_amount > 0) {
-      fees_detail.push({ id: codFee.id, code: codFee.code, name: codFee.name, amount: cod_amount });
-    }
+    // 6. COD Amount (Collected from Receiver) - This is the amount to collect, NOT a fee
+    // COD Amount is displayed separately and added to final total
+    // Note: COD Amount is NOT a shipping fee, it's the collected amount from receiver
+    let codAmount = parseFloat(cod_amount) || 0;
+    
+    // COD Amount is always shown in fee breakdown (even if 0)
+    // But we don't add it to fees_detail as a "fee" - it's shown separately in UI
 
-    return { fees_detail, total_shipping_fee, total_amount_with_cod, cod_amount };
+    // Final Total = Total Shipping Fee + COD Amount
+    const total_amount_with_cod = total_shipping_fee + codAmount;
+
+    return { fees_detail, total_shipping_fee, total_amount_with_cod, cod_amount: codAmount };
   }, [createData, distanceKm, fees, serviceTypes]);
 
   // Handlers
   const handleCreateChange = (e) => {
     const { name, value } = e.target;
+    
+    // Reset distance when address fields change
+    if (['fromStreet', 'fromWard', 'fromDistrict', 'toStreet', 'toWard', 'toDistrict'].includes(name)) {
+      setDistanceKm(null);
+    }
+    
+    // Handle payer_type change - auto-set payment method for receiver
+    if (name === 'payer_type') {
+      const newPayerType = parseInt(value) || 1;
+      setCreateData(prev => ({
+        ...prev,
+        payer_type: newPayerType,
+        // Receiver pays: force Cash (ID = 1) and auto-enable COD
+        payment_method_id: newPayerType === 2 ? 1 : prev.payment_method_id,
+        // Auto-enable COD when receiver pays (keep existing value or set to 0 for user to enter)
+        cod_amount: newPayerType === 2 ? (prev.cod_amount || 0) : prev.cod_amount
+      }));
+      return;
+    }
+    
     setCreateData(prev => ({
       ...prev,
       [name]: (['weight', 'length', 'width', 'height', 'cod_amount', 'service_type', 'payment_method_id', 'category_id', 'payer_type'].includes(name))
@@ -623,10 +740,40 @@ export default function OrderManagement() {
       formData.append('cod_amount', createData.cod_amount || 0);
       formData.append('note', createData.note || '');
 
-      // Distance and fees - Backend yêu cầu distance_km không được empty
-      const finalDistance = distanceKm || createData.distance_km || "";
-      // Đảm bảo distance_km luôn có giá trị (ít nhất là "0" nếu không nhập)
-      formData.append('distance_km', finalDistance !== "" && finalDistance !== null ? finalDistance.toString() : "0");
+      // Get district_id and ward_id for auto-routing (same as OrderNoAccount.js)
+      let pickupDistrictId = null;
+      let pickupWardId = null;
+      try {
+        const districtWardRes = await fetch("http://localhost:8888/api/tracking/get_district_ward_ids.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            district_name: createData.fromDistrict,
+            ward_name: createData.fromWard || ""
+          })
+        });
+        if (districtWardRes.ok) {
+          const districtWardData = await districtWardRes.json();
+          if (districtWardData.status === "success") {
+            pickupDistrictId = districtWardData.data.district_id;
+            pickupWardId = districtWardData.data.ward_id;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not get district/ward IDs:", err);
+        // Continue without IDs - backend will handle fallback
+      }
+
+      // Add district/ward IDs for auto-routing
+      if (pickupDistrictId) {
+        formData.append('pickup_district_id', pickupDistrictId.toString());
+      }
+      if (pickupWardId) {
+        formData.append('pickup_ward_id', pickupWardId.toString());
+      }
+
+      // Distance will be calculated automatically by backend (same as createorder.php)
+      // Do NOT send distance_km - backend will calculate from addresses if not provided
       formData.append('total_shipping_fee', calculateFees.total_shipping_fee.toString());
       formData.append('total_amount_with_cod', calculateFees.total_amount_with_cod.toString());
 
@@ -1611,7 +1758,8 @@ export default function OrderManagement() {
         onRowClick={(order) => { setSelectedOrder(order); setShowDetailPanel(true); }}
         onViewDetail={(order) => { setSelectedOrder(order); setShowDetailPanel(true); }}
         onAssignAgent={openAssignAgentModal}
-        onAssignShipper={openAssignModal}
+        // ENTERPRISE: Admin must NEVER assign shipper in normal workflow
+        // onAssignShipper={openAssignModal} // REMOVED - Admin cannot assign shipper
         onEditOrder={openEditModal}
         onCancelOrder={handleCancel}
         onTerminateWorkflow={handleTerminateWorkflow}
@@ -1755,7 +1903,8 @@ export default function OrderManagement() {
         isOpen={showDetailPanel}
         userRole={userRole}
         onClose={() => { setShowDetailPanel(false); setSelectedOrder(null); }}
-        onAssign={openAssignModal}
+        // ENTERPRISE: Admin must NEVER assign shipper in normal workflow
+        // onAssign removed - Only Agent can assign shipper
       />
 
       {showCreateModal && (
@@ -2010,23 +2159,6 @@ export default function OrderManagement() {
                     </Form.Group>
                   </Col>
 
-                  <Col md={4}>
-                    <Form.Group className="mb-2">
-                      <Form.Label className="small text-muted">Distance (km)</Form.Label>
-                      <Form.Control
-                        type="number"
-                        name="distance_km"
-                        step="0.1"
-                        min="0"
-                        className="luxury-input"
-                        value={distanceKm !== null && distanceKm !== "" ? distanceKm : (createData.distance_km || "")}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setDistanceKm(val === "" ? null : val);
-                        }}
-                      />
-                    </Form.Group>
-                  </Col>
                 </Row>
 
                 <Row className="mb-3">
@@ -2079,42 +2211,6 @@ export default function OrderManagement() {
                 <Row className="mb-3">
                   <Col md={6}>
                     <Form.Group className="mb-2">
-                      <Form.Label className="small text-muted">Service Type (*)</Form.Label>
-                      <Form.Select
-                        name="service_type"
-                        value={createData.service_type}
-                        onChange={handleCreateChange}
-                        className="luxury-select"
-                      >
-                        {serviceTypes.map((service) => (
-                          <option key={service.id} value={service.id}>
-                            {service.name} ({Number(service.fee).toLocaleString()} VNĐ)
-                          </option>
-                        ))}
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-
-                  <Col md={6}>
-                    <Form.Group className="mb-2">
-                      <Form.Label className="small text-muted">Payment Method (*)</Form.Label>
-                      <Form.Select
-                        name="payment_method_id"
-                        value={createData.payment_method_id}
-                        onChange={handleCreateChange}
-                        className="luxury-select"
-                      >
-                        {paymentMethods.map((method) => (
-                          <option key={method.id} value={method.id}>{method.name}</option>
-                        ))}
-                      </Form.Select>
-                    </Form.Group>
-                  </Col>
-                </Row>
-
-                <Row className="mb-3">
-                  <Col md={6}>
-                    <Form.Group className="mb-2">
                       <Form.Label className="small text-muted">Shipping Fee Payer (*)</Form.Label>
                       <Form.Select
                         name="payer_type"
@@ -2130,7 +2226,46 @@ export default function OrderManagement() {
 
                   <Col md={6}>
                     <Form.Group className="mb-2">
-                      <Form.Label className="small text-muted">COD Amount - VND</Form.Label>
+                      <Form.Label className="small text-muted">Payment Method (*)</Form.Label>
+                      {createData.payer_type === 1 ? (
+                        // Sender pays: can choose payment method
+                      <Form.Select
+                        name="payment_method_id"
+                        value={createData.payment_method_id}
+                        onChange={handleCreateChange}
+                        className="luxury-select"
+                      >
+                        {paymentMethods.map((method) => (
+                          <option key={method.id} value={method.id}>{method.name}</option>
+                        ))}
+                      </Form.Select>
+                      ) : (
+                        // Receiver pays: Cash on Delivery only (fixed, no selection)
+                        <div>
+                          <Form.Control
+                            type="text"
+                            value="Cash (Receiver Pay)"
+                            readOnly
+                            disabled
+                            className="luxury-input"
+                            style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+                          />
+                          <Form.Text className="text-muted">
+                            Receiver will pay in cash upon delivery. COD is automatically enabled.
+                          </Form.Text>
+                        </div>
+                      )}
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row className="mb-3">
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">
+                        COD Amount (Collected from Receiver) - VND
+                        {createData.payer_type === 2 && <span className="text-danger ms-1">*</span>}
+                      </Form.Label>
                       <Form.Control
                         type="number"
                         name="cod_amount"
@@ -2139,7 +2274,35 @@ export default function OrderManagement() {
                         className="luxury-input"
                         value={createData.cod_amount}
                         onChange={handleCreateChange}
+                        placeholder={createData.payer_type === 2 ? "Enter COD amount (required)" : "Enter COD amount (optional)"}
+                        required={createData.payer_type === 2}
+                        style={createData.payer_type === 2 ? { borderColor: '#ffc107', borderWidth: '2px' } : {}}
                       />
+                      {createData.payer_type === 2 ? (
+                        <Form.Text className="text-warning" style={{ fontWeight: '500' }}>
+                          ⚠️ COD is required when Receiver Pays. Enter the amount receiver will pay in cash.
+                        </Form.Text>
+                      ) : (
+                        <Form.Text className="text-muted">Enter the COD amount that will be collected from receiver (if any).</Form.Text>
+                      )}
+                    </Form.Group>
+                  </Col>
+
+                  <Col md={6}>
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small text-muted">Service Type (*)</Form.Label>
+                      <Form.Select
+                        name="service_type"
+                        value={createData.service_type}
+                        onChange={handleCreateChange}
+                        className="luxury-select"
+                      >
+                        {serviceTypes.map((service) => (
+                          <option key={service.id} value={service.id}>
+                            {service.name} ({Number(service.fee).toLocaleString()} VNĐ)
+                          </option>
+                        ))}
+                      </Form.Select>
                     </Form.Group>
                   </Col>
                 </Row>
@@ -2190,26 +2353,23 @@ export default function OrderManagement() {
                     <strong>{Number(calculateFees.total_shipping_fee).toLocaleString("en-US")} VND</strong>
                   </div>
 
-                  {calculateFees.cod_amount > 0 && (
-                    <>
-                      <div className="d-flex justify-content-between mt-2">
-                        <span>COD Amount:</span>
-                        <strong className="text-success">
-                          {Number(calculateFees.cod_amount).toLocaleString("en-US")} VND
+                  <div className="d-flex justify-content-between fw-bold text-warning mt-2">
+                    <span>COD Amount (Collected from Receiver):</span>
+                    <strong>
+                      {Number(calculateFees.cod_amount || 0).toLocaleString("en-US")} VND
                         </strong>
                       </div>
 
-                      <div
-                        className="d-flex justify-content-between mt-2 fw-bold"
-                        style={{ fontSize: "1.1em", color: "#28a745" }}
-                      >
-                        <span>Total Amount:</span>
+                  <hr className="my-2" />
+
+                  <div className="d-flex justify-content-between fw-bold fs-5 text-success">
+                    <span>
+                      {createData.payer_type === 2 ? 'Amount to Collect from Receiver:' : 'Final Total (Shipping + COD):'}
+                    </span>
                         <strong>
                           {Number(calculateFees.total_amount_with_cod).toLocaleString("en-US")} VND
                         </strong>
                       </div>
-                    </>
-                  )}
                 </div>
 
                 <div className="luxury-section-header mb-2">
@@ -2333,6 +2493,59 @@ export default function OrderManagement() {
             {/* ================= BODY (SCROLL) ================= */}
             <div className="dqn-modal-body">
               <Form>
+                {/* Order Info Display (Read-only) */}
+                {selectedOrder && (() => {
+                  const getArea = (address) => {
+                    if (!address) return "N/A";
+                    const districts = Object.keys(hanoiData);
+                    for (const district of districts) {
+                      if (address.includes(district)) return district;
+                    }
+                    const parts = address.split(",").map(p => p.trim());
+                    if (parts.length > 0) {
+                      const lastPart = parts[parts.length - 1];
+                      for (const district of districts) {
+                        if (lastPart.includes(district) || district.includes(lastPart)) {
+                          return district;
+                        }
+                      }
+                      return lastPart;
+                    }
+                    return address;
+                  };
+                  
+                  return (
+                    <div className="luxury-order-info mb-4 p-3" style={{ backgroundColor: "#f8f9fa", borderRadius: "8px", border: "1px solid #dee2e6" }}>
+                      <div className="d-flex align-items-center mb-3">
+                        <FaInfoCircle className="me-2 text-primary" />
+                        <h6 className="fw-bold mb-0">Order Information (Read-Only)</h6>
+                      </div>
+                      <Row className="g-3">
+                        <Col md={6}>
+                          <div className="luxury-info-item">
+                            <small className="text-muted d-flex align-items-center mb-1">
+                              <FaMapMarkerAlt className="me-1" /> Pickup Area
+                            </small>
+                            <div className="small fw-semibold text-primary">
+                              {getArea(selectedOrder.sender_address || selectedOrder.senderAddress || "")}
+                            </div>
+                          </div>
+                        </Col>
+                        <Col md={6}>
+                          <div className="luxury-info-item">
+                            <small className="text-muted d-flex align-items-center mb-1">
+                              <FaMapMarkerAlt className="me-1" /> Delivery Area
+                            </small>
+                            <div className="small fw-semibold text-success">
+                              {getArea(selectedOrder.receiver_address || selectedOrder.receiverAddress || "")}
+                            </div>
+                          </div>
+                        </Col>
+                      </Row>
+                    </div>
+                  );
+                })()}
+                
                 <Form.Group className="mb-3">
                   <Form.Label className="fw-bold d-flex align-items-center">
                     <FaMapMarkerAlt className="me-2 text-primary" /> Receiver Address
@@ -2408,8 +2621,10 @@ export default function OrderManagement() {
         </div>
       )}
 
-      {/* MODAL ASSIGN SHIPPER - DQN LUXURY */}
-      {showAssignModal && (
+      {/* MODAL ASSIGN SHIPPER - ENTERPRISE: REMOVED FOR ADMIN */}
+      {/* ENTERPRISE RULE: Admin must NEVER assign shipper in normal workflow */}
+      {/* Only Agent can assign shipper */}
+      {false && showAssignModal && (
         <div className="dqn-modal-overlay">
           <div className="dqn-modal">
             {/* ================= HEADER ================= */}

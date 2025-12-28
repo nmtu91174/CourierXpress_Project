@@ -46,13 +46,23 @@ $whereConditions = [];
 $params = [];
 $types = "";
 
-// RBAC: Admin sees all notifications, others only see their own
-if ($currentRole !== "admin") {
+// RBAC: Admin sees only admin/agent/system notifications (not customer notifications)
+// Other users only see their own notifications
+if ($currentRole === "admin") {
+    // Admin should only see notifications for admin, agent, system roles
+    // Exclude customer notifications to avoid confusion
+    $whereConditions[] = "EXISTS (
+        SELECT 1 FROM users u 
+        WHERE u.id = n.user_id 
+        AND u.role IN ('admin', 'agent', 'system')
+    )";
+    // No params needed for this subquery
+} else {
+    // Other roles: only see their own notifications
     $whereConditions[] = "n.user_id = ?";
     $params[] = $currentUserId;
     $types .= "i";
 }
-// Admin: no user_id filter (sees all notifications)
 
 // Filter by type (validate to prevent empty results)
 if ($filterType !== "all") {
@@ -128,9 +138,16 @@ $unreadCountSql = "";
 $totalCountSql = "";
 
 if ($currentRole === "admin") {
-    // Admin: count all notifications
-    $unreadCountSql = "SELECT COUNT(*) as unread_count FROM notifications WHERE is_read = 0";
-    $totalCountSql = "SELECT COUNT(*) as total_count FROM notifications";
+    // Admin: count only admin/agent/system notifications (exclude customer)
+    $unreadCountSql = "SELECT COUNT(*) as unread_count 
+                       FROM notifications n
+                       INNER JOIN users u ON n.user_id = u.id
+                       WHERE n.is_read = 0 
+                       AND u.role IN ('admin', 'agent', 'system')";
+    $totalCountSql = "SELECT COUNT(*) as total_count 
+                      FROM notifications n
+                      INNER JOIN users u ON n.user_id = u.id
+                      WHERE u.role IN ('admin', 'agent', 'system')";
 } else {
     // Other roles: count only their own notifications
     $unreadCountSql = "SELECT COUNT(*) as unread_count FROM notifications WHERE user_id = ? AND is_read = 0";

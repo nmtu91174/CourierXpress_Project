@@ -66,29 +66,29 @@ export default function DeliveryInProgress() {
 
   return (
     <div className="delivery-wrapper container my-5">
-      <h2 className="delivery-title mb-4">🚚 Đơn hàng đang giao</h2>
+      <h2 className="delivery-title mb-4">🚚 Orders In Delivery</h2>
 
       {orders.length === 0 ? (
-        <Alert variant="info">Hiện không có đơn hàng nào đang giao.</Alert>
+        <Alert variant="info">No orders are currently in delivery.</Alert>
       ) : (
         orders.map((order) => (
           <div key={order.id} className="delivery-block mb-5">
             {/* ORDER INFO */}
             <div className="delivery-card mb-3">
               <p>
-                <strong>Mã đơn:</strong> #{order.order_code}
+                <strong>Order Code:</strong> #{order.order_code}
               </p>
               <p>
-                <FaMapMarkerAlt /> <strong>Địa chỉ:</strong> {order.receiver_address}
+                <FaMapMarkerAlt /> <strong>Address:</strong> {order.receiver_address}
               </p>
               <p>
-                <strong>Người nhận:</strong> {order.receiver_name}
+                <strong>Receiver:</strong> {order.receiver_name}
               </p>
               <p>
-                <strong>SĐT:</strong> {order.receiver_phone}
+                <strong>Phone:</strong> {order.receiver_phone}
               </p>
               <p>
-                <strong>Trạng thái:</strong> Đang giao
+                <strong>Status:</strong> In Delivery
               </p>
             </div>
 
@@ -96,7 +96,7 @@ export default function DeliveryInProgress() {
             <div className="delivery-upload mb-3">
               <label className="upload-box">
                 <FaCamera size={28} />
-                <span>Chụp ảnh xác nhận giao hàng</span>
+                <span>Take delivery confirmation photo</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -117,7 +117,7 @@ export default function DeliveryInProgress() {
               className="btn btn-success delivery-btn"
               onClick={() => navigate(`/shipper/order/${order.id}`)}
             >
-              <FaCheckCircle /> Chi tiết & Xác nhận giao hàng
+              <FaCheckCircle /> Details & Confirm Delivery
             </button>
           </div>
         ))

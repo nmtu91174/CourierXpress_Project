@@ -55,7 +55,28 @@ foreach ($required_fields as $field) {
     }
 }
 
-$customer_id = isset($data['customer_id']) ? intval($data['customer_id']) : 6;
+// ENTERPRISE: Get Guest Customer ID dynamically from DB (not hard-coded)
+// Guest Customer is identified by email 'guest@system.local'
+function getGuestCustomerId($conn) {
+    $email = 'guest@system.local';
+    $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? AND role = 'customer' LIMIT 1");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        $stmt->close();
+        return (int)$row['id'];
+    }
+    
+    $stmt->close();
+    throw new Exception("Guest Customer user not found in database (email: {$email}). Please ensure guest customer record exists.");
+}
+
+// Get customer_id: use provided ID or fetch Guest Customer ID from DB
+$customer_id = isset($data['customer_id']) && (int)$data['customer_id'] > 0 
+    ? (int)$data['customer_id'] 
+    : getGuestCustomerId($conn); // Dynamically fetch Guest Customer ID from DB
 $sender_name = $conn->real_escape_string($data['sender_name']);
 $sender_phone = $conn->real_escape_string($data['sender_phone']);
 $sender_address = $conn->real_escape_string($data['sender_address']);
@@ -80,6 +101,17 @@ if (!in_array($payer_type, [1, 2])) {
     echo json_encode([
         "status" => "error",
         "message" => "Giá trị payer_type không hợp lệ (chỉ chấp nhận 1 hoặc 2)"
+    ]);
+    exit();
+}
+
+// ENTERPRISE GUARD: Receiver Pay = Cash only
+// If payer_type = 2 (receiver pays), payment_method_id MUST be 1 (cash)
+if ($payer_type === 2 && $payment_method_id !== 1) {
+    http_response_code(400);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Receiver Pay requires Cash payment method only. Payment method must be Cash (ID: 1)."
     ]);
     exit();
 }
@@ -117,152 +149,116 @@ if (count($fee_ids) !== count($fee_amounts)) {
     exit();
 }
 
-$assigned_agent_id = null; 
+// ==========================
+// ENTERPRISE: Use OrderService (no direct SQL)
+// ==========================
+require_once __DIR__ . "/services/OrderService.php";
+require_once __DIR__ . "/services/FeeService.php";
 
-function generateOrderCode($conn) {  
-    do {
-        $prefix = "ORD";
-        $number = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
-        $code = $prefix . $number;
-        $check = $conn->query("SELECT id FROM orders WHERE order_code = '$code'");
-    } while ($check->num_rows > 0);
-    return $code;
+// Extract pickup_district_id and pickup_ward_id for auto-routing
+$pickup_district_id = null;
+$pickup_ward_id = null;
+
+// Method 1: Use provided IDs from frontend
+if (isset($data['pickup_district_id']) && (int)$data['pickup_district_id'] > 0) {
+    $pickup_district_id = (int)$data['pickup_district_id'];
+}
+if (isset($data['pickup_ward_id']) && (int)$data['pickup_ward_id'] > 0) {
+    $pickup_ward_id = (int)$data['pickup_ward_id'];
 }
 
-function generateInvoiceNumber($conn) { 
-    do {
-        $prefix = "INV";
-        $number = str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
-        $code = $prefix . $number;
-        $check = $conn->query("SELECT id FROM invoices WHERE invoice_number = '$code'");
-    } while ($check->num_rows > 0);
-    return $code;
+// Method 2: Fallback - Lookup district_id from district name in sender_address
+if ($pickup_district_id === null && !empty($sender_address)) {
+    // Extract district name from sender_address (format: "street, ward, district, Hà Nội")
+    $addressParts = explode(',', $sender_address);
+    if (count($addressParts) >= 3) {
+        $possibleDistrictName = trim($addressParts[count($addressParts) - 2]); // Second to last part
+        
+        // Try to find district by name
+        $districtStmt = $conn->prepare("SELECT id FROM districts WHERE name = ? LIMIT 1");
+        $districtStmt->bind_param("s", $possibleDistrictName);
+        $districtStmt->execute();
+        $districtResult = $districtStmt->get_result();
+        if ($districtRow = $districtResult->fetch_assoc()) {
+            $pickup_district_id = (int)$districtRow['id'];
+            error_log("AUTO-ROUTING: Found district_id {$pickup_district_id} from district name: {$possibleDistrictName}");
+        }
+        $districtStmt->close();
+    }
 }
 
-$order_code = generateOrderCode($conn);
-$invoice_number = generateInvoiceNumber($conn);
+// Calculate distance_km if not provided (required by OrderService)
+$distance_km = isset($data['distance_km']) && (float)$data['distance_km'] > 0
+    ? (float)$data['distance_km']
+    : 0; // Will be calculated by FeeService if needed
 
-$conn->begin_transaction();
-    try {
-    // 3. TẠO ĐƠN HÀNG (orders)
-        $stmt_order = $conn->prepare("INSERT INTO orders (
-        customer_id, agent_id, order_code,
-        sender_name, sender_phone, sender_address,
-        receiver_name, receiver_phone, receiver_address,
-        weight, category_id,
-        length, width, height,
-        service_type,
-        payer_type,
-        status,
-        total_amount, cod_amount, total_shipping_fee,
-        payment_method_id,
-        notes
-    ) VALUES (
-        ?, NULL, ?,
-        ?, ?, ?,
-        ?, ?, ?,
-        ?, ?,
-        ?, ?, ?,
-        ?,
-        ?,
-        1,
-        ?, ?, ?,
-        ?, ?
-    )");
-        $stmt_order->bind_param(
-        "isssssssdidddiidddss",
-        $customer_id, $order_code,
-        $sender_name, $sender_phone, $sender_address,
-        $receiver_name, $receiver_phone, $receiver_address,
-        $weight, $category_id,
-        $length, $width, $height,
-        $service_type_id,
-        $payer_type,
-        $total_amount_with_cod, $cod_amount, $total_shipping_fee,
-        $payment_method_id,
-        $notes
-    );
+try {
+    // Build data array for OrderService
+    $orderData = [
+        "customer_id" => $customer_id,
+        "actor_id" => 0, // Guest: actor_id = 0
+        "actor_role" => "guest", // ENTERPRISE: Guest role
+        "sender_name" => $sender_name,
+        "sender_phone" => $sender_phone,
+        "sender_address" => $sender_address,
+        "receiver_name" => $receiver_name,
+        "receiver_phone" => $receiver_phone,
+        "receiver_address" => $receiver_address,
+        "receiver_email" => $receiver_email,
+        "category_id" => $category_id,
+        "weight" => (int)$weight, // OrderService expects INT (grams)
+        "length" => $length,
+        "width" => $width,
+        "height" => $height,
+        "service_type" => $service_type_id,
+        "service_type_id" => $service_type_id, // Support both
+        "payment_method_id" => $payment_method_id,
+        "cod_amount" => $cod_amount,
+        "payer_type" => $payer_type,
+        "notes" => $notes,
+        "pickup_district_id" => $pickup_district_id,
+        "pickup_ward_id" => $pickup_ward_id,
+        "distance_km" => $distance_km > 0 ? $distance_km : 10.0, // Default 10km if not provided
+        // Fee IDs and amounts (if provided, OrderService will use them)
+        "fee_ids" => $fee_ids,
+        "fee_amounts" => $fee_amounts
+    ];
         
-        $stmt_order->execute();
-        $order_id = $conn->insert_id;
+    // Call OrderService to create order (handles all SQL, routing, approvals, history)
+    $orderService = new OrderService($conn);
+    $result = $orderService->create($orderData, $images);
 
-        if ($stmt_order->affected_rows === 0) {
-            throw new Exception("Không thể tạo đơn hàng.");
-        }
+    // Extract results
+    $order_code = $result["order_code"];
+    $order_id = $result["order_id"];
+    $shipping_fee = $result["shipping_fee"];
+    $total_amount = $result["total_with_cod"] ?? $shipping_fee;
+    $auto_routed = isset($result["auto_routed"]) ? $result["auto_routed"] : false;
+    $agent_id = isset($result["agent_id"]) ? $result["agent_id"] : null;
 
-        $stmt_order_fee = $conn->prepare("INSERT INTO order_fees (order_id, fee_id, amount) VALUES (?, ?, ?)");
-
-        for ($i = 0; $i < count($fee_ids); $i++) {
-            $fee_id = (int)$fee_ids[$i];
-            $amount = (float)$fee_amounts[$i];
-            if ($fee_id > 0 && $amount > 0) {
-                $stmt_order_fee->bind_param("iid", $order_id, $fee_id, $amount);
-                if (!$stmt_order_fee->execute()) {
-                    throw new Exception("Lỗi khi chèn chi tiết phí (Fee ID: $fee_id) vào order_fees.");
-                }
-            }
-        }
-        
-        // 5. TẠO HÓA ĐƠN (invoices) 
-        $stmt_invoice = $conn->prepare("INSERT INTO invoices (order_id, invoice_number, total_amount, status, payment_method_id) 
-                                        VALUES (?, ?, ?, 'unpaid', ?)");
-        $stmt_invoice->bind_param("isdi", $order_id, $invoice_number, $total_shipping_fee, $payment_method_id); 
-        $stmt_invoice->execute();
-        
-        // 6. LƯU LỊCH SỬ ĐƠN HÀNG (order_history) 
-        if ($customer_id == 6) {
-        $noteText = "Khách vãng lai tạo đơn hàng";
-        } else {
-            $getUser = $conn->prepare("SELECT name FROM users WHERE id = ?");
-            $getUser->bind_param("i", $customer_id);
-            $getUser->execute();
-            $resultUser = $getUser->get_result();
-            $userRow = $resultUser->fetch_assoc();
-
-            $customerName = $userRow ? $userRow['name'] : "Khách hàng";
-
-            $noteText = "Khách hàng $customerName đã tạo đơn hàng";
-        }
-
-
-        $stmt_history = $conn->prepare("
-            INSERT INTO order_history (order_id, status_id, user_id, role, note) 
-            VALUES (?, 1, ?, 'customer', ?)
-        ");
-        $stmt_history->bind_param("iis", $order_id, $customer_id, $noteText);
-        $stmt_history->execute();
-
-
-        // 7. TẠO YÊU CẦU DUYỆT ĐƠN (order_approvals) - agent_id là NULL
-        $stmt_approval = $conn->prepare("INSERT INTO order_approvals (order_id, agent_id, status, note) VALUES (?, NULL, 'pending', 'Chờ Agent duyệt đơn')");
-        $stmt_approval->bind_param("i", $order_id); 
-        $stmt_approval->execute();
-        
-        // 8. LƯU ORDER IMAGES
-        if (!empty($images) && is_array($images)) {
-            $stmt_image = $conn->prepare("INSERT INTO order_images (order_id, image_url, type) VALUES (?, ?, 'pickup')");
-            foreach ($images as $image_url) {
-                $stmt_image->bind_param("is", $order_id, $image_url);
-                $stmt_image->execute();
-            }
-        }
-        
-        $conn->commit();
-
-        send_email_notification($receiver_email, $order_code, $total_shipping_fee, $cod_amount);
+    // Send email notification
+    send_email_notification($receiver_email, $order_code, $shipping_fee, $cod_amount);
+    
+    $success_message = $auto_routed
+        ? "Đơn hàng đã được tạo thành công và đã tự động gán Agent."
+        : "Đơn hàng đã được tạo thành công và đang chờ Agent duyệt.";
+    
         echo json_encode([
             "status" => "success",
-            "message" => "Đơn hàng đã được tạo thành công và đang chờ Agent duyệt.",
+        "message" => $success_message,
             "order_code" => $order_code,
+        "order_id" => $order_id,
             "receiver_email" => $receiver_email,  
-            "total_shipping_fee" => $total_shipping_fee,
+        "total_shipping_fee" => $shipping_fee,
+        "shipping_fee" => $shipping_fee, // Alias
             "cod_amount" => $cod_amount,
-            "total_amount_with_cod" => $total_amount_with_cod,
-            "image_urls" => $uploaded_image_urls
+        "total_amount_with_cod" => $total_amount,
+        "image_urls" => $uploaded_image_urls,
+        "auto_routed" => $auto_routed,
+        "agent_id" => $agent_id
         ]);
 
     } catch (Exception $e) {
-        $conn->rollback();
         http_response_code(500);
         $error_message = strstr($e->getMessage(), "Cannot add or update a child row") !== false 
             ? "Lỗi hệ thống: Vui lòng kiểm tra lại ID khóa ngoại (Foreign Key) hoặc cấu trúc dữ liệu."

@@ -35,7 +35,7 @@ export default function OrderHistoryShipper() {
           phone: o.receiver_phone || "",
           from: o.sender_address || "",
           to: o.receiver_address || "",
-          status: "Đã giao",
+          status: "Delivered",
           statusCode: 5,
           date: o.created_at ? new Date(o.created_at).toLocaleDateString("vi-VN") : "",
           createdAt: o.created_at,
@@ -49,9 +49,9 @@ export default function OrderHistoryShipper() {
           phone: o.receiver_phone || "",
           from: o.sender_address || "",
           to: o.receiver_address || "",
-          status: "Hủy",
+          status: "Failed",
           statusCode: 6,
-          reason: o.failed_reason || "Không rõ",
+          reason: o.failed_reason || "Unknown",
           date: o.failed_at ? new Date(o.failed_at).toLocaleDateString("vi-VN") : (o.created_at ? new Date(o.created_at).toLocaleDateString("vi-VN") : ""),
           createdAt: o.failed_at || o.created_at,
         }));
@@ -79,9 +79,9 @@ export default function OrderHistoryShipper() {
   const filteredOrders =
     filter === "all"
       ? orders
-      : filter === "Đã giao"
-      ? orders.filter((order) => order.status === "Đã giao")
-      : orders.filter((order) => order.status === "Hủy");
+      : filter === "Delivered"
+      ? orders.filter((order) => order.status === "Delivered")
+      : orders.filter((order) => order.status === "Failed");
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -110,7 +110,7 @@ export default function OrderHistoryShipper() {
 
   return (
     <div className="order-history container my-5">
-      <h2 className="title">📦 Lịch sử đơn hàng</h2>
+      <h2 className="title">📦 Order History</h2>
 
       {/* FILTER BUTTONS */}
       <div className="filter-group">
@@ -118,25 +118,25 @@ export default function OrderHistoryShipper() {
           className={filter === "all" ? "active" : ""}
           onClick={() => setFilter("all")}
         >
-          Tất cả
+          All
         </button>
         <button
-          className={filter === "Đã giao" ? "active" : ""}
-          onClick={() => setFilter("Đã giao")}
+          className={filter === "Delivered" ? "active" : ""}
+          onClick={() => setFilter("Delivered")}
         >
-          Đã giao
+          Delivered
         </button>
         <button
-          className={filter === "Hủy" ? "active" : ""}
-          onClick={() => setFilter("Hủy")}
+          className={filter === "Failed" ? "active" : ""}
+          onClick={() => setFilter("Failed")}
         >
-          Đã hủy
+          Failed
         </button>
       </div>
 
       {orders.length === 0 ? (
         <Alert variant="info" className="mt-4">
-          Chưa có đơn hàng nào trong lịch sử.
+          No orders in history yet.
         </Alert>
       ) : (
         <>
@@ -149,7 +149,7 @@ export default function OrderHistoryShipper() {
                 >
                   <h5>#{order.id}</h5>
                   <p>{order.to}</p>
-                  <span className={`status ${order.status === "Đã giao" ? "done" : "cancel"}`}>
+                  <span className={`status ${order.status === "Delivered" ? "done" : "cancel"}`}>
                     {order.status}
                   </span>
                 </div>
@@ -161,34 +161,34 @@ export default function OrderHistoryShipper() {
           {selectedOrder && (
             <div className="order-modal" onClick={() => setSelectedOrder(null)}>
               <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <h4>Chi tiết đơn #{selectedOrder.id}</h4>
+                <h4>Order Details #{selectedOrder.id}</h4>
 
                 <p>
-                  <strong>Khách hàng:</strong> {selectedOrder.customerName}
+                  <strong>Customer:</strong> {selectedOrder.customerName}
                 </p>
                 <p>
-                  <strong>SĐT:</strong> {selectedOrder.phone}
+                  <strong>Phone:</strong> {selectedOrder.phone}
                 </p>
                 <p>
-                  <strong>Địa chỉ gửi:</strong> {selectedOrder.from}
+                  <strong>Sender Address:</strong> {selectedOrder.from}
                 </p>
                 <p>
-                  <strong>Địa chỉ nhận:</strong> {selectedOrder.to}
+                  <strong>Receiver Address:</strong> {selectedOrder.to}
                 </p>
                 <p>
-                  <strong>Ngày:</strong> {selectedOrder.date}
+                  <strong>Date:</strong> {selectedOrder.date}
                 </p>
                 <p>
-                  <strong>Trạng thái:</strong> {selectedOrder.status}
+                  <strong>Status:</strong> {selectedOrder.status}
                 </p>
 
-                {selectedOrder.status === "Hủy" && selectedOrder.reason && (
+                {selectedOrder.status === "Failed" && selectedOrder.reason && (
                   <p className="cancel-reason">
-                    <strong>Lý do hủy:</strong> {selectedOrder.reason}
+                    <strong>Failure Reason:</strong> {selectedOrder.reason}
                   </p>
                 )}
 
-                <button onClick={() => setSelectedOrder(null)}>Đóng</button>
+                <button onClick={() => setSelectedOrder(null)}>Close</button>
               </div>
             </div>
           )}

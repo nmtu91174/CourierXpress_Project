@@ -187,7 +187,29 @@ const Login = () => {
 
                             {/* PASSWORD */}
                             <Form.Group className="mb-4">
-                                <Form.Label>Password</Form.Label>
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <Form.Label className="mb-0">Password</Form.Label>
+                                    {/* Forgot Password Link - Enterprise UX: Canh phải, ngay dưới label Password */}
+                                    <Link 
+                                        to="/forgot-password" 
+                                        className="text-decoration-none"
+                                        style={{ 
+                                            color: "#6c757d", 
+                                            fontSize: "0.875rem",
+                                            fontWeight: 400
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.target.style.color = "#ee4d2d";
+                                            e.target.style.textDecoration = "underline";
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.target.style.color = "#6c757d";
+                                            e.target.style.textDecoration = "none";
+                                        }}
+                                    >
+                                        Forgot password?
+                                    </Link>
+                                </div>
                                 <div className="input-group">
                                     <span className="input-group-text bg-white border-end-0 text-muted">
                                         <FaLock />

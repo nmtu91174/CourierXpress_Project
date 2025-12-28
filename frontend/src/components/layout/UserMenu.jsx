@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUser, FaUserCircle, FaCog, FaSignOutAlt, FaBell, FaChevronDown } from "react-icons/fa";
+import { FaUser, FaUserCircle, FaCog, FaSignOutAlt, FaBell, FaChevronDown, FaTachometerAlt } from "react-icons/fa";
 import "../../assets/styles/user_menu.css";
 
 /**
@@ -121,6 +121,18 @@ export default function UserMenu({ user = null }) {
     }
   };
 
+  const handleDashboard = () => {
+    setIsOpen(false);
+    // Navigate to Dashboard based on role
+    const role = user.role?.toLowerCase();
+    if (role === "admin") {
+      navigate("/admin/dashboard");
+    } else if (role === "agent") {
+      navigate("/agent/dashboard");
+    }
+    // Dashboard only available for admin and agent
+  };
+
   // Get user display info
   const userName = user.name || "User";
   const userRole = user.role || "customer";
@@ -225,6 +237,16 @@ export default function UserMenu({ user = null }) {
 
           {/* Quick Actions */}
           <div className="user-menu-actions">
+            {/* Dashboard - Only for Admin and Agent */}
+            {(userRole?.toLowerCase() === "admin" || userRole?.toLowerCase() === "agent") && (
+              <button className="user-menu-item" onClick={handleDashboard}>
+                <div className="user-menu-item-icon">
+                  <FaTachometerAlt />
+                </div>
+                <span className="user-menu-item-text">Dashboard</span>
+              </button>
+            )}
+
             {/* Notifications */}
             <button
               className="user-menu-item"

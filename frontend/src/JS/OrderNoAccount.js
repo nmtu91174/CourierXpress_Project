@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import emailjs from "emailjs-com";
-import hanoiData from "../data/hanoi.json"; 
+import hanoiData from "../data/hanoi.json";
+import { EMAILJS_ORDER_CONFIG } from "../config/emailjs.order.config"; 
 
 const API_KEY = "9aed6a93b4d540e6b3b740a688d9921e";
 const API_URL = 'http://localhost:8888/createorder.php'; 
@@ -150,26 +151,26 @@ export const useOrderLogic = () => {
         
         // --- Bắt đầu tính toán ---
         
-        // 2. Phí Cơ Bản (ID 1) - Luôn có
+        // 1. Base Shipping Fee (ID 1) - Always included
         if (baseFee) {
             let currentBaseFee = parseFloat(baseFee.amount);
             total_shipping_fee += currentBaseFee;
             fees_detail.push({ 
                 id: baseFee.id, 
                 code: baseFee.code, 
-                name: baseFee.name, 
+                name: "Base Shipping Fee", 
                 amount: currentBaseFee 
             });
         }
 
-        // 3. Phụ Phí Cân Nặng (GRAM)
-        // Quy tắc:
-        // 0–500g: miễn phí
-        // >500g: mỗi 500g tính thêm 1 lần phí
+        // 2. Weight Surcharge (GRAM)
+        // Rules:
+        // 0–500g: free
+        // >500g: charge per 500g block
 
         const weightGram = Number(weight) || 0;
-        const FREE_WEIGHT = 500;   // 500g miễn phí
-        const BLOCK_WEIGHT = 500;  // mỗi block 500g
+        const FREE_WEIGHT = 500;   // 500g free
+        const BLOCK_WEIGHT = 500;  // per 500g block
 
         if (weightFee && weightGram > FREE_WEIGHT) {
             const extraGram = weightGram - FREE_WEIGHT;
@@ -181,12 +182,12 @@ export const useOrderLogic = () => {
             fees_detail.push({
                 id: weightFee.id,
                 code: weightFee.code,
-                name: `Phụ phí trọng lượng (${blocks} x 500g)`,
+                name: `Weight Surcharge (${blocks} x 500g)`,
                 amount: extraWeightFee
             });
         }
         
-        // 4. Phụ Phí Bảo Hiểm (ID 3) - Giả định nếu COD > 500k
+        // 3. Insurance Fee (ID 3) - Applied if COD > 500k
         if (insuranceFee && cod_amount > 500000) {
             const currentInsuranceFee = INSURANCE_FEE_AMOUNT;
             if (currentInsuranceFee > 0) {
@@ -194,36 +195,35 @@ export const useOrderLogic = () => {
                 fees_detail.push({ 
                     id: insuranceFee.id, 
                     code: insuranceFee.code, 
-                    name: insuranceFee.name, 
+                    name: "Insurance Fee", 
                     amount: currentInsuranceFee 
                 });
             }
         }
 
-
-        // 5. Phụ Phí Khoảng Cách (ID 5)
+        // 4. Distance Surcharge (ID 5)
         if (distanceKm && distanceFee) {
             const km = parseFloat(distanceKm);
             
             if (km > DISTANCE_THRESHOLD) {
-                // Chỉ tính phí cho KM phụ trội
+                // Only charge for extra km
                 const extraKm = Math.ceil(km - DISTANCE_THRESHOLD); 
                 const extraDistanceFee = extraKm * FEE_PER_EXTRA_KM;
                 
-                // Chỉ thêm vào fees_detail nếu có phí phát sinh
+                // Only add to fees_detail if fee is charged
                 if (extraDistanceFee > 0) {
                     total_shipping_fee += extraDistanceFee;
                     fees_detail.push({ 
                         id: distanceFee.id, 
                         code: distanceFee.code,
-                        name: `Phụ phí Khoảng cách (${extraKm}km phụ trội)`, 
+                        name: `Distance Surcharge (${extraKm}km extra)`, 
                         amount: extraDistanceFee 
                     });
                 }
             }
         }
         
-        // 6. Phí Dịch Vụ (Sử dụng ID 6 - Phụ phí Loại Dịch vụ)
+        // 5. Service Fee (ID 6 - Service Type Surcharge)
         const selectedService = serviceTypes.find(s => s.id === service_type);
         if (selectedService) {
             const serviceFee = parseFloat(selectedService.fee) || 0;
@@ -233,27 +233,27 @@ export const useOrderLogic = () => {
                 fees_detail.push({ 
                     id: SERVICE_SURCHARGE_FEE_ID, 
                     code: 'service_surcharge',
-                    name: `Phụ phí Dịch vụ (${selectedService.name})`, 
+                    name: `Service Fee (${selectedService.name})`, 
                     amount: serviceFee,
                 });
             }
         }
 
-        // TỔNG TIỀN CẦN THU = Phí Ship + Tiền COD
-        const total_amount_with_cod = total_shipping_fee + cod_amount;
+        // Total Shipping Fee = Sum of all shipping fees above
+        // COD Fee is calculated AFTER shipping fee is finalized
 
-        // Phí COD (ID 4) - Không tính vào total_shipping_fee
-        const codFee = fees.find(f => f.type === 'cod');
-        if (codFee && cod_amount > 0) {
-            fees_detail.push({
-                id: codFee.id,
-                code: codFee.code,
-                name: codFee.name,
-                amount: cod_amount
-            });
-        }
+        // 6. COD Amount (Collected from Receiver) - This is the amount to collect, NOT a fee
+        // COD Amount is displayed separately and added to final total
+        // Note: COD Amount is NOT a shipping fee, it's the collected amount from receiver
+        let codAmount = parseFloat(cod_amount) || 0;
+        
+        // COD Amount is always shown in fee breakdown (even if 0) when receiver pays
+        // But we don't add it to fees_detail as a "fee" - it's shown separately in UI
 
-        return { fees_detail, total_shipping_fee, total_amount_with_cod, cod_amount };
+        // Final Total = Total Shipping Fee + COD Amount
+        const total_amount_with_cod = total_shipping_fee + codAmount;
+
+        return { fees_detail, total_shipping_fee, total_amount_with_cod, cod_amount: codAmount };
     }, [fees, serviceTypes]); 
 
 
@@ -409,6 +409,30 @@ export const useOrderLogic = () => {
         }
     }
 
+    // 2.5. Get district_id and ward_id for auto-routing
+    let pickupDistrictId = null;
+    let pickupWardId = null;
+    try {
+        const districtWardRes = await fetch("http://localhost:8888/api/tracking/get_district_ward_ids.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                district_name: formData.fromDistrict,
+                ward_name: formData.fromWard || ""
+            })
+        });
+        if (districtWardRes.ok) {
+            const districtWardData = await districtWardRes.json();
+            if (districtWardData.status === "success") {
+                pickupDistrictId = districtWardData.data.district_id;
+                pickupWardId = districtWardData.data.ward_id;
+            }
+        }
+    } catch (err) {
+        console.warn("Could not get district/ward IDs:", err);
+        // Continue without IDs - backend will handle fallback
+    }
+
     // 3. Tính phí cuối cùng
     const currentFeeCalculation = calculateFees(formData, finalDistance, fees, serviceTypes); 
 
@@ -430,6 +454,14 @@ export const useOrderLogic = () => {
     dataToSend.append('sender_address', `${formData.fromStreet}, ${formData.fromWard}, ${formData.fromDistrict}, Hà Nội`);
     dataToSend.append('receiver_address', `${formData.toStreet}, ${formData.toWard}, ${formData.toDistrict}, Hà Nội`);
     dataToSend.append('shipping_distance_km', finalDistance.toString()); 
+    
+    // Add district/ward IDs for auto-routing
+    if (pickupDistrictId) {
+        dataToSend.append('pickup_district_id', pickupDistrictId.toString());
+    }
+    if (pickupWardId) {
+        dataToSend.append('pickup_ward_id', pickupWardId.toString());
+    } 
     dataToSend.append('service_type_id', formData.service_type.toString()); 
     dataToSend.append('total_shipping_fee', currentFeeCalculation.total_shipping_fee.toString());
     dataToSend.append('total_amount_with_cod', currentFeeCalculation.total_amount_with_cod.toString());
@@ -458,8 +490,13 @@ export const useOrderLogic = () => {
         const data = await response.json();
 
         if (data.status === 'success') {
+            // Determine recipient email: use receiver_email for guests, logged-in user's email for customers
+            const recipientEmail = loggedUser 
+                ? (loggedUser.email || formData.receiver_email) 
+                : formData.receiver_email;
+
             const emailData = {
-                to_email: formData.receiver_email,
+                to_email: recipientEmail,
                 order_code: String(data.order_code),
 
                 sender_name: formData.sender_name,
@@ -497,21 +534,34 @@ export const useOrderLogic = () => {
                 note: formData.note || ""
                 };
 
-
-            if (!loggedUser) {
-                emailjs.send(
-                    "service_z6xn9og",
-                    "template_d7keh2g",
-                    emailData,
-                    "5EwRopnOusFLIkA2N"
-                );
+            // Send email for both guest and logged-in customers using Đức's EmailJS config
+            // This prepares for invoice/billing emails
+            if (recipientEmail) {
+                try {
+                    emailjs.send(
+                        EMAILJS_ORDER_CONFIG.SERVICE_ID,
+                        EMAILJS_ORDER_CONFIG.TEMPLATE_ID,
+                        emailData,
+                        EMAILJS_ORDER_CONFIG.PUBLIC_KEY
+                    ).then(
+                        (response) => {
+                            console.log("✅ Order confirmation email sent successfully:", response.status, response.text);
+                        },
+                        (error) => {
+                            console.error("❌ Email sending failed:", error);
+                        }
+                    );
+                } catch (emailError) {
+                    console.error("EmailJS error:", emailError);
+                    // Don't block order creation if email fails
+                }
             }
 
             setMessage({
                 status: 'success',
                 text: loggedUser
-                    ? "Đã tạo đơn hàng thành công!"
-                    : `Tạo đơn hàng thành công! Mã vận đơn: ${data.order_code}. Email đã được gửi.`
+                    ? `Order created successfully! Order code: ${data.order_code}. Confirmation email has been sent to ${recipientEmail}.`
+                    : `Order created successfully! Order code: ${data.order_code}. Email has been sent.`
             });
 
             // Reset form

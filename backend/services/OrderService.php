@@ -15,6 +15,10 @@ class OrderService extends BaseService
     public const STATUS_PICKED    = 4;
     public const STATUS_DELIVERED = 5;
 
+    /* ================= GUEST CUSTOMER ID ================= */
+    // ENTERPRISE: Guest Customer is identified by email 'guest@system.local'
+    // We fetch ID dynamically from DB to avoid hard-coding (works across environments)
+
     /* =====================================================
      * CREATE ORDER (customer / admin / agent)
      * ===================================================== */
@@ -27,28 +31,46 @@ class OrderService extends BaseService
             $orderCode   = $this->generateOrderCode();
             $invoiceCode = $this->generateInvoiceNumber();
 
-            $customerId = (int)($data["customer_id"] ?? 0);
-            if ($customerId <= 0) throw new Exception("customer_id is required");
-
+            // ENTERPRISE: Extract actor info first (needed for guest check)
             $actorId   = (int)($data["actor_id"] ?? 0);
             $actorRole = (string)($data["actor_role"] ?? "");
-            if ($actorId <= 0 || $actorRole === "") {
+            
+            // ENTERPRISE: Allow guest role for public order creation
+            // Guest: actor_id = 0, actor_role = 'guest', customer_id will be set to GUEST_CUSTOMER_ID
+            if ($actorRole === "guest") {
+                // Guest orders: allow with actor_id = 0 (will use GUEST_CUSTOMER_ID for FK)
+                $actorId = 0;
+            } elseif ($actorId <= 0 || $actorRole === "") {
                 throw new Exception("actor_id / actor_role is required");
             }
 
-            if (!in_array($actorRole, ["customer", "admin", "agent"], true)) {
+            if (!in_array($actorRole, ["customer", "admin", "agent", "guest"], true)) {
                 throw new Exception("Role {$actorRole} not allowed");
             }
 
-            /* ---------- 2. STATUS FLOW ---------- */
+            $customerId = (int)($data["customer_id"] ?? 0);
+            // ENTERPRISE: Guest orders use Guest Customer ID from DB for FK integrity
+            if ($customerId <= 0 && $actorRole !== "guest") {
+                throw new Exception("customer_id is required");
+            }
+            // For guest, fetch Guest Customer ID dynamically from DB (identified by email)
+            if ($customerId <= 0 && $actorRole === "guest") {
+                $customerId = $this->getGuestCustomerId(); // Guest Customer (guest@system.local)
+            }
+
+            /* ---------- 2. STATUS FLOW + AUTO-ROUTING ---------- */
             $agentId   = null;
             $shipperId = null;
             $status    = self::STATUS_BOOKED;
+            $routingStatus = 'auto';
+            $assignedBy = 'agent'; // Default: agent workflow
 
+            // If agent creates order directly, auto-approve
             if ($actorRole === "agent") {
                 $agentId = $actorId;
                 $status  = self::STATUS_APPROVED;
             }
+            // Otherwise: customer/admin creates -> BOOKED, will auto-route after insert
 
             /* ---------- 3. PACKAGE INFO ---------- */
             // Weight is now in GRAMS (INT) instead of KG (FLOAT)
@@ -153,6 +175,20 @@ class OrderService extends BaseService
                 throw new Exception("payer_type phải là 1 (Người gửi trả) hoặc 2 (Người nhận trả)");
             }
 
+            // ENTERPRISE GUARD: Receiver Pay = Cash only
+            // If payer_type = 2 (receiver pays), payment_method_id MUST be 1 (cash)
+            if ($payerType === 2 && $paymentId !== 1) {
+                throw new Exception("Receiver Pay requires Cash payment method only. Payment method must be Cash (ID: 1).");
+            }
+
+            /* ---------- 3.6. AREA ROUTING DATA ---------- */
+            $pickupDistrictId = isset($data["pickup_district_id"]) && (int)$data["pickup_district_id"] > 0 
+                ? (int)$data["pickup_district_id"] 
+                : null;
+            $pickupWardId = isset($data["pickup_ward_id"]) && (int)$data["pickup_ward_id"] > 0 
+                ? (int)$data["pickup_ward_id"] 
+                : null;
+
             /* ---------- 6. INSERT ORDER ---------- */
             $stmt = $this->prepare("
                 INSERT INTO orders (
@@ -164,7 +200,9 @@ class OrderService extends BaseService
                     service_type, notes, payer_type,
                     status,
                     total_amount, cod_amount, total_shipping_fee,
-                    payment_method_id
+                    payment_method_id,
+                    pickup_district_id, pickup_ward_id,
+                    routing_status, assigned_by
                 ) VALUES (
                     ?, ?, ?, ?,
                     ?, ?, ?,
@@ -174,67 +212,118 @@ class OrderService extends BaseService
                     ?, ?, ?,
                     ?,
                     ?, ?, ?,
-                    ?
+                    ?,
+                    ?, ?,
+                    ?, ?
                 )
             ");
 
-            // Type string: 23 parameters - đếm cẩn thận
-            // 1-3: customer_id(i), agent_id(i), shipper_id(i) = iii
-            // 4-10: order_code(s), sender_name(s), sender_phone(s), sender_address(s), receiver_name(s), receiver_phone(s), receiver_address(s) = sssssss
-            // 11: category_id(i) = i
-            // 12-15: weight(d), length(d), width(d), height(d) = dddd (weight là DECIMAL trong DB)
-            // 16: service_type(i) = i
-            // 17: notes(s) = s
-            // 18: payer_type(i) = i
-            // 19: status(i) = i
-            // 20-22: total_amount(d), cod_amount(d), total_shipping_fee(d) = ddd
-            // 23: payment_method_id(i) = i
-            // Tổng: iii(3) + sssssss(7) + i(1) + dddd(4) + i(1) + s(1) + i(1) + i(1) + ddd(3) + i(1) = 23
-            // Type string: "iiisssssssiddddissidddi" = 23 ký tự
-            // Xử lý NULL cho category_id, agent_id, shipper_id
-            $categoryIdParam = $categoryId;
-            $agentIdParam = $agentId;
-            $shipperIdParam = $shipperId;
+            // ENTERPRISE: Build types and params together to prevent mismatch
+            // Mapping: 1 param = 1 type character, built in EXACT order
+            $types = '';
+            $params = [];
             
-            // Convert weight to float for binding (DB accepts DECIMAL)
+            // Field 1-3: customer_id(i), agent_id(i), shipper_id(i)
+            $types .= 'i'; $params[] = $customerId;
+            $types .= 'i'; $params[] = $agentId ?? null;
+            $types .= 'i'; $params[] = $shipperId ?? null;
+            
+            // Field 4-10: order_code(s), sender_name(s), sender_phone(s), sender_address(s), receiver_name(s), receiver_phone(s), receiver_address(s)
+            $types .= 's'; $params[] = $orderCode;
+            $types .= 's'; $params[] = $senderName;
+            $types .= 's'; $params[] = $senderPhone;
+            $types .= 's'; $params[] = $senderAddress;
+            $types .= 's'; $params[] = $receiverName;
+            $types .= 's'; $params[] = $receiverPhone;
+            $types .= 's'; $params[] = $receiverAddress;
+            
+            // Field 11: category_id(i)
+            $types .= 'i'; $params[] = $categoryId ?? null;
+            
+            // Field 12-15: weight(d), length(d), width(d), height(d)
             $weightFloat = (float)$weight;
+            $types .= 'd'; $params[] = $weightFloat;
+            $types .= 'd'; $params[] = (float)$length;
+            $types .= 'd'; $params[] = (float)$width;
+            $types .= 'd'; $params[] = (float)$height;
             
-            $typeString = "iiisssssssiddddissidddi";
+            // Field 16: service_type(i)
+            $types .= 'i'; $params[] = $serviceType;
             
-            $bindResult = $stmt->bind_param(
-                $typeString,
-                $customerId,
-                $agentIdParam,
-                $shipperIdParam,
-                $orderCode,
-                $senderName,
-                $senderPhone,
-                $senderAddress,
-                $receiverName,
-                $receiverPhone,
-                $receiverAddress,
-                $categoryIdParam,
-                $weightFloat,
-                $length,
-                $width,
-                $height,
-                $serviceType,
-                $notes,
-                $payerType,
-                $status,
-                $totalAmount,
-                $codAmount,
-                $shippingFee,
-                $paymentId
-            );
+            // Field 17: notes(s)
+            $types .= 's'; $params[] = $notes ?? '';
             
-            if (!$bindResult) {
-                $typeStrLen = strlen($typeString);
-                throw new Exception("bind_param failed: " . $stmt->error . " | Type string: '{$typeString}' | Length: {$typeStrLen} | Expected: 23 params");
-            }
+            // Field 18: payer_type(i) - FIXED: was 's', must be 'i'
+            $types .= 'i'; $params[] = $payerType;
+            
+            // Field 19: status(i)
+            $types .= 'i'; $params[] = $status;
+            
+            // Field 20-22: total_amount(d), cod_amount(d), total_shipping_fee(d)
+            $types .= 'd'; $params[] = (float)$totalAmount;
+            $types .= 'd'; $params[] = (float)$codAmount;
+            $types .= 'd'; $params[] = (float)$shippingFee;
+            
+            // Field 23: payment_method_id(i)
+            $types .= 'i'; $params[] = $paymentId;
+            
+            // Field 24-25: pickup_district_id(i), pickup_ward_id(i)
+            $types .= 'i'; $params[] = $pickupDistrictId ?? null;
+            $types .= 'i'; $params[] = $pickupWardId ?? null;
+            
+            // Field 26-27: routing_status(s), assigned_by(s)
+            $types .= 's'; $params[] = $routingStatus;
+            $types .= 's'; $params[] = $assignedBy;
+            
+            // ENTERPRISE: Hard guard - this will throw if mismatch
+            $this->bindParamsChecked($stmt, $types, $params);
 
             $stmt->execute();
             $orderId = (int)$this->conn->insert_id;
+
+            /* ---------- 6.5. AUTO-ROUTING (if not agent-created) ---------- */
+            // Auto-route agent based on pickup_district_id
+            if ($actorRole !== "agent" && $pickupDistrictId !== null) {
+                $routedAgentId = $this->autoRouteAgent($pickupDistrictId);
+                if ($routedAgentId !== null) {
+                    // Update order with routed agent
+                    $updateStmt = $this->prepare("
+                        UPDATE orders 
+                        SET agent_id = ?, status = ?, routing_status = 'auto', assigned_by = 'agent'
+                        WHERE id = ?
+                    ");
+                    $statusApproved = self::STATUS_APPROVED;
+                    $updateStmt->bind_param("iii", $routedAgentId, $statusApproved, $orderId);
+                    $updateStmt->execute();
+                    $updateStmt->close();
+                    
+                    // Update local variables
+                    $agentId = $routedAgentId;
+                    $status = self::STATUS_APPROVED;
+                    $routingStatus = 'auto';
+                    
+                    // Log auto-routing (use Guest Customer ID for system actions to ensure FK integrity)
+                    $systemUserId = $this->getGuestCustomerId();
+                    $this->logHistory($orderId, self::STATUS_APPROVED, $systemUserId, 'system', "Auto-routed to agent {$routedAgentId} by district");
+                    
+                    // Create approval record
+                    $ap = $this->prepare("
+                        INSERT INTO order_approvals (order_id, agent_id, status)
+                        VALUES (?, ?, 'approved')
+                    ");
+                    $ap->bind_param("ii", $orderId, $routedAgentId);
+                    $ap->execute();
+                    $ap->close();
+                } else {
+                    error_log("AUTO-ROUTING: Failed to route order {$orderId} - no agent found for district_id {$pickupDistrictId}");
+                }
+            } else {
+                if ($actorRole === "agent") {
+                    error_log("AUTO-ROUTING: Skipped for order {$orderId} - order created by agent");
+                } else {
+                    error_log("AUTO-ROUTING: Skipped for order {$orderId} - pickup_district_id is null");
+                }
+            }
 
             /* ---------- 7. FEES + INVOICE ---------- */
             $feeService->saveOrderFees($orderId, $feeResult["fees"] ?? []);
@@ -246,18 +335,22 @@ class OrderService extends BaseService
             $inv->bind_param("isdi", $orderId, $invoiceCode, $shippingFee, $paymentId);
             $inv->execute();
 
-            /* ---------- 8. APPROVAL ---------- */
-            if ($agentId) {
+            /* ---------- 8. APPROVAL (only if not auto-routed above) ---------- */
+            // If agent was set before auto-routing (agent-created order), create approval
+            if ($agentId && $actorRole === "agent") {
                 $ap = $this->prepare("
                     INSERT INTO order_approvals (order_id, agent_id, status)
                     VALUES (?, ?, 'approved')
                 ");
                 $ap->bind_param("ii", $orderId, $agentId);
                 $ap->execute();
+                $ap->close();
             }
 
             /* ---------- 9. HISTORY + IMAGES ---------- */
-            $this->logHistory($orderId, $status, $actorId, $actorRole, "Create order {$orderCode}");
+            // ENTERPRISE: For guest orders, use Guest Customer ID instead of actor_id (0)
+            $historyUserId = ($actorRole === "guest") ? $customerId : $actorId;
+            $this->logHistory($orderId, $status, $historyUserId, $actorRole, "Create order {$orderCode}");
 
             foreach ($images as $url) {
                 $url = trim((string)$url);
@@ -285,10 +378,32 @@ class OrderService extends BaseService
                 $updateTimeStmt->close();
             }
 
+            /* ---------- 11. NOTIFICATIONS ---------- */
+            // Create notifications for customer
+            try {
+                $notificationService = new NotificationService($this->conn);
+                
+                // Always notify customer when order is created
+                $notificationService->emit('order_created', $orderId, $actorId, $actorRole);
+                
+                // If agent was auto-assigned, notify customer about agent assignment and approval
+                if ($agentId !== null && $routingStatus === 'auto' && $status === self::STATUS_APPROVED) {
+                    $notificationService->emit('agent_assigned', $orderId, $this->getGuestCustomerId(), 'system');
+                    $notificationService->emit('agent_approved', $orderId, $this->getGuestCustomerId(), 'system');
+                }
+            } catch (Exception $e) {
+                // Log but don't fail order creation if notification fails
+                error_log("NotificationService error in OrderService::create(): " . $e->getMessage());
+            }
+
+            // ENTERPRISE: Return auto-routing info for frontend
             return [
                 "order_id"     => $orderId,
                 "order_code"   => $orderCode,
-                "shipping_fee" => $shippingFee
+                "shipping_fee" => $shippingFee,
+                "total_with_cod" => $totalAmount,
+                "auto_routed"  => ($agentId !== null && $routingStatus === 'auto'),
+                "agent_id"     => $agentId
             ];
         });
     }
@@ -370,6 +485,28 @@ class OrderService extends BaseService
                 $this->logAudit($actorId, $actorRole, "UPDATE_STATUS", $orderId, $note);
             }
 
+            // Create notifications for customer when status changes to important states
+            try {
+                $notificationService = new NotificationService($this->conn);
+                
+                // Map status changes to notification events
+                if ($newStatus === self::STATUS_APPROVED && $currentStatus !== self::STATUS_APPROVED) {
+                    // Status changed to APPROVED (if not already approved)
+                    $notificationService->emit('agent_approved', $orderId, $actorId, $actorRole);
+                } elseif ($newStatus === self::STATUS_DELIVERED && $currentStatus !== self::STATUS_DELIVERED) {
+                    // Status changed to DELIVERED
+                    $notificationService->emit('shipper_delivered', $orderId, $actorId, $actorRole);
+                } elseif ($newStatus === self::STATUS_PICKED && $currentStatus !== self::STATUS_PICKED) {
+                    // Status changed to PICKED UP
+                    $notificationService->emit('shipper_pickup', $orderId, $actorId, $actorRole);
+                } elseif ($newStatus === self::STATUS_FAILED && $currentStatus !== self::STATUS_FAILED) {
+                    // Status changed to FAILED
+                    $notificationService->emit('delivery_failed', $orderId, $actorId, $actorRole, ['reason' => $note]);
+                }
+            } catch (Exception $e) {
+                error_log("NotificationService error in OrderService::updateStatus(): " . $e->getMessage());
+            }
+
             return true;
         });
     }
@@ -427,19 +564,95 @@ class OrderService extends BaseService
                 $this->logAudit($shipperId, 'shipper', "CONFIRM_PICKUP", $orderId, "Weight: $actualWeight, Penalty: $penaltyFee");
             }
 
+            // 5. Create notifications for customer
+            try {
+                $notificationService = new NotificationService($this->conn);
+                $notificationService->emit('shipper_pickup', $orderId, $shipperId, 'shipper');
+            } catch (Exception $e) {
+                error_log("NotificationService error in OrderService::confirmPickup(): " . $e->getMessage());
+            }
+
             return true;
         });
     }
 
     /* =====================================================
-     * ASSIGN AGENT (ADMIN)
+     * AUTO-ROUTE AGENT (SYSTEM)
+     * ===================================================== */
+    private function autoRouteAgent(int $districtId): ?int
+    {
+        // Query agent_areas to find agent for this district
+        // Also check that the agent user is active
+        $stmt = $this->prepare("
+            SELECT aa.agent_id 
+            FROM agent_areas aa
+            INNER JOIN users u ON aa.agent_id = u.id
+            WHERE aa.district_id = ? 
+              AND aa.active = 1 
+              AND u.status = 'active'
+              AND u.role = 'agent'
+            ORDER BY aa.priority ASC 
+            LIMIT 1
+        ");
+        $stmt->bind_param("i", $districtId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $agentId = (int)$row['agent_id'];
+            $stmt->close();
+            
+            // Log for debugging
+            error_log("AUTO-ROUTING: Found agent_id {$agentId} for district_id {$districtId}");
+            
+            return $agentId;
+        }
+        
+        $stmt->close();
+        
+        // Log for debugging
+        error_log("AUTO-ROUTING: No active agent found for district_id {$districtId}");
+        
+        return null; // No agent found for this district
+    }
+
+    /* =====================================================
+     * ASSIGN AGENT (ADMIN - FALLBACK ONLY)
      * ===================================================== */
     public function assignAgentByAdmin(int $orderId, int $agentId, int $adminId, string $note = "Assign agent")
     {
         return $this->transaction(function () use ($orderId, $agentId, $adminId, $note) {
 
+            // Check order exists and get routing_status
+            $check = $this->prepare("SELECT agent_id, routing_status FROM orders WHERE id = ?");
+            $check->bind_param("i", $orderId);
+            $check->execute();
+            $orderData = $check->get_result()->fetch_assoc();
+            $check->close();
+
+            if (!$orderData) {
+                throw new Exception("Order not found");
+            }
+
+            // ENTERPRISE RULE: Admin can only assign agent in fallback scenarios
+            // 1. routing_status = 'fallback_admin'
+            // 2. OR agent_id IS NULL (auto-routing failed)
+            $currentAgentId = $orderData['agent_id'];
+            $routingStatus = $orderData['routing_status'] ?? 'auto';
+
+            if ($currentAgentId !== null) {
+                throw new Exception("Order already has agent. Admin can only assign in fallback scenarios.");
+            }
+
+            if ($routingStatus !== 'fallback_admin' && $routingStatus !== null) {
+                // If routing_status is 'auto' and agent_id is NULL, allow admin fallback
+                // But set routing_status to 'fallback_admin' to mark it
+            }
+
             $stmt = $this->prepare("
-                UPDATE orders SET agent_id = ?, status = ?
+                UPDATE orders 
+                SET agent_id = ?, status = ?, routing_status = 'fallback_admin', assigned_by = 'admin'
                 WHERE id = ? AND agent_id IS NULL
             ");
             $statusApproved = self::STATUS_APPROVED;
@@ -447,13 +660,32 @@ class OrderService extends BaseService
             $stmt->execute();
 
             if ($stmt->affected_rows === 0) {
-                throw new Exception("Order already has agent");
+                throw new Exception("Order already has agent or update failed");
             }
+            $stmt->close();
 
-            $this->logHistory($orderId, self::STATUS_APPROVED, $adminId, "system", $note);
+            // Create approval record
+            $ap = $this->prepare("
+                INSERT INTO order_approvals (order_id, agent_id, status)
+                VALUES (?, ?, 'approved')
+            ");
+            $ap->bind_param("ii", $orderId, $agentId);
+            $ap->execute();
+            $ap->close();
+
+            $this->logHistory($orderId, self::STATUS_APPROVED, $adminId, "admin", $note);
 
             if (method_exists($this, 'logAudit')) {
-                $this->logAudit($adminId, "admin", "ASSIGN_AGENT", $orderId, "agent={$agentId}");
+                $this->logAudit($adminId, "admin", "ASSIGN_AGENT_FALLBACK", $orderId, "agent={$agentId}");
+            }
+
+            // Create notifications for customer
+            try {
+                $notificationService = new NotificationService($this->conn);
+                $notificationService->emit('agent_assigned', $orderId, $adminId, 'admin');
+                $notificationService->emit('agent_approved', $orderId, $adminId, 'admin');
+            } catch (Exception $e) {
+                error_log("NotificationService error in OrderService::assignAgentByAdmin(): " . $e->getMessage());
             }
 
             return true;
@@ -467,11 +699,12 @@ class OrderService extends BaseService
     {
         return $this->transaction(function () use ($orderId, $shipperId, $actorId, $role, $note) {
 
-            // ... (Đoạn kiểm tra logic cũ giữ nguyên) ...
+            // Check order and get agent_id
             $check = $this->prepare("SELECT status, agent_id FROM orders WHERE id = ?");
             $check->bind_param("i", $orderId);
             $check->execute();
             $row = $check->get_result()->fetch_assoc();
+            $check->close();
 
             if (!$row) throw new Exception("Order not found");
 
@@ -480,9 +713,37 @@ class OrderService extends BaseService
                 throw new Exception("Order not approved (Status must be 2)");
             }
 
-            if ($role === "agent" && (int)$row["agent_id"] !== $actorId) {
+            $orderAgentId = (int)$row["agent_id"];
+            
+            // ENTERPRISE RULE: Agent can only assign shipper to their own orders
+            if ($role === "agent" && $orderAgentId !== $actorId) {
                 throw new Exception("Order not belong to agent");
             }
+
+            // ENTERPRISE RULE: Shipper must belong to the order's agent
+            // Check if shipper exists and is active
+            // TODO: Future enhancement - Add agent_id to users table for shippers to enforce shipper-agent relationship
+            $checkShipper = $this->prepare("
+                SELECT id, role, status FROM users 
+                WHERE id = ? AND role = 'shipper' AND status = 'active'
+            ");
+            
+            if (!$checkShipper) {
+                throw new Exception("Database prepare failed: " . $this->conn->error);
+            }
+            
+            $checkShipper->bind_param("i", $shipperId);
+            $checkShipper->execute();
+            $shipperData = $checkShipper->get_result()->fetch_assoc();
+            $checkShipper->close();
+            
+            if (!$shipperData) {
+                throw new Exception("Shipper not found or inactive");
+            }
+            
+            // ENTERPRISE: If agent assigns, shipper should belong to that agent
+            // Since we don't have shipper.agent_id yet, we'll allow for now but log it
+            // In production, add agent_id to users table for shippers
 
             // Enterprise: Assign shipper automatically bumps status to ASSIGNED (3)
             // This ensures proper workflow: APPROVED (2) → ASSIGNED (3) when shipper is assigned
@@ -491,15 +752,27 @@ class OrderService extends BaseService
                 WHERE id = ? AND shipper_id IS NULL
             ");
 
+            if (!$stmt) {
+                throw new Exception("Database prepare failed: " . $this->conn->error);
+            }
+
             // Enterprise workflow: Assign shipper → Status becomes ASSIGNED (3)
             $statusAssigned = self::STATUS_ASSIGNED; // 3
 
             $stmt->bind_param("iii", $shipperId, $statusAssigned, $orderId);
-            $stmt->execute();
+            
+            if (!$stmt->execute()) {
+                $errorMsg = $stmt->error;
+                $stmt->close();
+                throw new Exception("Failed to assign shipper: " . $errorMsg);
+            }
 
             if ($stmt->affected_rows === 0) {
+                $stmt->close();
                 throw new Exception("Order already has shipper or update failed");
             }
+            
+            $stmt->close();
 
             // Ghi log với status mới (ASSIGNED)
             $this->logHistory($orderId, self::STATUS_ASSIGNED, $actorId, $role, $note);
@@ -508,11 +781,71 @@ class OrderService extends BaseService
                 $this->logAudit($actorId, $role, "ASSIGN_SHIPPER", $orderId, "shipper={$shipperId}");
             }
 
+            // Create notifications for customer
+            try {
+                $notificationService = new NotificationService($this->conn);
+                $notificationService->emit('shipper_assigned', $orderId, $actorId, $role);
+            } catch (Exception $e) {
+                error_log("NotificationService error in OrderService::assignShipper(): " . $e->getMessage());
+            }
+
             return true;
         });
     }
 
     /* ================= HELPERS ================= */
+
+    /**
+     * ENTERPRISE: Safe bind_param with validation to prevent mismatch errors
+     * Ensures type string length matches parameter count
+     */
+    private function bindParamsChecked($stmt, string $types, array $params): void
+    {
+        $typeLen = strlen($types);
+        $paramCount = count($params);
+        
+        if ($typeLen !== $paramCount) {
+            throw new Exception(
+                "bind_param mismatch: type string length ({$typeLen}) != param count ({$paramCount}). " .
+                "Types: '{$types}' | Params: " . json_encode(array_map(function($p) {
+                    return is_null($p) ? 'NULL' : (is_string($p) ? substr($p, 0, 20) : gettype($p));
+                }, $params))
+            );
+        }
+        
+        // Create references array for bind_param (required by mysqli)
+        $refs = [];
+        foreach ($params as $key => $value) {
+            $refs[$key] = &$params[$key];
+        }
+        
+        if (!$stmt->bind_param($types, ...$refs)) {
+            throw new Exception("bind_param failed: " . $stmt->error);
+        }
+    }
+
+    /**
+     * ENTERPRISE: Get Guest Customer ID from database dynamically
+     * Uses email 'guest@system.local' to identify the guest customer record
+     * This avoids hard-coding IDs and works across different environments
+     */
+    private function getGuestCustomerId(): int
+    {
+        $email = 'guest@system.local';
+        
+        $stmt = $this->prepare("SELECT id FROM users WHERE email = ? AND role = 'customer' LIMIT 1");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($row = $result->fetch_assoc()) {
+            $stmt->close();
+            return (int)$row['id'];
+        }
+        
+        $stmt->close();
+        throw new Exception("Guest Customer user not found in database (email: {$email}). Please ensure guest customer record exists.");
+    }
 
     private function ensureOrderExists(int $orderId): void
     {
@@ -527,15 +860,21 @@ class OrderService extends BaseService
 
     private function logHistory(int $orderId, int $statusId, int $userId, string $role, string $note)
     {
+        // ENTERPRISE: Map logical roles to database roles
+        // Guest is a logical concept, not a DB role - map to 'customer'
+        $dbRole = $role;
         if ($role === "admin") {
-            $role = "system";
+            $dbRole = "system";
+        } elseif ($role === "guest") {
+            // Guest orders are stored as 'customer' in DB (guest = customer without account)
+            $dbRole = "customer";
         }
 
         $stmt = $this->prepare("
             INSERT INTO order_history (order_id, status_id, user_id, role, note, created_at)
             VALUES (?, ?, ?, ?, ?, NOW())
         ");
-        $stmt->bind_param("iiiss", $orderId, $statusId, $userId, $role, $note);
+        $stmt->bind_param("iiiss", $orderId, $statusId, $userId, $dbRole, $note);
         $stmt->execute();
     }
 
@@ -604,6 +943,16 @@ class OrderService extends BaseService
             }
             $stmtOrder->close();
 
+            // ENTERPRISE: Map logical roles to database roles
+            // Guest is a logical concept, not a DB role - map to 'customer'
+            $dbRole = $userRole;
+            if ($userRole === "admin") {
+                $dbRole = "system";
+            } elseif ($userRole === "guest") {
+                // Guest orders are stored as 'customer' in DB (guest = customer without account)
+                $dbRole = "customer";
+            }
+
             $sqlHistory = "INSERT INTO order_history (order_id, status_id, user_id, role, note, created_at) 
                            VALUES (?, ?, ?, ?, ?, NOW())";
 
@@ -612,7 +961,7 @@ class OrderService extends BaseService
                 throw new Exception("Prepare failed (History): " . $conn->error);
             }
 
-            $stmtHistory->bind_param("iiiss", $orderId, $newStatusId, $userId, $userRole, $note);
+            $stmtHistory->bind_param("iiiss", $orderId, $newStatusId, $userId, $dbRole, $note);
 
             if (!$stmtHistory->execute()) {
                 throw new Exception("Execute failed (History): " . $stmtHistory->error);
@@ -670,6 +1019,14 @@ class OrderService extends BaseService
             // 4. Log Audit
             if (method_exists($this, 'logAudit')) {
                 $this->logAudit($shipperId, 'shipper', "CONFIRM_DELIVERY", $orderId, "Delivered successfully");
+            }
+
+            // 5. Create notifications for customer
+            try {
+                $notificationService = new NotificationService($this->conn);
+                $notificationService->emit('shipper_delivered', $orderId, $shipperId, 'shipper');
+            } catch (Exception $e) {
+                error_log("NotificationService error in OrderService::confirmDelivery(): " . $e->getMessage());
             }
 
             return true;

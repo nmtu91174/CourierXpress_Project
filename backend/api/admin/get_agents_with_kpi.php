@@ -138,6 +138,33 @@ while ($row = $result->fetch_assoc()) {
 }
 
 $stmt->close();
+
+// ==========================
+// FETCH COVERAGE FOR EACH AGENT
+// ==========================
+foreach ($agents as &$agent) {
+    $coverageStmt = $conn->prepare("
+        SELECT 
+            d.name AS district_name
+        FROM agent_areas aa
+        INNER JOIN districts d ON aa.district_id = d.id
+        WHERE aa.agent_id = ? AND aa.active = 1
+        ORDER BY aa.priority ASC, d.name ASC
+    ");
+    
+    $coverageStmt->bind_param("i", $agent["id"]);
+    $coverageStmt->execute();
+    $coverageResult = $coverageStmt->get_result();
+    
+    $coverage = [];
+    while ($coverageRow = $coverageResult->fetch_assoc()) {
+        $coverage[] = $coverageRow["district_name"];
+    }
+    
+    $agent["coverage"] = $coverage;
+    $coverageStmt->close();
+}
+
 $conn->close();
 
 // ==========================

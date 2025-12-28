@@ -124,22 +124,24 @@ export default function OrderTable({
   };
 
   // Enterprise: State-driven actions using backend permission flags
-  // Separate logic for "Assign Shipper" (first time) vs "Reassign Shipper"
+  // ENTERPRISE RULE: Only AGENT can assign shipper (not admin)
   const canAssign = (order) => {
+    // ENTERPRISE: Admin must NEVER assign shipper in normal workflow
+    if (userRole === "admin") {
+      return false; // Admin cannot assign shipper
+    }
+    
     // Use backend permission flags if available (enterprise-safe)
     if (order.permissions) {
       // Only show "Assign Shipper" if can_assign_shipper (APPROVED + no shipper)
       // Do NOT show for can_reassign_shipper (that's a different action)
-      if (userRole === "admin" || userRole === "agent") {
+      if (userRole === "agent") {
         return order.permissions.can_assign_shipper === true;
       }
       return false;
     }
     
     // Fallback to legacy logic (backward compatibility)
-    if (userRole === "admin") {
-      return canAdminAssignShipper(order);
-    }
     // Agent can assign shipper if APPROVED and no shipper
     if (userRole === "agent") {
       return (
@@ -169,6 +171,7 @@ export default function OrderTable({
   };
 
   const canAssignAgent = (order) => {
+    // ENTERPRISE: Only admin can assign agent, and only in fallback scenarios
     if (userRole !== "admin") return false;
     
     // Use backend permission flags if available (enterprise-safe)
@@ -176,7 +179,7 @@ export default function OrderTable({
       return order.permissions.can_assign_agent;
     }
     
-    // Fallback to legacy logic
+    // Fallback to legacy logic (checks routing_status === 'fallback_admin' OR agent_id IS NULL)
     return canAdminAssignAgent(order);
   };
 

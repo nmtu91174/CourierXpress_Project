@@ -16,6 +16,8 @@ import HomePageCostumer from './pages/public/HomePage.jsx';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register.jsx';
 import Option from './pages/auth/Option.jsx';
+import ForgotPassword from './pages/auth/ForgotPassword.jsx';
+import ResetPassword from './pages/auth/ResetPassword.jsx';
 import ProtectedRoute from "./pages/auth/ProtectedRoute.jsx";
 import NoPermission from "./pages/auth/NoPermission.jsx";
 
@@ -133,6 +135,24 @@ export default function App() {
         element={
           <AuthLayout>
             <Option />
+          </AuthLayout>
+        }
+      />
+
+      <Route
+        path="/forgot-password"
+        element={
+          <AuthLayout>
+            <ForgotPassword />
+          </AuthLayout>
+        }
+      />
+
+      <Route
+        path="/reset-password"
+        element={
+          <AuthLayout>
+            <ResetPassword />
           </AuthLayout>
         }
       />

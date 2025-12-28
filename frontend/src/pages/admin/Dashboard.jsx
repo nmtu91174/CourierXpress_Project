@@ -741,12 +741,16 @@ export default function Dashboard() {
   }, [shippers, allOrdersForCharts]);
 
   // Get orders available for assignment (for dropdown)
-  // Dùng allBookedApprovedOrders (TẤT CẢ orders, không phải chỉ page hiện tại)
+  // ENTERPRISE RULE: Only show orders that need admin fallback
+  // routing_status === 'fallback_admin' OR agent_id IS NULL
   const ordersForAgentAssignment = useMemo(() => {
     return allBookedApprovedOrders.filter(o => {
       const status = Number(o.status);
-      // Show all BOOKED (1) orders - can assign agent to any booked order
-      return status === 1;
+      const routingStatus = o.routing_status || 'auto';
+      const hasAgent = o.agent_id !== null && o.agent_id !== undefined && Number(o.agent_id) !== 0;
+      
+      // Only show BOOKED (1) orders that need admin fallback
+      return status === 1 && (routingStatus === 'fallback_admin' || !hasAgent);
     });
   }, [allBookedApprovedOrders]);
 
@@ -765,9 +769,27 @@ export default function Dashboard() {
   const OrderInfoDisplay = ({ order, iconColor = "text-warning" }) => {
     if (!order) return null;
     
+    // Extract area (district) from address
     const getArea = (address) => {
       if (!address) return "N/A";
-      return address.split(",").pop()?.trim() || address;
+      // Try to extract district from address using hanoiData
+      const districts = Object.keys(hanoiData);
+      for (const district of districts) {
+        if (address.includes(district)) return district;
+      }
+      // Fallback: try to get last part of address (usually district)
+      const parts = address.split(",").map(p => p.trim());
+      if (parts.length > 0) {
+        const lastPart = parts[parts.length - 1];
+        // Check if last part matches any district
+        for (const district of districts) {
+          if (lastPart.includes(district) || district.includes(lastPart)) {
+            return district;
+          }
+        }
+        return lastPart;
+      }
+      return address;
     };
 
     // Find agent name from agents list
@@ -1151,23 +1173,24 @@ export default function Dashboard() {
               <FaClipboardList className="me-2" /> Create Order
             </Link>
 
+            {/* ENTERPRISE: Only show Assign Agent button when there are orders needing fallback */}
+            {ordersForAgentAssignment.length > 0 && (
             <Button
               onClick={openAssignAgentModal}
               disabled={userRole !== "admin"}
               className="quick-action btn btn-sm btn-lux-primary-red btn-hover-scale"
-              title={userRole !== "admin" ? "Only admin can assign agents" : "Assign Agent to Order"}
+                title={userRole !== "admin" ? "Only admin can assign agents" : "Assign Agent to Order (Fallback Only)"}
             >
               <FaUserTie className="me-2" /> Assign Agent
+                {ordersForAgentAssignment.length > 0 && (
+                  <span className="badge bg-danger ms-2">{ordersForAgentAssignment.length}</span>
+                )}
             </Button>
+            )}
 
-            <Button
-              onClick={openAssignShipperModal}
-              disabled={userRole !== "admin" && userRole !== "agent"}
-              className="quick-action btn btn-sm btn-lux-primary-yellow btn-hover-scale"
-              title={userRole !== "admin" && userRole !== "agent" ? "Only admin/agent can assign shippers" : "Assign Shipper to Order"}
-            >
-              <FaShippingFast className="me-2" /> Assign Shipper
-            </Button>
+            {/* ENTERPRISE: Admin must NEVER assign shipper in normal workflow */}
+            {/* Only Agent can assign shipper */}
+            {/* Button removed - Admin cannot assign shipper */}
 
             <Link
               to="/admin/reports"
@@ -1261,19 +1284,8 @@ export default function Dashboard() {
         orders={filteredOrders}
         onRowClick={openPanel}
         onViewDetail={openPanel}
-        onAssignShipper={(order) => {
-          // Redirect to OrderManagement với focusOrderId để highlight và scroll
-          const orderStatus = Number(order.status);
-          const filterState = {
-            focusOrderId: order.id,
-            openAssign: true, // Open assign modal
-            // Optional: Apply filter để hiển thị orders tương tự (nhưng không bắt buộc)
-            // status: orderStatus === 1 ? "1" : orderStatus === 2 ? "2" : "all",
-            // service_type: order.service_type || "all",
-          };
-          
-          navigate("/admin/orders", { state: filterState });
-        }}
+        // ENTERPRISE: Admin must NEVER assign shipper in normal workflow
+        // onAssignShipper removed - Only Agent can assign shipper
         onAssignAgent={(order) => {
           // Redirect to OrderManagement với focusOrderId để highlight và scroll
           const orderStatus = Number(order.status);
@@ -1563,11 +1575,8 @@ export default function Dashboard() {
         order={selectedOrder}
         isOpen={showPanel}
         onClose={closePanel}
-        onAssign={(order) => {
-          // Handle assign shipper - sẽ implement modal sau
-          console.log("Assign shipper for order:", order);
-          // TODO: Open assign modal
-        }}
+        // ENTERPRISE: Admin must NEVER assign shipper in normal workflow
+        // onAssign removed - Only Agent can assign shipper
         userRole={userRole}
       />
 

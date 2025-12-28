@@ -34,10 +34,10 @@ const OrderDetail = () => {
         if (res.data.status === "success") {
           setOrder(res.data.order);
         } else {
-          Swal.fire("Lỗi", res.data.message, "error");
+          Swal.fire("Error", res.data.message, "error");
         }
       } catch (error) {
-        Swal.fire("Lỗi", "Không thể kết nối server", "error");
+        Swal.fire("Error", "Cannot connect to server", "error");
       } finally {
         setLoading(false);
       }
@@ -58,16 +58,16 @@ const OrderDetail = () => {
     value != null ? value.toLocaleString("vi-VN") : "0";
 
   const getIcon = (label = "") => {
-    if (label.includes("tạo")) return FaBox;
-    if (label.includes("lấy")) return FaTruck;
-    if (label.includes("giao")) return FaTruck;
-    if (label.includes("thành công")) return FaCheckCircle;
+    if (label.includes("tạo") || label.toLowerCase().includes("created") || label.toLowerCase().includes("booked")) return FaBox;
+    if (label.includes("lấy") || label.toLowerCase().includes("pickup") || label.toLowerCase().includes("picked")) return FaTruck;
+    if (label.includes("giao") || label.toLowerCase().includes("deliver") || label.toLowerCase().includes("delivery")) return FaTruck;
+    if (label.includes("thành công") || label.toLowerCase().includes("success") || label.toLowerCase().includes("delivered")) return FaCheckCircle;
     return FaBox;
   };
 
   const formatPayerType = (type) => {
-    if (Number(type) === 1) return "Người gửi trả";
-    if (Number(type) === 2) return "Người nhận trả";
+    if (Number(type) === 1) return "Sender Pays";
+    if (Number(type) === 2) return "Receiver Pays";
     return "-";
   };
 
@@ -75,31 +75,31 @@ const OrderDetail = () => {
   return (
     <Container className={`py-5 ${styles.container}`}>
       <h2 className={`fw-bold mb-4 ${styles.heading}`}>
-        Chi tiết đơn hàng:{" "}
+        Order Details:{" "}
         <span className={styles.highlight}>{order.order_code}</span>
       </h2>
 
       <Row>
-        {/* Thông tin kiện hàng */}
+        {/* Package Information */}
         <Col md={4} className="mb-4">
           <Card className={`shadow-sm border-0 h-100 ${styles.card}`}>
             <Card.Header className={styles.cardHeader}>
-              <FaBox className="me-2" /> Thông tin kiện hàng
+              <FaBox className="me-2" /> Package Information
             </Card.Header>
             <Card.Body>
-              <p><strong>Người gửi:</strong><br />{order.sender}</p>
+              <p><strong>Sender:</strong><br />{order.sender}</p>
               <hr />
-              <p><strong>Người nhận:</strong><br />{order.receiver}</p>
+              <p><strong>Receiver:</strong><br />{order.receiver}</p>
               <hr />
               <p>
-                <strong>Trạng thái:</strong>{" "}
+                <strong>Status:</strong>{" "}
                 <Badge bg="warning">{order.statusDesc}</Badge>
               </p>
 
               {order.notes && (
                 <>
                   <hr />
-                  <p><strong>Ghi chú:</strong> {order.notes}</p>
+                  <p><strong>Notes:</strong> {order.notes}</p>
                 </>
               )}
 
@@ -123,15 +123,15 @@ const OrderDetail = () => {
           </Card>
         </Col>
 
-        {/* Timeline + Chi tiết */}
+        {/* Timeline + Details */}
         <Col md={8}>
           <Card className={`shadow-sm border-0 mb-4 ${styles.card}`}>
             <Card.Body>
-              <h5 className="fw-bold mb-4">Hành trình đơn hàng</h5>
+              <h5 className="fw-bold mb-4">Order Timeline</h5>
 
               <div className={styles.timelineHorizontal}>
                 {order.timeline.length === 0 && (
-                  <p className="text-muted">Chưa có trạng thái</p>
+                  <p className="text-muted">No status updates yet</p>
                 )}
 
                   {order.statuses
@@ -175,26 +175,26 @@ const OrderDetail = () => {
 
           <Card className={`shadow-sm border-0 ${styles.card}`}>
             <Card.Body>
-              <h5 className="fw-bold mb-4">Thông tin chi tiết</h5>
+              <h5 className="fw-bold mb-4">Detailed Information</h5>
 
               <Row className="mb-3">
-                <Col md={3}><strong>Loại dịch vụ:</strong> {order.serviceTypeName}</Col>
+                <Col md={3}><strong>Service Type:</strong> {order.serviceTypeName}</Col>
 
-                <Col md={3}><strong>Trọng lượng:</strong> {order.weight} g</Col>
+                <Col md={3}><strong>Weight:</strong> {order.weight} g</Col>
 
                 <Col md={3}>
-                  <strong>Người trả phí:</strong>{" "}
+                  <strong>Payer:</strong>{" "}
                   {formatPayerType(order.payer_type)}
                 </Col>
 
                 <Col md={3}>
-                  <strong>Kích thước:</strong>{" "}
+                  <strong>Dimensions:</strong>{" "}
                   {order.length} x {order.width} x {order.height} cm
                 </Col>
               </Row>
 
 
-              <h6 className="fw-bold">Phí</h6>
+              <h6 className="fw-bold">Fees</h6>
               <ul className="list-group mb-3">
                 {order.fees.length > 0 ? (
                   order.fees.map((fee, idx) => (
@@ -204,12 +204,12 @@ const OrderDetail = () => {
                     </li>
                   ))
                 ) : (
-                  <li className="list-group-item">Không có phụ phí</li>
+                  <li className="list-group-item">No additional fees</li>
                 )}
               </ul>
 
               <Row>
-                <Col md={6}><strong>Tổng tiền:</strong> {formatCurrency(order.total_amount)} đ</Col>
+                <Col md={6}><strong>Total Amount:</strong> {formatCurrency(order.total_amount)} đ</Col>
                 <Col md={6}><strong>COD:</strong> {formatCurrency(order.cod_amount)} đ</Col>
               </Row>
             </Card.Body>

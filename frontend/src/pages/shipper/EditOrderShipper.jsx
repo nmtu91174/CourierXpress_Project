@@ -2,21 +2,21 @@ import "../../assets/styles/shipper/EditOrderShipper.css";
 
 export default function EditOrderShipper() {
   const notAllowEdit = () => {
-    alert("❌ Bạn không có quyền sửa thông tin này");
+    alert("❌ You do not have permission to edit this information");
   };
 
   return (
     <div className="edit-order container my-5">
-      <h2 className="mb-4 fw-bold">✏️ Sửa thông tin đơn hàng</h2>
+      <h2 className="mb-4 fw-bold">✏️ Edit Order Information</h2>
 
       <div className="edit-card">
         <form>
 
-          {/* ================= NGƯỜI GỬI ================= */}
-          <h5 className="section-title mb-3">📦 Thông tin người gửi</h5>
+          {/* ================= SENDER ================= */}
+          <h5 className="section-title mb-3">📦 Sender Information</h5>
 
           <div className="mb-3">
-            <label className="form-label">Tên người gửi</label>
+            <label className="form-label">Sender Name</label>
             <input
               type="text"
               className="form-control"
@@ -27,7 +27,7 @@ export default function EditOrderShipper() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Số điện thoại người gửi</label>
+            <label className="form-label">Sender Phone</label>
             <input
               type="text"
               className="form-control"
@@ -38,7 +38,7 @@ export default function EditOrderShipper() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Địa chỉ người gửi</label>
+            <label className="form-label">Sender Address</label>
             <textarea
               className="form-control"
               rows="2"
@@ -48,11 +48,11 @@ export default function EditOrderShipper() {
             ></textarea>
           </div>
 
-          {/* ================= NGƯỜI NHẬN ================= */}
-          <h5 className="section-title mt-4 mb-3">🎯 Thông tin người nhận</h5>
+          {/* ================= RECEIVER ================= */}
+          <h5 className="section-title mt-4 mb-3">🎯 Receiver Information</h5>
 
           <div className="mb-3">
-            <label className="form-label">Tên người nhận</label>
+            <label className="form-label">Receiver Name</label>
             <input
               type="text"
               className="form-control"
@@ -63,7 +63,7 @@ export default function EditOrderShipper() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Số điện thoại người nhận</label>
+            <label className="form-label">Receiver Phone</label>
             <input
               type="text"
               className="form-control"
@@ -74,7 +74,7 @@ export default function EditOrderShipper() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Địa chỉ người nhận</label>
+            <label className="form-label">Receiver Address</label>
             <textarea
               className="form-control"
               rows="2"
@@ -84,11 +84,11 @@ export default function EditOrderShipper() {
             ></textarea>
           </div>
 
-          {/* ================= ĐƠN HÀNG ================= */}
-          <h5 className="section-title mt-4 mb-3">📦 Thông tin đơn hàng</h5>
+          {/* ================= ORDER ================= */}
+          <h5 className="section-title mt-4 mb-3">📦 Order Information</h5>
 
           <div className="mb-3">
-            <label className="form-label">Cân nặng đơn hàng (kg)</label>
+            <label className="form-label">Order Weight (kg)</label>
             <input
               type="number"
               className="form-control"
@@ -97,19 +97,19 @@ export default function EditOrderShipper() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Ghi chú cho shipper</label>
+            <label className="form-label">Notes for Shipper</label>
             <textarea
               className="form-control"
               rows="2"
-              placeholder="Ví dụ: Giao giờ hành chính..."
+              placeholder="Example: Deliver during business hours..."
             ></textarea>
           </div>
 
-          {/* ================= THANH TOÁN ================= */}
-          <h5 className="section-title mt-4 mb-3">💰 Thông tin thanh toán</h5>
+          {/* ================= PAYMENT ================= */}
+          <h5 className="section-title mt-4 mb-3">💰 Payment Information</h5>
 
           <div className="mb-3">
-            <label className="form-label">Phí vận chuyển (VNĐ)</label>
+            <label className="form-label">Shipping Fee (VND)</label>
             <input
               type="text"
               className="form-control"
@@ -120,7 +120,7 @@ export default function EditOrderShipper() {
           </div>
 
           <div className="mb-3">
-            <label className="form-label">Tiền thu hộ (COD)</label>
+            <label className="form-label">COD Amount</label>
             <input
               type="text"
               className="form-control"
@@ -132,7 +132,7 @@ export default function EditOrderShipper() {
 
           <div className="mb-3">
             <label className="form-label fw-bold text-danger">
-              Tổng tiền cần thu khi giao
+              Total Amount to Collect on Delivery
             </label>
             <input
               type="text"
@@ -144,7 +144,7 @@ export default function EditOrderShipper() {
           </div>
 
           <button className="btn btn-warning w-100 mt-4">
-            💾 Lưu thay đổi
+            💾 Save Changes
           </button>
         </form>
       </div>

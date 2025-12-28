@@ -55,7 +55,7 @@ $required = [
     "receiver_phone",
     "receiver_address",
     "weight",
-    "distance_km",
+    // distance_km is NOT required - will be calculated automatically if not provided
     "payment_method_id",
     "payer_type"
 ];
@@ -70,6 +70,13 @@ foreach ($required as $field) {
 $payerType = (int)($data["payer_type"] ?? 1);
 if (!in_array($payerType, [1, 2], true)) {
     Response::error("payer_type phải là 1 (Người gửi trả) hoặc 2 (Người nhận trả)");
+}
+
+// ENTERPRISE GUARD: Receiver Pay = Cash only
+// If payer_type = 2 (receiver pays), payment_method_id MUST be 1 (cash)
+$paymentMethodId = (int)($data["payment_method_id"] ?? 1);
+if ($payerType === 2 && $paymentMethodId !== 1) {
+    Response::error("Receiver Pay requires Cash payment method only. Payment method must be Cash (ID: 1).");
 }
 
 // ==========================
@@ -273,6 +280,54 @@ try {
         $checkCustomer->close();
     }
     
+    // Extract pickup_district_id and pickup_ward_id if provided
+    // These are used for auto-routing
+    $pickupDistrictId = null;
+    $pickupWardId = null;
+    
+    if (isset($data["pickup_district_id"]) && (int)$data["pickup_district_id"] > 0) {
+        $pickupDistrictId = (int)$data["pickup_district_id"];
+        $data["pickup_district_id"] = $pickupDistrictId;
+    }
+    if (isset($data["pickup_ward_id"]) && (int)$data["pickup_ward_id"] > 0) {
+        $pickupWardId = (int)$data["pickup_ward_id"];
+        $data["pickup_ward_id"] = $pickupWardId;
+    }
+    
+    // Fallback: Lookup district_id from sender_address if not provided
+    if ($pickupDistrictId === null && !empty($data["sender_address"])) {
+        // Extract district name from sender_address (format: "street, ward, district, Hà Nội")
+        $addressParts = explode(',', $data["sender_address"]);
+        if (count($addressParts) >= 3) {
+            $possibleDistrictName = trim($addressParts[count($addressParts) - 2]); // Second to last part
+            
+            // Try to find district by name
+            $districtStmt = $conn->prepare("SELECT id FROM districts WHERE name = ? LIMIT 1");
+            $districtStmt->bind_param("s", $possibleDistrictName);
+            $districtStmt->execute();
+            $districtResult = $districtStmt->get_result();
+            if ($districtRow = $districtResult->fetch_assoc()) {
+                $pickupDistrictId = (int)$districtRow['id'];
+                $data["pickup_district_id"] = $pickupDistrictId;
+                error_log("AUTO-ROUTING: Found district_id {$pickupDistrictId} from district name: {$possibleDistrictName}");
+            }
+            $districtStmt->close();
+        }
+    }
+    
+    // ==========================
+    // DISTANCE HANDLING - SAME AS createorder.php
+    // ==========================
+    // ENTERPRISE: Use distance_km from frontend if provided, otherwise default to 10.0
+    // Do NOT calculate automatically - let frontend handle distance calculation
+    // (Same logic as createorder.php - no auto-calculation)
+    $distanceKm = isset($data["distance_km"]) && (float)$data["distance_km"] > 0
+        ? (float)$data["distance_km"]
+        : 0;
+    
+    // Set distance_km: use provided value or default 10.0 (same as createorder.php)
+    $data["distance_km"] = $distanceKm > 0 ? $distanceKm : 10.0;
+    
     $service = new OrderService($conn);
     $result = $service->create(
         $data,
@@ -341,6 +396,106 @@ try {
 }
 
 $conn->close();
+
+// ==========================
+// HÀM TÍNH KHOẢNG CÁCH (GEOAPIFY API - GIỐNG OrderNoAccount)
+// ==========================
+/**
+ * Calculate distance between two addresses using Geoapify API
+ * Same logic as OrderNoAccount.js
+ */
+function calculateDistanceFromAddresses(string $senderAddress, string $receiverAddress): float
+{
+    $API_KEY = "9aed6a93b4d540e6b3b740a688d9921e";
+    
+    // Helper: Geocode address to lat/lon
+    $geocodeAddress = function($address) use ($API_KEY) {
+        $parts = [];
+        $parts[] = trim($address);
+        $parts[] = "Hà Nội";
+        $parts[] = "Vietnam";
+        $full = implode(", ", $parts);
+        
+        $url = "https://api.geoapify.com/v1/geocode/search?text=" . urlencode($full) . "&filter=countrycode:vn&format=json&apiKey=" . $API_KEY;
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode !== 200) {
+            throw new Exception("Geoapify geocode error: HTTP {$httpCode}");
+        }
+        
+        $data = json_decode($response, true);
+        if (!$data || !isset($data['results']) || count($data['results']) === 0) {
+            throw new Exception("Address not found: " . $full);
+        }
+        
+        $selected = null;
+        foreach ($data['results'] as $result) {
+            $txt = strtolower(($result['formatted'] ?? "") . " " . ($result['city'] ?? "") . " " . ($result['state'] ?? ""));
+            if (strpos($txt, "hà nội") !== false || strpos($txt, "ha noi") !== false) {
+                $selected = $result;
+                break;
+            }
+        }
+        if (!$selected) {
+            $selected = $data['results'][0];
+        }
+        
+        $lat = (float)($selected['lat'] ?? 0);
+        $lon = (float)($selected['lon'] ?? 0);
+        
+        if (!$lat || !$lon) {
+            throw new Exception("Cannot get coordinates from: " . $full);
+        }
+        
+        return ['lat' => $lat, 'lon' => $lon];
+    };
+    
+    // Helper: Get route distance
+    $getRouteDistance = function($start, $end) use ($API_KEY) {
+        $url = "https://api.geoapify.com/v1/routing?waypoints={$start['lat']},{$start['lon']}|{$end['lat']},{$end['lon']}&mode=drive&apiKey={$API_KEY}";
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        if ($httpCode !== 200) {
+            throw new Exception("Geoapify routing error: HTTP {$httpCode}");
+        }
+        
+        $data = json_decode($response, true);
+        if (!$data || !isset($data['features']) || count($data['features']) === 0) {
+            throw new Exception("Cannot find route");
+        }
+        
+        $props = $data['features'][0]['properties'] ?? null;
+        if (!$props || !isset($props['distance']) || !is_numeric($props['distance'])) {
+            throw new Exception("Invalid routing result");
+        }
+        
+        return (float)$props['distance'] / 1000; // Convert meters to km
+    };
+    
+    try {
+        $fromCoord = $geocodeAddress($senderAddress);
+        $toCoord = $geocodeAddress($receiverAddress);
+        $distanceKm = $getRouteDistance($fromCoord, $toCoord);
+        return round($distanceKm, 2);
+    } catch (Exception $e) {
+        error_log("Distance calculation error: " . $e->getMessage());
+        return 0; // Return 0 on error, will use fallback
+    }
+}
 
 // ==========================
 // HÀM GỬI EMAIL THÔNG BÁO

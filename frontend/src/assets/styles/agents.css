@@ -186,42 +186,42 @@
 
 .agents-management-page .lux-table thead th:nth-child(4),
 .agents-management-page .lux-table tbody td:nth-child(4) {
+    /* Coverage - wider for badges */
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
+}
+
+.agents-management-page .lux-table thead th:nth-child(5),
+.agents-management-page .lux-table tbody td:nth-child(5) {
     /* Tổng đơn - compact */
     width: 100px;
     min-width: 100px;
     max-width: 100px;
 }
 
-.agents-management-page .lux-table thead th:nth-child(5),
-.agents-management-page .lux-table tbody td:nth-child(5) {
+.agents-management-page .lux-table thead th:nth-child(6),
+.agents-management-page .lux-table tbody td:nth-child(6) {
     /* Đang xử lý - compact */
     width: 110px;
     min-width: 110px;
     max-width: 110px;
 }
 
-.agents-management-page .lux-table thead th:nth-child(6),
-.agents-management-page .lux-table tbody td:nth-child(6) {
+.agents-management-page .lux-table thead th:nth-child(7),
+.agents-management-page .lux-table tbody td:nth-child(7) {
     /* Hoàn tất - compact */
     width: 100px;
     min-width: 100px;
     max-width: 100px;
 }
 
-.agents-management-page .lux-table thead th:nth-child(7),
-.agents-management-page .lux-table tbody td:nth-child(7) {
+.agents-management-page .lux-table thead th:nth-child(8),
+.agents-management-page .lux-table tbody td:nth-child(8) {
     /* Lỗi - compact */
     width: 90px;
     min-width: 90px;
     max-width: 90px;
-}
-
-.agents-management-page .lux-table thead th:nth-child(8),
-.agents-management-page .lux-table tbody td:nth-child(8) {
-    /* Pending - compact */
-    width: 100px;
-    min-width: 100px;
-    max-width: 100px;
 }
 
 .agents-management-page .lux-table thead th:nth-child(9),
@@ -290,16 +290,94 @@
     font-size: 0.85rem;
 }
 
+/* ================== COVERAGE BADGES - DQN LUXURY STYLE ================== */
+.badge-coverage-luxury {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3),
+                0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    letter-spacing: 0.3px;
+    text-transform: none;
+    white-space: nowrap;
+    margin: 2px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.badge-coverage-luxury::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.badge-coverage-luxury:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.15);
+    filter: brightness(1.1);
+}
+
+.badge-coverage-luxury:hover::before {
+    left: 100%;
+}
+
+/* Alternative color variants for variety */
+.badge-coverage-luxury:nth-child(2n) {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3),
+                0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.badge-coverage-luxury:nth-child(2n):hover {
+    box-shadow: 0 4px 16px rgba(245, 87, 108, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.badge-coverage-luxury:nth-child(3n) {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3),
+                0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.badge-coverage-luxury:nth-child(3n):hover {
+    box-shadow: 0 4px 16px rgba(79, 172, 254, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.badge-coverage-luxury:nth-child(4n) {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    box-shadow: 0 2px 8px rgba(67, 233, 123, 0.3),
+                0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.badge-coverage-luxury:nth-child(4n):hover {
+    box-shadow: 0 4px 16px rgba(67, 233, 123, 0.4),
+                0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
 /* ================== LUXURY BADGES - ENTERPRISE PASTEL/OUTLINE ================== */
 /* Enterprise Safe: Pastel colors with outline style for KPI badges ONLY */
 /* Status badges (Active/Inactive) keep original solid colors */
 
-/* Base badge style - only for KPI columns (4, 5, 6, 7, 8) */
-.agents-management-page .lux-table tbody td:nth-child(4) .badge,
+/* Base badge style - only for KPI columns (5, 6, 7, 8, 9) - shifted after adding Coverage column */
 .agents-management-page .lux-table tbody td:nth-child(5) .badge,
 .agents-management-page .lux-table tbody td:nth-child(6) .badge,
 .agents-management-page .lux-table tbody td:nth-child(7) .badge,
-.agents-management-page .lux-table tbody td:nth-child(8) .badge {
+.agents-management-page .lux-table tbody td:nth-child(8) .badge,
+.agents-management-page .lux-table tbody td:nth-child(9) .badge {
     padding: 4px 10px;
     font-size: 0.75rem;
     font-weight: 600;
@@ -312,59 +390,59 @@
     box-shadow: none;
 }
 
-.agents-management-page .lux-table tbody td:nth-child(4) .badge:hover,
 .agents-management-page .lux-table tbody td:nth-child(5) .badge:hover,
 .agents-management-page .lux-table tbody td:nth-child(6) .badge:hover,
 .agents-management-page .lux-table tbody td:nth-child(7) .badge:hover,
-.agents-management-page .lux-table tbody td:nth-child(8) .badge:hover {
+.agents-management-page .lux-table tbody td:nth-child(8) .badge:hover,
+.agents-management-page .lux-table tbody td:nth-child(9) .badge:hover {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     transform: none !important;
 }
 
-/* Total Orders (Column 4) - Primary (Blue) - Pastel outline */
-.agents-management-page .lux-table tbody td:nth-child(4) .badge.bg-primary {
+/* Total Orders (Column 5) - Primary (Blue) - Pastel outline */
+.agents-management-page .lux-table tbody td:nth-child(5) .badge.bg-primary {
     background: rgba(0, 123, 255, 0.08) !important;
     border-color: rgba(0, 123, 255, 0.3) !important;
     color: #0056b3 !important;
 }
 
-.agents-management-page .lux-table tbody td:nth-child(4) .badge.bg-primary:hover {
+.agents-management-page .lux-table tbody td:nth-child(5) .badge.bg-primary:hover {
     background: rgba(0, 123, 255, 0.12) !important;
     border-color: rgba(0, 123, 255, 0.4) !important;
 }
 
-/* In Progress (Column 5) - Warning (Yellow/Orange) - Pastel outline */
-.agents-management-page .lux-table tbody td:nth-child(5) .badge.bg-warning {
+/* In Progress (Column 6) - Warning (Yellow/Orange) - Pastel outline */
+.agents-management-page .lux-table tbody td:nth-child(6) .badge.bg-warning {
     background: rgba(255, 193, 7, 0.1) !important;
     border-color: rgba(255, 193, 7, 0.4) !important;
     color: #b8860b !important;
 }
 
-.agents-management-page .lux-table tbody td:nth-child(5) .badge.bg-warning:hover {
+.agents-management-page .lux-table tbody td:nth-child(6) .badge.bg-warning:hover {
     background: rgba(255, 193, 7, 0.15) !important;
     border-color: rgba(255, 193, 7, 0.5) !important;
 }
 
-/* Completed (Column 6) - Success (Green) - Pastel outline */
-.agents-management-page .lux-table tbody td:nth-child(6) .badge.bg-success {
+/* Completed (Column 7) - Success (Green) - Pastel outline */
+.agents-management-page .lux-table tbody td:nth-child(7) .badge.bg-success {
     background: rgba(67, 160, 71, 0.08) !important;
     border-color: rgba(67, 160, 71, 0.3) !important;
     color: #2e7d32 !important;
 }
 
-.agents-management-page .lux-table tbody td:nth-child(6) .badge.bg-success:hover {
+.agents-management-page .lux-table tbody td:nth-child(7) .badge.bg-success:hover {
     background: rgba(67, 160, 71, 0.12) !important;
     border-color: rgba(67, 160, 71, 0.4) !important;
 }
 
-/* Failed (Column 7) - Danger (Red) - Pastel outline */
-.agents-management-page .lux-table tbody td:nth-child(7) .badge.bg-danger {
+/* Failed (Column 8) - Danger (Red) - Pastel outline */
+.agents-management-page .lux-table tbody td:nth-child(8) .badge.bg-danger {
     background: rgba(229, 57, 53, 0.08) !important;
     border-color: rgba(229, 57, 53, 0.3) !important;
     color: #c62828 !important;
 }
 
-.agents-management-page .lux-table tbody td:nth-child(7) .badge.bg-danger:hover {
+.agents-management-page .lux-table tbody td:nth-child(8) .badge.bg-danger:hover {
     background: rgba(229, 57, 53, 0.12) !important;
     border-color: rgba(229, 57, 53, 0.4) !important;
 }
@@ -381,24 +459,45 @@
     border-color: rgba(255, 193, 7, 0.5) !important;
 }
 
-/* ================== STATUS BADGES (Column 3) - KEEP ORIGINAL SOLID COLORS ================== */
-/* Status badges (Active/Inactive) - Keep original gradient style */
+/* ================== STATUS BADGES (Column 3) - LUXURY HOVER EFFECTS ================== */
+/* Status badges (Active/Inactive) - Apply luxury hover effects like status badge */
 .agents-management-page .lux-table tbody td:nth-child(3) .badge {
-    padding: 6px 12px;
-    font-size: 0.75rem;
+    padding: 6px 14px;
+    font-size: 0.8rem;
     font-weight: 600;
-    border-radius: 8px;
+    border-radius: 20px;
     letter-spacing: 0.3px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: box-shadow 0.1s linear;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15),
+                0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     display: inline-block;
-    transform: none !important;
+    position: relative;
+    overflow: hidden;
     border: none;
 }
 
+/* Shine effect on hover (like status badge) */
+.agents-management-page .lux-table tbody td:nth-child(3) .badge::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+/* Hover effect - luxury style (like status badge) */
 .agents-management-page .lux-table tbody td:nth-child(3) .badge:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    transform: none !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25),
+                0 2px 8px rgba(0, 0, 0, 0.15);
+    filter: brightness(1.1);
+}
+
+.agents-management-page .lux-table tbody td:nth-child(3) .badge:hover::before {
+    left: 100%;
 }
 
 .agents-management-page .lux-table tbody td:nth-child(3) .badge.bg-success {

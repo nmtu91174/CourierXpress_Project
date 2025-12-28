@@ -1,5 +1,20 @@
 // frontend/src/pages/agent/AssignShipper.jsx
-// Assign Shipper - Exception Handling Page (Only APPROVED orders without shipper)
+// Assign Shipper - Dedicated Work Queue
+// 
+// PURPOSE:
+// - Focused work queue for shipper assignment
+// - Shows ONLY APPROVED orders without shipper (status = 2, shipper_id IS NULL)
+// - Optimized for bulk assignment workflow
+// 
+// DIFFERENTIATION:
+// - vs Agent Dashboard: This is a focused work queue, Dashboard is overview + KPIs
+// - Dashboard has quick actions for convenience, this page is for dedicated assignment workflow
+// - No KPIs here - pure operational screen
+// 
+// USE CASE:
+// - Agent needs to assign multiple shippers efficiently
+// - Agent wants to focus only on pending assignments
+// - Bulk assignment operations
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Card, Row, Col, Button, Form, Table, Spinner } from "react-bootstrap";
@@ -18,6 +33,7 @@ import StatusBadge from "../../components/common/StatusBadge";
 import OrderDetailPanel from "../../components/orders/OrderDetailPanel";
 import { ORDER_STATUS } from "../../constants/orderStatus";
 import { initPageAnimations } from "../../utils/gsapAnimations";
+import hanoiData from "../../data/hanoi.json";
 
 import "../../assets/styles/dashboard.css";
 import "../../assets/styles/agent_dashboard.css";
@@ -250,6 +266,29 @@ export default function AssignShipper() {
   const [assignShipperData, setAssignShipperData] = useState({ order_id: "", shipper_id: "", note: "" });
   const [confirmAssignShipper, setConfirmAssignShipper] = useState(false);
 
+  // Helper: Extract area (district) from address
+  const getArea = (address) => {
+    if (!address) return "N/A";
+    // Try to extract district from address using hanoiData
+    const districts = Object.keys(hanoiData);
+    for (const district of districts) {
+      if (address.includes(district)) return district;
+    }
+    // Fallback: try to get last part of address (usually district)
+    const parts = address.split(",").map(p => p.trim());
+    if (parts.length > 0) {
+      const lastPart = parts[parts.length - 1];
+      // Check if last part matches any district
+      for (const district of districts) {
+        if (lastPart.includes(district) || district.includes(lastPart)) {
+          return district;
+        }
+      }
+      return lastPart;
+    }
+    return address;
+  };
+
   // OrderInfoDisplay component (reusable)
   const OrderInfoDisplay = ({ order, iconColor = "text-warning" }) => {
     if (!order) return null;
@@ -265,6 +304,8 @@ export default function AssignShipper() {
           <Col md={6}><div className="luxury-info-item"><small className="text-muted d-block mb-1">Status</small><div style={{ display: "inline-block" }}><StatusBadge status={order.status} /></div></div></Col>
           <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Pickup Address</small><div className="small fw-semibold">{getFullAddress(order.sender_address)}</div></div></Col>
           <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Delivery Address</small><div className="small fw-semibold">{getFullAddress(order.receiver_address)}</div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Pickup Area</small><div className="small fw-semibold text-primary">{getArea(order.sender_address)}</div></div></Col>
+          <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaMapMarkerAlt className="me-1" /> Delivery Area</small><div className="small fw-semibold text-success">{getArea(order.receiver_address)}</div></div></Col>
           {order.weight && (
             <Col md={6}><div className="luxury-info-item"><small className="text-muted d-flex align-items-center mb-1"><FaWeight className="me-1" /> Weight</small><div className="fw-bold">{formatWeight(order.weight)}</div></div></Col>
           )}

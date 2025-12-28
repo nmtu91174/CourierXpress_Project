@@ -277,17 +277,16 @@ function NotificationsPage() {
                 
                 // Only navigate if notification has related order
                 if (notif.related_order_id && (normalizedType === "order" || normalizedType === "warning")) {
-                  // FIX 2: Admin/Agent MUST use action_url (no fallback)
+                  // Admin/Agent MUST use action_url from metadata (role-specific routing)
                   if (userRole === "admin" || userRole === "agent") {
                     if (metadata.action_url) {
                       navigate(metadata.action_url);
                     } else {
-                      // Admin/Agent require action_url - log error but don't navigate
-                      console.warn("Admin/Agent notification missing action_url:", notif);
-                      return;
+                      // Fallback: Use admin order management with order_id
+                      navigate(`/admin/orders?focus=${notif.related_order_id}`);
                     }
                   }
-                  // FIX 3: Customer ONLY uses order_code (NO fallback to order_id)
+                  // Customer ONLY uses order_code (NO fallback to order_id)
                   else if (userRole === "customer") {
                     const orderCode = notif.order_code || metadata.order_code;
                     if (orderCode) {

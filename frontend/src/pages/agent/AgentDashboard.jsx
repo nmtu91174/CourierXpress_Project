@@ -1,5 +1,19 @@
 // frontend/src/pages/agent/AgentDashboard.jsx
-// Agent Dashboard - Workflow Console (matching Dashboard.jsx pattern)
+// Agent Dashboard - Monitoring & Quick Actions
+// 
+// PURPOSE: 
+// - Display KPIs (Assigned Today, Delivered Today, In Progress, Attention Required)
+// - Overview of all orders assigned to agent (with full filtering capabilities)
+// - Quick Actions: Assign shipper directly from dashboard (convenience feature)
+// 
+// DIFFERENTIATION:
+// - vs Assign Shipper: Dashboard shows ALL orders + KPIs, Assign Shipper shows ONLY APPROVED orders without shipper (focused work queue)
+// - vs My Orders: Dashboard has KPIs + full filters, My Orders is simplified view
+// 
+// QUICK ACTION RATIONALE:
+// - Allows agents to assign shippers without leaving dashboard context
+// - Useful for urgent assignments or when reviewing order details
+// - For bulk/focused assignment, use dedicated "Assign Shipper" page
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -57,7 +71,7 @@ export default function AgentDashboard() {
 
   // KPI (Agent-specific) - calculated from real data
   const [assignedToday, setAssignedToday] = useState(0);
-  const [pendingAssignment, setPendingAssignment] = useState(0);
+  const [deliveredToday, setDeliveredToday] = useState(0);
   const [inProgress, setInProgress] = useState(0);
   const [attentionRequired, setAttentionRequired] = useState(0);
 
@@ -84,6 +98,57 @@ export default function AgentDashboard() {
   // =============================
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // =============================
+  // 2.5. FETCH ASSIGNED TODAY (from order_history)
+  // =============================
+  const fetchAssignedToday = async (agentId) => {
+    try {
+      const res = await fetch(
+        `http://localhost:8888/api/agent/get_assigned_today.php?agent_id=${agentId}`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === "success") {
+          setAssignedToday(json.data.assigned_today || 0);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching assigned today:", err);
+      // Don't fail the whole page, just set to 0
+      setAssignedToday(0);
+    }
+  };
+
+  // 2.6. FETCH DELIVERED TODAY (from order_history or delivered_at)
+  // =============================
+  const fetchDeliveredToday = async (agentId) => {
+    try {
+      const res = await fetch(
+        `http://localhost:8888/api/agent/get_delivered_today.php?agent_id=${agentId}`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === "success") {
+          setDeliveredToday(json.data.delivered_today || 0);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching delivered today:", err);
+      // Don't fail the whole page, just set to 0
+      setDeliveredToday(0);
+    }
+  };
 
   // =============================
   // 3. FETCH ORDERS (Team scope - Agent can see all orders for coordination)
@@ -133,19 +198,14 @@ export default function AgentDashboard() {
         setLoadingOrders(false);
 
         // Calculate KPI from real data (team scope - all orders for coordination)
-        const today = new Date().toISOString().split('T')[0];
         const user = JSON.parse(localStorage.getItem("user")) || {};
         const currentAgentId = user.id;
         
-        // Assigned Today: Orders assigned to current agent today
-        const todayOrders = data.filter(o => {
-          if (!o.created_at) return false;
-          return o.created_at.startsWith(today) && Number(o.agent_id) === Number(currentAgentId);
-        });
-        
-        setAssignedToday(todayOrders.length);
-        // Pending Assignment: All approved orders without shipper (team scope)
-        setPendingAssignment(data.filter(o => Number(o.status) === 2 && (!o.shipper_id || Number(o.shipper_id) === 0)).length);
+        // Fetch Assigned Today from API (based on order_history)
+        if (currentAgentId) {
+          fetchAssignedToday(currentAgentId);
+          fetchDeliveredToday(currentAgentId);
+        }
         // In Progress: All orders in progress (team scope)
         setInProgress(data.filter(o => [3, 4].includes(Number(o.status))).length);
         // Attention Required: All failed/cancelled orders (team scope)
@@ -214,9 +274,17 @@ export default function AgentDashboard() {
   }, [shippers]);
 
   // Get orders available for shipper assignment (for modal)
+  // ENTERPRISE: Only show orders assigned to current agent
   const ordersForShipperAssignment = useMemo(() => {
+    const user = JSON.parse(localStorage.getItem("user")) || {};
+    const currentAgentId = user.id ? Number(user.id) : null;
+    
+    return allOrders.filter(o => {
+      // Only orders assigned to current agent
+      if (currentAgentId !== null && Number(o.agent_id) !== currentAgentId) return false;
     // Only orders that are APPROVED (status=2) and don't have shipper yet
-    return allOrders.filter(o => Number(o.status) === 2 && (!o.shipper_id || Number(o.shipper_id) === 0));
+      return Number(o.status) === 2 && (!o.shipper_id || Number(o.shipper_id) === 0);
+    });
   }, [allOrders]);
 
   // =============================
@@ -263,12 +331,21 @@ export default function AgentDashboard() {
       previous_status: o.previous_status || null,
     }));
 
-    return data.filter((o) => {
-      // 1. Filter by agent (for "Only My Orders" quick filter)
-      if (filterAgent === "me") {
+    // ENTERPRISE RULE: Agent only sees orders assigned to them
         const user = JSON.parse(localStorage.getItem("user")) || {};
-        if (Number(o.agent_id) !== Number(user.id)) return false;
-      } else if (filterAgent && filterAgent !== "all" && filterAgent !== "me") {
+    const currentAgentId = user.id ? Number(user.id) : null;
+    
+    return data.filter((o) => {
+      // 1. ENTERPRISE: Always filter by current agent (agent only sees their own orders)
+      if (currentAgentId !== null) {
+        if (Number(o.agent_id) !== currentAgentId) return false;
+      } else {
+        // If no current user, show nothing (should not happen in production)
+        return false;
+      }
+      
+      // Legacy filter support (if filterAgent is set, still respect it but default is "me")
+      if (filterAgent && filterAgent !== "all" && filterAgent !== "me") {
         if (Number(o.agent_id) !== Number(filterAgent)) return false;
       }
       
@@ -546,12 +623,15 @@ export default function AgentDashboard() {
     }
   };
 
-  // Handler for clicking on "Pending Assignment" KPI card
-  const handlePendingAssignmentClick = () => {
-    // Filter to show only pending assignment orders
-    setFilterStatusGroup("handling");
-    setFilterStatus("2"); // APPROVED status
-    setFilterNoShipper(true); // No shipper assigned
+  // Handler for clicking on "Delivered Today" KPI card
+  const handleDeliveredTodayClick = () => {
+    // Filter to show only delivered orders today
+    setFilterStatus("5"); // DELIVERED status
+    setFilterStatusGroup("completed");
+    // Set date filter to today
+    const today = new Date().toISOString().split('T')[0];
+    setFilterDateFrom(today);
+    setFilterDateTo(today);
   };
 
   // =============================
@@ -619,14 +699,8 @@ export default function AgentDashboard() {
   // Handler for smart action click
   const handleSmartAction = (alert) => {
     if (alert.id === "awaiting-assignment" || alert.id === "idle-shippers") {
-      // Open assign modal for first eligible order
-      const awaitingAssignment = allOrders.filter(o => 
-        Number(o.status) === ORDER_STATUS.APPROVED && 
-        (!o.shipper_id || Number(o.shipper_id) === 0)
-      );
-      if (awaitingAssignment.length > 0) {
-        handleAssignShipper(awaitingAssignment[0]);
-      }
+      // Navigate to Assign Shipper page (dedicated work queue)
+      navigate("/agent/assign-shipper");
     } else if (alert.id === "over-sla") {
       // Filter table to show over SLA orders
       setFilterStatusGroup("handling");
@@ -665,16 +739,16 @@ export default function AgentDashboard() {
         <Col md={3}>
           <Card
             className="kpi-item border-0 shadow-sm text-white"
-            style={{ background: "linear-gradient(135deg,#ffc107,#ffde59)", cursor: "pointer" }}
-            onClick={handlePendingAssignmentClick}
+            style={{ background: "linear-gradient(135deg,#28a745,#5cb85c)", cursor: "pointer" }}
+            onClick={handleDeliveredTodayClick}
           >
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
                 <div>
-                  <p className="m-0 opacity-75 small">Pending Assignment</p>
-                  <h2 className="fw-bold my-1">{pendingAssignment}</h2>
+                  <p className="m-0 opacity-75 small">Delivered Today</p>
+                  <h2 className="fw-bold my-1">{deliveredToday}</h2>
                 </div>
-                <FaClock className="fs-1 opacity-50" />
+                <FaCheckCircle className="fs-1 opacity-50" />
               </div>
             </Card.Body>
           </Card>
@@ -683,7 +757,7 @@ export default function AgentDashboard() {
         <Col md={3}>
           <Card
             className="kpi-item border-0 shadow-sm text-white"
-            style={{ background: "linear-gradient(135deg,#43a047,#8bc34a)", cursor: "default" }}
+            style={{ background: "linear-gradient(135deg,#ffc107,#ffd54f)", cursor: "default" }}
           >
             <Card.Body>
               <div className="d-flex justify-content-between align-items-center">
@@ -691,7 +765,7 @@ export default function AgentDashboard() {
                   <p className="m-0 opacity-75 small">In Progress</p>
                   <h2 className="fw-bold my-1">{inProgress}</h2>
                 </div>
-                <FaCheckCircle className="fs-1 opacity-50" />
+                <FaClock className="fs-1 opacity-50" />
               </div>
             </Card.Body>
           </Card>
@@ -754,6 +828,21 @@ export default function AgentDashboard() {
         </Card>
       )}
 
+      {/* ================= QUICK ACTION INFO (Differentiation) ================= */}
+      <Card className="card-lux mb-3 border-info" style={{ borderWidth: "1px", borderColor: "rgba(13, 110, 253, 0.3)", backgroundColor: "#f0f8ff" }}>
+        <Card.Body className="py-2">
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center">
+              <FaInfoCircle className="me-2 text-info" />
+              <small className="text-muted">
+                <strong>Note:</strong> This dashboard is for monitoring and overview. 
+                To assign shippers, use the <Link to="/agent/assign-shipper" className="text-primary fw-semibold">Assign Shipper</Link> page.
+              </small>
+            </div>
+          </div>
+        </Card.Body>
+      </Card>
+
       {/* ================= FILTER + TABLE ================= */}
       <OrderFilterBar
         filterStatus={filterStatus}
@@ -810,7 +899,7 @@ export default function AgentDashboard() {
         orders={paginatedOrders}
         onRowClick={openPanel}
         onViewDetail={openPanel}
-        onAssignShipper={handleAssignShipper}
+        // onAssignShipper removed - Agent Dashboard is view-only, use Assign Shipper page for assignments
         userRole="agent"
         showAgentColumn={true} // Show Assigned Agent column for agent dashboard
       />
@@ -936,7 +1025,7 @@ export default function AgentDashboard() {
         order={selectedOrder}
         isOpen={showPanel}
         onClose={closePanel}
-        onAssign={handleAssignShipper}
+        // onAssign removed - Agent Dashboard is view-only, use Assign Shipper page for assignments
         userRole="agent"
       />
 

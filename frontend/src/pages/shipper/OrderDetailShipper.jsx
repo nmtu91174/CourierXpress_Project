@@ -104,13 +104,13 @@ const OrderDetailShipper = () => {
             let msg = "Unknown GPS error";
             switch (error.code) {
               case error.PERMISSION_DENIED:
-                msg = "Bạn đã từ chối cấp quyền vị trí.";
+                msg = "Location permission denied.";
                 break;
               case error.POSITION_UNAVAILABLE:
-                msg = "Không thể xác định vị trí hiện tại.";
+                msg = "Unable to determine current location.";
                 break;
               case error.TIMEOUT:
-                msg = "Hết thời gian chờ lấy vị trí (Timeout).";
+                msg = "Location request timeout.";
                 break;
             }
             reject(new Error(msg));
@@ -140,11 +140,11 @@ const OrderDetailShipper = () => {
     return new Date(dateString).toLocaleString("en-GB");
   };
 
-  // Hiển thị người trả phí
+  // Display payer
   const getPayerLabel = (type) => {
     return parseInt(type) === 1
-      ? "Sender (Người gửi)"
-      : "Receiver (Người nhận)";
+      ? "Sender Pays"
+      : "Receiver Pays";
   };
 
   // ========================== new nmtu 15:38 24-12
@@ -154,17 +154,17 @@ const OrderDetailShipper = () => {
   const getFailedReasonLabel = (reason) => {
     switch (reason) {
       case "customer_unreachable":
-        return "Customer unreachable (Không liên lạc được)";
+        return "Customer Unreachable";
       case "customer_refused":
-        return "Customer refused (Từ chối nhận)";
+        return "Customer Refused";
       case "package_damaged":
-        return "Package damaged (Hàng hư hỏng)";
+        return "Package Damaged";
       case "weather_delay":
-        return "Weather delay (Thời tiết xấu)";
+        return "Weather Delay";
       case "other":
-        return "Other reason (Lý do khác)";
+        return "Other Reason";
       default:
-        return reason || "Unknown reason";
+        return reason || "Unknown Reason";
     }
   };
   // ==========================
@@ -818,15 +818,15 @@ const OrderDetailShipper = () => {
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowPickupModal(false)}>
-            Cancel
-          </Button>
           <Button
             variant="warning"
             disabled={!canConfirmPickup || isSubmitting}
             onClick={handleConfirmPickupSubmit}
           >
             Confirm
+          </Button>
+          <Button variant="secondary" onClick={() => setShowPickupModal(false)}>
+            Cancel
           </Button>
         </Modal.Footer>
       </Modal>
@@ -908,18 +908,17 @@ const OrderDetailShipper = () => {
 
         <Modal.Footer>
           <Button
-            variant="secondary"
-            onClick={() => setShowDeliveryModal(false)}
-          >
-            Cancel
-          </Button>
-
-          <Button
             variant="success"
             disabled={!deliveryImage || isSubmitting}
             onClick={handleConfirmDeliverySubmit}
           >
             {isSubmitting ? "Submitting..." : "Confirm Delivery"}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => setShowDeliveryModal(false)}
+          >
+            Cancel
           </Button>
         </Modal.Footer>
       </Modal>
@@ -951,19 +950,19 @@ const OrderDetailShipper = () => {
               <option value="">-- Select reason --</option>
 
               <option value="customer_unreachable">
-                Customer unreachable (Không liên lạc được)
+                Customer Unreachable
               </option>
 
               <option value="customer_refused">
-                Customer refused (Từ chối nhận)
+                Customer Refused
               </option>
 
               <option value="package_damaged">
-                Package damaged (Hàng hư hỏng)
+                Package Damaged
               </option>
 
               <option value="weather_delay">
-                Weather delay (Thời tiết xấu)
+                Weather Delay
               </option>
 
               <option value="other">Other reason</option>
@@ -1014,16 +1013,15 @@ const OrderDetailShipper = () => {
         </Modal.Body>
 
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowFailModal(false)}>
-            Cancel
-          </Button>
-
           <Button
             variant="danger"
             disabled={!failReason || !failImage || failSubmitting}
             onClick={handleConfirmDeliveryFail}
           >
             {failSubmitting ? "Submitting..." : "Confirm Delivery Failed"}
+          </Button>
+          <Button variant="secondary" onClick={() => setShowFailModal(false)}>
+            Cancel
           </Button>
         </Modal.Footer>
       </Modal>

@@ -81,3 +81,26 @@ time=2025-12-25T22:15:28+00:00 event=UPDATE_USER actor_id=5 actor_role=customer 
 [2025-12-26 11:59:46] user=1 role=admin action=ASSIGN_AGENT order=508 note=agent=2
 [2025-12-26 12:02:10] user=1 role=admin action=ASSIGN_SHIPPER order=508 note=shipper=4
 time=2025-12-26T12:08:39+00:00 event=UPDATE_USER actor_id=4 actor_role=shipper target_user=4
+[2025-12-27 07:22:43] user=1 role=admin action=CREATE_ORDER order=7 note=ORD0007
+[2025-12-27 10:48:46] user=0 role=guest action=CREATE_ORDER order=15 note=ORD0007
+[2025-12-27 10:50:35] user=1 role=admin action=CREATE_ORDER order=16 note=ORD0016
+[2025-12-27 10:55:36] user=0 role=guest action=CREATE_ORDER order=17 note=ORD0017
+[2025-12-27 13:57:13] user=0 role=guest action=CREATE_ORDER order=18 note=ORD0018
+[2025-12-27 14:14:47] user=1 role=admin action=CREATE_ORDER order=20 note=ORD0019
+[2025-12-27 22:18:57] user=1 role=admin action=CREATE_ORDER order=21 note=ORD0021
+[2025-12-27 22:20:51] user=12 role=agent action=ASSIGN_SHIPPER order=21 note=shipper=4
+[2025-12-27 22:23:23] user=1 role=admin action=CREATE_ORDER order=22 note=ORD0022
+[2025-12-27 22:40:46] user=0 role=guest action=CREATE_ORDER order=23 note=ORD0023
+[2025-12-27 22:41:07] user=12 role=agent action=ASSIGN_SHIPPER order=22 note=shipper=4
+[2025-12-27 23:40:25] user=0 role=guest action=CREATE_ORDER order=24 note=ORD0024
+[2025-12-27 23:55:18] user=1 role=admin action=CREATE_ORDER order=7 note=ORD0007
+[2025-12-28 00:28:04] user=1 role=admin action=CREATE_ORDER order=7 note=ORD0007
+[2025-12-28 06:17:08] user=0 role=guest action=CREATE_ORDER order=8 note=ORD0008
+[2025-12-28 06:18:42] user=0 role=guest action=CREATE_ORDER order=9 note=ORD0009
+[2025-12-28 06:39:56] user=0 role=guest action=CREATE_ORDER order=10 note=ORD0010
+[2025-12-28 06:54:52] user=8 role=agent action=ASSIGN_SHIPPER order=10 note=shipper=4
+[2025-12-28 06:54:56] user=8 role=agent action=ASSIGN_SHIPPER order=9 note=shipper=4
+[2025-12-28 06:55:01] user=8 role=agent action=ASSIGN_SHIPPER order=8 note=shipper=4
+[2025-12-28 06:55:06] user=8 role=agent action=ASSIGN_SHIPPER order=7 note=shipper=4
+[2025-12-28 07:11:36] user=0 role=guest action=CREATE_ORDER order=11 note=ORD0011
+[2025-12-28 07:13:04] user=0 role=guest action=CREATE_ORDER order=12 note=ORD0012

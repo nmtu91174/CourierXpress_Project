@@ -15,9 +15,9 @@ export default function About() {
           <div className="col-md-6">
             <h2 className="fw-bold mb-3">Who We Are</h2>
             <p className="text-muted">
-              FastShip Express là đơn vị vận chuyển uy tín với hơn 5 năm kinh nghiệm.
-              Chúng tôi mang đến giải pháp giao hàng tiết kiệm, đúng giờ
-              cùng khả năng theo dõi hành trình theo thời gian thực.
+              FastShip Express is a trusted shipping company with over 5 years of experience.
+              We provide cost-effective, on-time delivery solutions
+              with real-time tracking capabilities.
             </p>
           </div>
 
@@ -43,7 +43,7 @@ export default function About() {
                 <img src="/images/FastDelivery.jpg" alt="Fast Delivery" />
               </div>
               <h4 className="fw-bold">Fast Delivery</h4>
-              <p className="text-muted">Giao hàng từ 2–4 giờ trong nội thành.</p>
+              <p className="text-muted">Delivery within 2–4 hours in the city.</p>
             </div>
           </div>
 
@@ -54,7 +54,7 @@ export default function About() {
                 <img src="/images/Real-Time Tracking.jpg" alt="Tracking" />
               </div>
               <h4 className="fw-bold">Real-Time Tracking</h4>
-              <p className="text-muted">Theo dõi đơn hàng từng phút.</p>
+              <p className="text-muted">Track your order minute by minute.</p>
             </div>
           </div>
 
@@ -65,7 +65,7 @@ export default function About() {
                 <img src="/images/Secure Handling.jpg" alt="Secure" />
               </div>
               <h4 className="fw-bold">Secure Handling</h4>
-              <p className="text-muted">An toàn tuyệt đối.</p>
+              <p className="text-muted">Absolutely secure.</p>
             </div>
           </div>
 
@@ -81,22 +81,22 @@ export default function About() {
             
             <div className="col-md-3">
               <p className="stat-number">10,000+</p>
-              <p>Đơn hàng mỗi ngày</p>
+              <p>Orders per day</p>
             </div>
 
             <div className="col-md-3">
               <p className="stat-number">98%</p>
-              <p>Khách hàng hài lòng</p>
+              <p>Satisfied customers</p>
             </div>
 
             <div className="col-md-3">
               <p className="stat-number">1,200+</p>
-              <p>Đối tác doanh nghiệp</p>
+              <p>Business partners</p>
             </div>
 
             <div className="col-md-3">
               <p className="stat-number">63</p>
-              <p>Tỉnh thành phục vụ</p>
+              <p>Provinces served</p>
             </div>
 
           </div>

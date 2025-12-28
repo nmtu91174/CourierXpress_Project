@@ -4,6 +4,7 @@ import { FaTimes, FaUserCheck, FaImage, FaWeight, FaRuler, FaTag, FaTruck, FaMon
 import StatusBadge from "../common/StatusBadge";
 import ImageModal from "../common/ImageModal";
 import { ORDER_STATUS, canAdminAssignShipper, isTerminalStatus } from "../../constants/orderStatus";
+import hanoiData from "../../data/hanoi.json";
 
 import "../../assets/styles/orderDetailPanel.css";
 import "../../assets/styles/imageModal.css";
@@ -287,6 +288,29 @@ export default function OrderDetailPanel({
     }
   };
 
+  // Extract area (district) from address
+  const getArea = (address) => {
+    if (!address) return "N/A";
+    // Try to extract district from address using hanoiData
+    const districts = Object.keys(hanoiData);
+    for (const district of districts) {
+      if (address.includes(district)) return district;
+    }
+    // Fallback: try to get last part of address (usually district)
+    const parts = address.split(",").map(p => p.trim());
+    if (parts.length > 0) {
+      const lastPart = parts[parts.length - 1];
+      // Check if last part matches any district
+      for (const district of districts) {
+        if (lastPart.includes(district) || district.includes(lastPart)) {
+          return district;
+        }
+      }
+      return lastPart;
+    }
+    return address;
+  };
+
   // Separate images by type (URLs already normalized in fetchOrderImages)
   const pickupImages = orderImages.filter(img => img.type === "pickup");
   const deliveryImages = orderImages.filter(img => img.type === "delivery");
@@ -416,6 +440,13 @@ export default function OrderDetailPanel({
               </small>
               <div>{normalizedOrder.sender_address || "-"}</div>
             </div>
+            <div className="luxury-info-item">
+              <small className="text-muted d-flex align-items-center">
+                <FaMapMarkerAlt className="me-1" style={{ fontSize: "0.75rem" }} />
+                Pickup Area
+              </small>
+              <div className="fw-semibold text-primary">{getArea(normalizedOrder.sender_address)}</div>
+            </div>
           </div>
         </section>
 
@@ -452,6 +483,13 @@ export default function OrderDetailPanel({
                 Address
               </small>
               <div>{normalizedOrder.receiver_address || "-"}</div>
+            </div>
+            <div className="luxury-info-item">
+              <small className="text-muted d-flex align-items-center">
+                <FaMapMarkerAlt className="me-1" style={{ fontSize: "0.75rem" }} />
+                Delivery Area
+              </small>
+              <div className="fw-semibold text-success">{getArea(normalizedOrder.receiver_address)}</div>
             </div>
           </div>
         </section>

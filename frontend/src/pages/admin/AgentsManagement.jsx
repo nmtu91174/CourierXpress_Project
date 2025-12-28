@@ -8,7 +8,7 @@ import {
 } from "react-bootstrap";
 import {
   FaSearch, FaUserTie, FaPhone, FaChartPie, FaStore,
-  FaEye, FaCheckCircle, FaTimesCircle, FaClock, FaExclamationTriangle, FaArrowRight, FaPlus, FaIdCard, FaMapMarkerAlt
+  FaEye, FaCheckCircle, FaTimesCircle, FaClock, FaExclamationTriangle, FaArrowRight, FaPlus, FaIdCard, FaMapMarkerAlt, FaKey
 } from "react-icons/fa";
 import Swal from "sweetalert2";
 import "../../assets/styles/agents.css";
@@ -33,7 +33,10 @@ export default function AgentsManagement() {
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   
   // Create agent form data
   const [createAgentData, setCreateAgentData] = useState({
@@ -44,7 +47,11 @@ export default function AgentsManagement() {
     address: "",
     citizen_id: "",
     status: "active",
+    coverage_districts: [], // Array of district IDs
   });
+
+  // Districts list for coverage assignment
+  const [districts, setDistricts] = useState([]);
 
   // Fetch agents with KPI from API
   const fetchAgents = async () => {
@@ -89,8 +96,53 @@ export default function AgentsManagement() {
     }
   };
 
+  // Fetch districts for coverage assignment
+  const fetchDistricts = async () => {
+    try {
+      // Try API first, fallback to hanoi.json
+      const res = await fetch("http://localhost:8888/api/tracking/get_districts.php", {
+        method: "GET",
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === "success") {
+          setDistricts(data.data || []);
+          return;
+        }
+      }
+      // Fallback: use hanoi.json
+      const hanoiRes = await fetch("/src/data/hanoi.json");
+      if (hanoiRes.ok) {
+        const hanoiData = await hanoiRes.json();
+        const districtList = Object.keys(hanoiData).map((name, index) => ({
+          id: index + 1,
+          name: name
+        }));
+        setDistricts(districtList);
+      }
+    } catch (error) {
+      console.error("Error loading districts:", error);
+      // Fallback: use hanoi.json
+      try {
+        const hanoiRes = await fetch("/src/data/hanoi.json");
+        if (hanoiRes.ok) {
+          const hanoiData = await hanoiRes.json();
+          const districtList = Object.keys(hanoiData).map((name, index) => ({
+            id: index + 1,
+            name: name
+          }));
+          setDistricts(districtList);
+        }
+      } catch (e) {
+        console.error("Failed to load hanoi.json:", e);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchKPIStats();
+    fetchDistricts();
   }, []);
 
   useEffect(() => {
@@ -225,7 +277,89 @@ export default function AgentsManagement() {
       address: "",
       citizen_id: "",
       status: "active",
+      coverage_districts: [],
     });
+  };
+
+  // Handle coverage district selection
+  const handleCoverageChange = (districtId) => {
+    const districtIdNum = parseInt(districtId);
+    setCreateAgentData(prev => {
+      const current = prev.coverage_districts || [];
+      if (current.includes(districtIdNum)) {
+        return { ...prev, coverage_districts: current.filter(id => id !== districtIdNum) };
+      } else {
+        return { ...prev, coverage_districts: [...current, districtIdNum] };
+      }
+    });
+  };
+
+  // Handle reset agent password
+  const handleResetPassword = async () => {
+    if (!selectedAgent) return;
+
+    // Validation
+    if (!newPassword || newPassword.length < 6) {
+      return Swal.fire("Error", "Mật khẩu phải từ 6 ký tự trở lên", "error");
+    }
+
+    if (newPassword !== confirmPassword) {
+      return Swal.fire("Error", "Mật khẩu xác nhận không khớp", "error");
+    }
+
+    // Confirm action
+    const confirm = await Swal.fire({
+      title: "Reset Password?",
+      html: `Bạn có chắc muốn reset mật khẩu cho agent:<br><strong>${selectedAgent.name}</strong><br><small>${selectedAgent.email}</small>`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, Reset Password",
+      cancelButtonText: "Cancel"
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch("http://localhost:8888/api/admin/reset_agent_password.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          agent_id: selectedAgent.id,
+          new_password: newPassword
+        })
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        try {
+          const errorData = JSON.parse(errorText);
+          return Swal.fire("Error", errorData.message || `Server error (${res.status})`, "error");
+        } catch {
+          return Swal.fire("Error", `Server error (${res.status}): ${errorText}`, "error");
+        }
+      }
+
+      const data = await res.json();
+      if (data.status === "success") {
+        Swal.fire({
+          title: "Success!",
+          html: `Mật khẩu đã được reset thành công cho:<br><strong>${selectedAgent.name}</strong><br><br>Mật khẩu mới: <code>${newPassword}</code><br><br><small>Vui lòng gửi thông tin này cho agent.</small>`,
+          icon: "success",
+          confirmButtonText: "OK"
+        });
+        setShowResetPasswordModal(false);
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        Swal.fire("Error", data.message || "Cannot reset password", "error");
+      }
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      Swal.fire("Error", "Cannot reset password. Please try again.", "error");
+    }
   };
 
   // Handle create agent submit
@@ -250,7 +384,10 @@ export default function AgentsManagement() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(createAgentData),
+        body: JSON.stringify({
+          ...createAgentData,
+          coverage_districts: createAgentData.coverage_districts || [],
+        }),
       });
 
       // Check if response is OK
@@ -411,6 +548,7 @@ export default function AgentsManagement() {
                 <th style={{ minWidth: '200px' }}>Agent</th>
                 <th style={{ minWidth: '120px' }}>Phone</th>
                 <th style={{ minWidth: '100px' }}>Status</th>
+                <th style={{ minWidth: '200px' }}>Coverage</th>
                 <th className="text-center" style={{ minWidth: '120px' }}>Total Orders</th>
                 <th className="text-center" style={{ minWidth: '130px' }}>In Progress</th>
                 <th className="text-center" style={{ minWidth: '120px' }}>Completed</th>
@@ -431,6 +569,19 @@ export default function AgentsManagement() {
                     </td>
                     <td data-label="Phone">{agent.phone || "N/A"}</td>
                     <td data-label="Status">{renderStatus(agent.status)}</td>
+                    <td data-label="Coverage">
+                      {agent.coverage && agent.coverage.length > 0 ? (
+                        <div className="d-flex flex-wrap gap-1">
+                          {agent.coverage.map((district, idx) => (
+                            <span key={idx} className="badge-coverage-luxury">
+                              {district}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted small">No coverage</span>
+                      )}
+                    </td>
                     <td className="text-center" data-label="Total Orders">
                       <Badge bg="primary">{agent.total_orders}</Badge>
                     </td>
@@ -479,7 +630,7 @@ export default function AgentsManagement() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="text-center text-muted py-4">
+                  <td colSpan={10} className="text-center text-muted py-4">
                     No agents found
                   </td>
                 </tr>
@@ -631,6 +782,51 @@ export default function AgentsManagement() {
                 </Form.Group>
               </Col>
             </Row>
+
+            {/* Coverage Assignment Section */}
+            <div className="luxury-section-header mb-3 mt-4">
+              <h6 className="fw-bold d-flex align-items-center text-primary mb-0">
+                <FaMapMarkerAlt className="me-2" /> Coverage Assignment (Optional)
+              </h6>
+              <p className="small text-muted mb-0 mt-1">
+                Coverage is used for auto-assignment only. Agents without coverage can still be assigned manually by Admin.
+              </p>
+            </div>
+            <Row className="mb-4">
+              <Col md={12}>
+                <Form.Group>
+                  <Form.Label className="small text-muted">Select Districts for Coverage</Form.Label>
+                  <div style={{ 
+                    maxHeight: "200px", 
+                    overflowY: "auto", 
+                    border: "1px solid #dee2e6", 
+                    borderRadius: "0.375rem",
+                    padding: "10px"
+                  }}>
+                    {districts.length > 0 ? (
+                      districts.map(district => (
+                        <Form.Check
+                          key={district.id}
+                          type="checkbox"
+                          id={`district-${district.id}`}
+                          label={district.name}
+                          checked={createAgentData.coverage_districts?.includes(district.id) || false}
+                          onChange={() => handleCoverageChange(district.id)}
+                          className="mb-2"
+                        />
+                      ))
+                    ) : (
+                      <p className="text-muted small mb-0">Loading districts...</p>
+                    )}
+                  </div>
+                  {createAgentData.coverage_districts?.length > 0 && (
+                    <Form.Text className="text-success">
+                      {createAgentData.coverage_districts.length} district(s) selected
+                    </Form.Text>
+                  )}
+                </Form.Group>
+              </Col>
+            </Row>
           </Form>
             </div>
 
@@ -696,6 +892,22 @@ export default function AgentsManagement() {
                   </div>
                   <div className="mb-2">
                     <strong>Created Date:</strong> {formatDate(selectedAgent.created_at)}
+                  </div>
+                  <div className="mb-2">
+                    <strong>Coverage Areas:</strong>
+                    <div className="mt-2">
+                      {selectedAgent.coverage && selectedAgent.coverage.length > 0 ? (
+                        <div>
+                          {selectedAgent.coverage.map((district, idx) => (
+                            <span key={idx} className="badge-coverage-luxury me-2 mb-2" style={{ display: 'inline-block' }}>
+                              {district}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted small">No coverage areas assigned</span>
+                      )}
+                    </div>
                   </div>
                 </Col>
                 <Col md={6}>
@@ -783,11 +995,103 @@ export default function AgentsManagement() {
             {/* ================= FOOTER ================= */}
             <div className="dqn-modal-footer">
               <Button
+                variant="warning"
+                className="btn-lux-outline-warning me-2"
+                onClick={() => {
+                  setShowViewModal(false);
+                  setShowResetPasswordModal(true);
+                }}
+              >
+                <FaKey className="me-1" /> Reset Password
+              </Button>
+              <Button
                 variant="secondary"
                 className="btn-lux-outline-secondary"
                 onClick={() => setShowViewModal(false)}
               >
                 Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL RESET PASSWORD */}
+      {showResetPasswordModal && selectedAgent && (
+        <div className="dqn-modal-overlay">
+          <div className="dqn-modal" style={{ maxWidth: "500px" }}>
+            <div className="dqn-modal-header" style={{ background: "linear-gradient(135deg, #ff9800, #ff5722)" }}>
+              <div className="dqn-modal-title">
+                <FaKey /> Reset Password
+              </div>
+              <button
+                className="dqn-modal-close"
+                onClick={() => {
+                  setShowResetPasswordModal(false);
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="dqn-modal-body">
+              <div className="mb-3">
+                <p className="text-muted mb-3">
+                  Reset mật khẩu cho agent: <strong>{selectedAgent.name}</strong>
+                  <br />
+                  <small>Email: {selectedAgent.email}</small>
+                </p>
+                <div className="alert alert-info">
+                  <small>
+                    <strong>Lưu ý:</strong> Reset mật khẩu không ảnh hưởng đến đơn hàng đã được assign cho agent này.
+                  </small>
+                </div>
+              </div>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Mật khẩu mới <span className="text-danger">*</span></Form.Label>
+                <Form.Control
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                  minLength={6}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Xác nhận mật khẩu <span className="text-danger">*</span></Form.Label>
+                <Form.Control
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Nhập lại mật khẩu mới"
+                  minLength={6}
+                />
+              </Form.Group>
+            </div>
+
+            <div className="dqn-modal-footer">
+              <Button
+                variant="secondary"
+                className="btn-lux-outline-secondary me-2"
+                onClick={() => {
+                  setShowResetPasswordModal(false);
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="warning"
+                className="btn-lux-warning"
+                onClick={handleResetPassword}
+                disabled={!newPassword || newPassword.length < 6 || newPassword !== confirmPassword}
+              >
+                <FaKey className="me-1" /> Reset Password
               </Button>
             </div>
           </div>

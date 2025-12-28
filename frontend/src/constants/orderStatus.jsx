@@ -58,33 +58,36 @@ export const isTerminalStatus = (status) => {
 };
 
 /**
- * ADMIN – ASSIGN AGENT
+ * ADMIN – ASSIGN AGENT (ENTERPRISE: FALLBACK ONLY)
  * - Status = BOOKED
  * - Chưa có agent
+ * - routing_status === 'fallback_admin' OR agent_id IS NULL
  */
 export const canAdminAssignAgent = (order, userRole = "admin") => {
   if (!order || userRole !== "admin") return false;
 
+  const status = Number(order.status);
+  const routingStatus = order.routing_status || 'auto';
+  const hasAgent = order.agent_id !== null && order.agent_id !== undefined && Number(order.agent_id) !== 0;
+
+  // ENTERPRISE RULE: Only allow admin assign in fallback scenarios
   return (
-    Number(order.status) === ORDER_STATUS.BOOKED &&
-    (order.agent_id === null ||
-      order.agent_id === undefined ||
-      Number(order.agent_id) === 0)
+    status === ORDER_STATUS.BOOKED &&
+    (routingStatus === 'fallback_admin' || !hasAgent)
   );
 };
 
 /**
- * ADMIN – ASSIGN SHIPPER
- * - Status = APPROVED
- * - Chưa có shipper
+ * ADMIN – ASSIGN SHIPPER (DEPRECATED - ENTERPRISE RULE)
+ * 
+ * ⚠️ ENTERPRISE: Admin must NEVER assign shipper in normal workflow.
+ * Only Agent can assign shipper.
+ * 
+ * This function is kept for backward compatibility but should return false.
+ * 
+ * @deprecated Use canAssign() in OrderTable which returns false for admin
  */
 export const canAdminAssignShipper = (order, userRole = "admin") => {
-  if (!order || userRole !== "admin") return false;
-
-  return (
-    Number(order.status) === ORDER_STATUS.APPROVED &&
-    (order.shipper_id === null ||
-      order.shipper_id === undefined ||
-      Number(order.shipper_id) === 0)
-  );
+  // ENTERPRISE RULE: Admin cannot assign shipper
+  return false;
 };

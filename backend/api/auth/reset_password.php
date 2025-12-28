@@ -1,102 +1,158 @@
 <?php
 // backend/api/auth/reset_password.php
-// RESET PASSWORD – admin reset / user đổi mật khẩu
+// RESET PASSWORD – Stateful token (DB-based)
+// FIXED: Uses correct column name 'reset_token' and marks token as used
 
-// CORS Headers
 require_once __DIR__ . "/../../core/Cors.php";
 Cors::handlePreflight();
 Cors::setHeaders();
 
-// ✅ OPTIONS phải exit sớm TRƯỚC middleware
 if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
     http_response_code(200);
     exit;
 }
 
-// ==========================
-// METHOD CHECK
-// ==========================
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     http_response_code(405);
     echo json_encode([
         "status"  => "error",
-        "message" => "Chỉ hỗ trợ POST."
+        "message" => "Only POST method is supported."
     ]);
-    exit();
+    exit;
 }
 
-// ==========================
-// CORE & DB
-// ==========================
 require_once __DIR__ . "/../../db.php";
 require_once __DIR__ . "/../../core/Response.php";
 require_once __DIR__ . "/../../services/NotificationService.php";
 
-// ==========================
-// READ INPUT
-// ==========================
 $data = json_decode(file_get_contents("php://input"), true);
 
-$userId      = (int)($data["user_id"] ?? 0);
+$token       = trim($data["token"] ?? "");
 $newPassword = $data["new_password"] ?? "";
-$actorId     = (int)($data["actor_id"] ?? 0);   // admin / user thực hiện
-$actorRole   = $data["actor_role"] ?? null;
 
-// ==========================
-// VALIDATION
-// ==========================
-if ($userId <= 0 || $newPassword === "") {
-    Response::error("Thiếu dữ liệu reset mật khẩu!");
+// Validate token format
+if ($token === "" || strlen($token) !== 64) {
+    Response::error("Invalid or missing reset token.");
 }
 
-if (strlen($newPassword) < 6) {
-    Response::error("Mật khẩu phải từ 6 ký tự trở lên!");
+if ($newPassword === "" || strlen($newPassword) < 6) {
+    Response::error("Password must be at least 6 characters long.");
 }
 
-// ==========================
-// CHECK USER EXIST
-// ==========================
-$check = $conn->prepare(
-    "SELECT id, email, role FROM users WHERE id = ?"
-);
-$check->bind_param("i", $userId);
-$check->execute();
-$res = $check->get_result();
+// Hash the raw token to match what's stored in DB
+$tokenHash = hash("sha256", $token);
+
+// Query using correct column name 'reset_token'
+$sql = "
+    SELECT 
+        pr.id AS token_id,
+        pr.user_id,
+        pr.used,
+        u.email,
+        u.status
+    FROM password_resets pr
+    INNER JOIN users u ON pr.user_id = u.id
+    WHERE pr.reset_token = ?
+      AND pr.used = 0
+      AND pr.expires_at > NOW()
+    LIMIT 1
+";
+
+$stmt = $conn->prepare($sql);
+if (!$stmt) {
+    error_log("Reset password prepare failed: " . $conn->error);
+    Response::serverError("Database error. Please try again.");
+}
+
+$stmt->bind_param("s", $tokenHash);
+
+if (!$stmt->execute()) {
+    error_log("Reset password execute failed: " . $stmt->error);
+    $stmt->close();
+    Response::serverError("Database error. Please try again.");
+}
+
+$res = $stmt->get_result();
+$stmt->close();
 
 if ($res->num_rows === 0) {
-    Response::error("User không tồn tại!");
+    Response::error("Invalid or expired reset token!");
 }
 
-$user = $res->fetch_assoc();
+$tokenData = $res->fetch_assoc();
 
-// ==========================
-// HASH PASSWORD
-// ==========================
-$hashed = password_hash($newPassword, PASSWORD_DEFAULT);
+// Double-check token is not used (redundant but safe)
+if ($tokenData["used"] == 1) {
+    Response::error("This reset link has already been used.");
+}
 
-// ==========================
-// UPDATE PASSWORD
-// ==========================
-$update = $conn->prepare(
-    "UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?"
-);
-$update->bind_param("si", $hashed, $userId);
-$update->execute();
+// Check user status
+if ($tokenData["status"] !== "active") {
+    Response::error("User account is not active!");
+}
 
-// ==========================
-// AUDIT LOG
-// ==========================
-$notify = new NotificationService($conn);
-$notify->log(
-    "RESET_PASSWORD",
-    "users",
-    $userId,
-    $actorId ?: $userId
-);
+$userId = (int)$tokenData["user_id"];
+$tokenId = (int)$tokenData["token_id"];
 
-// ==========================
-// RESPONSE
-// ==========================
-Response::success("Reset mật khẩu thành công!");
+// Start transaction for atomicity
+$conn->begin_transaction();
+
+try {
+    // Update user password
+    $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+    
+    $updateUser = $conn->prepare(
+        "UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?"
+    );
+    
+    if (!$updateUser) {
+        throw new Exception("Update password prepare failed: " . $conn->error);
+    }
+    
+    $updateUser->bind_param("si", $hashedPassword, $userId);
+    
+    if (!$updateUser->execute()) {
+        throw new Exception("Update password execute failed: " . $updateUser->error);
+    }
+    
+    $updateUser->close();
+    
+    // Mark token as used (THIS IS THE ONLY PLACE WHERE used = 1)
+    $markUsed = $conn->prepare(
+        "UPDATE password_resets SET used = 1 WHERE id = ?"
+    );
+    
+    if (!$markUsed) {
+        throw new Exception("Mark token used prepare failed: " . $conn->error);
+    }
+    
+    $markUsed->bind_param("i", $tokenId);
+    
+    if (!$markUsed->execute()) {
+        throw new Exception("Mark token used execute failed: " . $markUsed->error);
+    }
+    
+    $markUsed->close();
+    
+    // Commit transaction
+    $conn->commit();
+    
+    // Log audit
+    $notify = new NotificationService($conn);
+    $notify->log(
+        "RESET_PASSWORD",
+        "users",
+        $userId,
+        $userId
+    );
+    
+    Response::success("Password has been reset successfully.");
+    
+} catch (Exception $e) {
+    // Rollback on any error
+    $conn->rollback();
+    error_log("Reset password transaction failed: " . $e->getMessage());
+    Response::serverError("Failed to reset password. Please try again.");
+}
 
 $conn->close();

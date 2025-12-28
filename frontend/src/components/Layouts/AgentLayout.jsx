@@ -8,7 +8,8 @@ import {
     FaBoxOpen,
     FaUserTie,
     FaBell,
-    FaUser
+    FaUser,
+    FaMapMarkerAlt
 } from "react-icons/fa";
 import UserMenu from "../layout/UserMenu";
 
@@ -19,6 +20,8 @@ const AgentLayout = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar state
+    const [coverageAreas, setCoverageAreas] = useState([]); // Agent coverage districts
+    const [loadingCoverage, setLoadingCoverage] = useState(true);
 
     // Load user from localStorage on mount
     useEffect(() => {
@@ -64,6 +67,38 @@ const AgentLayout = () => {
             }
         }
     }, [location.pathname, user]);
+
+    // ==========================
+    // FETCH AGENT COVERAGE AREAS (Layout-level - persists across pages)
+    // ==========================
+    useEffect(() => {
+        const fetchCoverage = async () => {
+            try {
+                setLoadingCoverage(true);
+                const res = await fetch("http://localhost:8888/api/agent/get_coverage.php", {
+                    method: "GET",
+                    credentials: "include",
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === "success" && data.data && data.data.areas) {
+                        setCoverageAreas(data.data.areas || []);
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching agent coverage:", err);
+            } finally {
+                setLoadingCoverage(false);
+            }
+        };
+
+        // Only fetch if user is logged in and is agent
+        const storedUser = JSON.parse(localStorage.getItem("user") || "null");
+        if (storedUser && (storedUser.role === "agent" || storedUser.role === "admin")) {
+            fetchCoverage();
+        }
+    }, [user]);
 
     const isActive = (path) => (location.pathname === path ? "active" : "");
 
@@ -149,7 +184,9 @@ const AgentLayout = () => {
             <main className="agent-content">
 
                 {/* HEADER */}
-                <header className="d-flex justify-content-between align-items-center mb-4">
+                <header className="d-flex flex-column mb-4">
+                    {/* Top row: Title + User Menu */}
+                    <div className="d-flex justify-content-between align-items-center mb-2">
                     {/* Mobile sidebar toggle button */}
                     <button 
                         className="sidebar-toggle-mobile d-md-none"
@@ -169,6 +206,33 @@ const AgentLayout = () => {
                             <span className="fw-bold text-muted">Agent</span>
                         )}
                     </div>
+                    </div>
+
+                    {/* Coverage Areas - ENTERPRISE: Agent identity info */}
+                    {user && (user.role === "agent" || user.role === "admin") && (
+                        <div className="d-flex align-items-center flex-wrap gap-2">
+                            <FaMapMarkerAlt className="text-primary me-1" />
+                            <span className="text-muted small fw-bold me-2">Coverage:</span>
+                            {loadingCoverage ? (
+                                <span className="text-muted small">Loading...</span>
+                            ) : coverageAreas.length > 0 ? (
+                                coverageAreas.map((area) => (
+                                    <span 
+                                        key={area.id} 
+                                        className="badge-coverage-luxury"
+                                        title={area.ward_name ? `${area.district_name} - ${area.ward_name}` : area.district_name}
+                                    >
+                                        {area.district_name}
+                                        {area.priority > 1 && (
+                                            <span className="ms-1 opacity-75" style={{ fontSize: '0.75em' }}>({area.priority})</span>
+                                        )}
+                                    </span>
+                                ))
+                            ) : (
+                                <span className="text-muted small">No coverage areas assigned</span>
+                            )}
+                        </div>
+                    )}
                 </header>
 
                 {/* PAGE CONTENT */}

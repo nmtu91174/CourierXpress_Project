@@ -143,10 +143,76 @@ if (!$agentId) {
 }
 
 // ==========================
+// CREATE AGENT COVERAGE (agent_areas)
+// ==========================
+// ENTERPRISE: Coverage is REQUIRED for auto-routing
+// If coverage_districts is provided, create agent_areas records
+$coverageDistricts = $data["coverage_districts"] ?? [];
+$coverageCreated = 0;
+
+if (!empty($coverageDistricts) && is_array($coverageDistricts)) {
+    // Start transaction for atomicity
+    $conn->begin_transaction();
+    
+    try {
+        $priority = 1; // Default priority, can be adjusted later
+        
+        foreach ($coverageDistricts as $districtId) {
+            $districtId = (int)$districtId;
+            
+            // Validate district exists
+            $checkDistrict = $conn->prepare("SELECT id FROM districts WHERE id = ? LIMIT 1");
+            $checkDistrict->bind_param("i", $districtId);
+            $checkDistrict->execute();
+            $districtResult = $checkDistrict->get_result();
+            
+            if ($districtResult->num_rows === 0) {
+                $checkDistrict->close();
+                throw new Exception("District ID {$districtId} không tồn tại");
+            }
+            $checkDistrict->close();
+            
+            // Insert agent_areas record
+            $areaStmt = $conn->prepare("
+                INSERT INTO agent_areas (agent_id, district_id, ward_id, priority, active, created_at)
+                VALUES (?, ?, NULL, ?, 1, NOW())
+            ");
+            
+            if (!$areaStmt) {
+                throw new Exception("Prepare agent_areas failed: " . $conn->error);
+            }
+            
+            $areaStmt->bind_param("iii", $agentId, $districtId, $priority);
+            
+            if (!$areaStmt->execute()) {
+                $errorMsg = $areaStmt->error;
+                $areaStmt->close();
+                throw new Exception("Không thể tạo coverage cho district {$districtId}: {$errorMsg}");
+            }
+            
+            $areaStmt->close();
+            $coverageCreated++;
+            $priority++; // Increment priority for next district
+        }
+        
+        // Commit transaction
+        $conn->commit();
+        error_log("CREATE AGENT: Created {$coverageCreated} coverage areas for agent_id {$agentId}");
+        
+    } catch (Exception $e) {
+        // Rollback on error
+        $conn->rollback();
+        error_log("CREATE AGENT: Failed to create coverage - " . $e->getMessage());
+        // Don't fail agent creation if coverage fails - log and continue
+        // In production, you might want to fail the entire operation
+    }
+}
+
+// ==========================
 // LOG SYSTEM ACTION
 // ==========================
 $logStmt = $conn->prepare("INSERT INTO system_logs (user_id, action, entity, entity_id, created_at) VALUES (?, ?, 'users', ?, NOW())");
-$action = "Tạo agent mới: {$name}";
+$action = "Tạo agent mới: {$name}" . ($coverageCreated > 0 ? " (Coverage: {$coverageCreated} districts)" : "");
 $logStmt->bind_param("isi", $userId, $action, $agentId);
 $logStmt->execute();
 $logStmt->close();
@@ -160,5 +226,7 @@ Response::success("Tạo agent thành công", [
     "agent_id" => $agentId,
     "name" => $name,
     "email" => $email,
+    "coverage_districts_created" => $coverageCreated,
+    "has_coverage" => $coverageCreated > 0
 ]);
 

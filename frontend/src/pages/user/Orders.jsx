@@ -66,8 +66,8 @@ export default function Orders() {
             <div className="orders-container">
                 <div className="empty-state">
                     <div className="empty-icon">🔒</div>
-                    <h3>Vui lòng đăng nhập</h3>
-                    <p>Bạn cần đăng nhập để xem lịch sử đơn hàng</p>
+                    <h3>Please login</h3>
+                    <p>You need to login to view order history</p>
                 </div>
             </div>
         );
@@ -78,7 +78,7 @@ export default function Orders() {
             <div className="orders-container">
                 <div className="loading-state">
                     <div className="spinner"></div>
-                    <p>Đang tải đơn hàng...</p>
+                    <p>Loading orders...</p>
                 </div>
             </div>
         );

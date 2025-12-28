@@ -285,7 +285,19 @@ $sqlList = "
     LEFT JOIN users u_shipper ON o.shipper_id = u_shipper.id
     LEFT JOIN service_types st ON o.service_type = st.id
     " . $whereClause . "
-    ORDER BY o.updated_at DESC, o.created_at DESC
+    ORDER BY 
+      CASE o.status
+        WHEN 3 THEN 1   -- ASSIGNED (highest priority - needs immediate action)
+        WHEN 2 THEN 2   -- APPROVED (needs shipper assignment)
+        WHEN 4 THEN 3   -- IN_PROGRESS (being delivered)
+        WHEN 1 THEN 4   -- BOOKED (new, pending approval)
+        WHEN 5 THEN 9   -- DELIVERED (completed)
+        WHEN 6 THEN 10  -- FAILED
+        WHEN 7 THEN 11  -- CANCELLED
+        ELSE 99
+      END,
+      o.updated_at DESC,
+      o.created_at DESC
     LIMIT ? OFFSET ?
 ";
 

@@ -133,13 +133,13 @@ const ShipperHome = () => {
 
         {/* Greeting */}
         <h2 className="fw-bold mb-3">
-          👋 Chào Shipper, chúc bạn một ngày giao hàng thuận lợi!
+          👋 Hello Shipper, have a great delivery day!
         </h2>
 
         {error && <Alert variant="danger">{error}</Alert>}
 
         <p className="text-muted mb-4">
-          Dưới đây là tổng quan công việc của bạn hôm nay.
+          Below is an overview of your work today.
         </p>
 
         {/* ================================
@@ -152,12 +152,12 @@ const ShipperHome = () => {
                 <div className="d-flex justify-content-between align-items-start">
                   <div>
                     <div className="text-uppercase small fw-semibold text-muted mb-2" style={{ letterSpacing: "0.5px" }}>
-                      Đơn mới gán
+                      New Assigned Orders
                     </div>
                     <h2 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "32px" }}>
                       {stats.waiting_accept || 0}
                     </h2>
-                    <div className="small text-muted">đơn cần nhận</div>
+                    <div className="small text-muted">orders to accept</div>
                   </div>
                   <FaTasks size={40} className="text-primary" style={{ opacity: 0.8 }} />
                 </div>
@@ -171,12 +171,12 @@ const ShipperHome = () => {
                 <div className="d-flex justify-content-between align-items-start">
                   <div>
                     <div className="text-uppercase small fw-semibold text-muted mb-2" style={{ letterSpacing: "0.5px" }}>
-                      Đang thực hiện
+                      In Progress
                     </div>
                     <h2 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "32px" }}>
                       {stats.active || 0}
                     </h2>
-                    <div className="small text-muted">đơn đang lấy/giao</div>
+                    <div className="small text-muted">orders picking/delivering</div>
                   </div>
                   <FaClock size={40} className="text-warning" style={{ opacity: 0.8 }} />
                 </div>
@@ -190,12 +190,12 @@ const ShipperHome = () => {
                 <div className="d-flex justify-content-between align-items-start">
                   <div>
                     <div className="text-uppercase small fw-semibold text-muted mb-2" style={{ letterSpacing: "0.5px" }}>
-                      Đã hoàn thành
+                      Completed
                     </div>
                     <h2 className="fw-bold mb-1" style={{ color: "#1e293b", fontSize: "32px" }}>
                       {stats.completed || 0}
                     </h2>
-                    <div className="small text-muted">đơn giao thành công</div>
+                    <div className="small text-muted">orders delivered successfully</div>
                   </div>
                   <FaCheckCircle size={40} className="text-success" style={{ opacity: 0.8 }} />
                 </div>
@@ -209,7 +209,7 @@ const ShipperHome = () => {
             ================================ */}
         <Card className="p-4 shadow-sm mb-4 border-primary border-2">
           <h5 className="fw-bold mb-3 text-primary">
-            🚀 Đơn hàng mới (Cần xác nhận)
+            🚀 New Orders (Awaiting Confirmation)
           </h5>
 
           {waitingOrders.length > 0 ? (
@@ -224,11 +224,11 @@ const ShipperHome = () => {
                       #{order.order_code}
                     </strong>
                     <span className="text-muted small">
-                      📍 Gửi: {order.sender_address}
+                      📍 From: {order.sender_address}
                     </span>
                     <br />
                     <span className="text-muted small">
-                      📍 Nhận: {order.receiver_address}
+                      📍 To: {order.receiver_address}
                     </span>
                   </div>
 
@@ -255,14 +255,14 @@ const ShipperHome = () => {
                     }}
                   >
                     <FaMotorcycle className="me-2" />
-                    Chi tiết & Nhận
+                    Details & Accept
                   </Button>
                 </Card>
               ))}
             </div>
           ) : (
             <Alert variant="info" className="mb-0">
-              Hiện chưa có đơn hàng mới nào được gán cho bạn.
+              No new orders have been assigned to you yet.
             </Alert>
           )}
           {/* ===================== PAGINATION: NEW ASSIGNED ORDERS ===================== */}
@@ -299,17 +299,17 @@ const ShipperHome = () => {
             ================================ */}
         <Card className="shadow-sm p-4 order-list-card">
           <h5 className="fw-bold mb-3">
-            📦 Đơn hàng đang xử lý & Lịch sử
+            📦 Orders In Progress & History
           </h5>
 
           <Table striped bordered hover responsive>
             <thead>
               <tr>
-                <th>Mã đơn</th>
-                <th>Khách nhận</th>
-                <th>Địa chỉ nhận</th>
-                <th>Trạng thái</th>
-                <th>Hành động</th>
+                <th>Order Code</th>
+                <th>Receiver</th>
+                <th>Delivery Address</th>
+                <th>Status</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -331,7 +331,7 @@ const ShipperHome = () => {
                           navigate(`/shipper/order/${order.id}`);
                         }}
                       >
-                        <FaEye /> Xem
+                        <FaEye /> View
                       </Button>
                     </td>
                   </tr>
@@ -339,7 +339,7 @@ const ShipperHome = () => {
               ) : (
                 <tr>
                   <td colSpan="5" className="text-center text-muted">
-                    Chưa có dữ liệu đơn hàng gần đây.
+                    No recent order data available.
                   </td>
                 </tr>
               )}
