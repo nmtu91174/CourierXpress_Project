@@ -17,10 +17,12 @@ const HeroVideo = () => {
         className="hero-bg-video"
         autoPlay
         loop
-        muted
+        muted={true}
+        defaultMuted={true}
         playsInline
       >
         <source src="/videos/CourierXpress.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
       </video>
 
       <div className="hero-overlay"></div>
@@ -31,7 +33,8 @@ const HeroVideo = () => {
             Delivery at <span className="text-danger">Light Speed</span>
           </h1>
           <p ref={subtitleRef} className="hero-subtitle">
-            Reliable logistics solutions for your business. We deliver packages across the globe with precision and care.
+            Reliable logistics solutions for your business. We deliver packages
+            across the globe with precision and care.
           </p>
         </div>
       </Container>

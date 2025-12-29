@@ -142,9 +142,7 @@ const OrderDetailShipper = () => {
 
   // Display payer
   const getPayerLabel = (type) => {
-    return parseInt(type) === 1
-      ? "Sender Pays"
-      : "Receiver Pays";
+    return parseInt(type) === 1 ? "Sender Pays" : "Receiver Pays";
   };
 
   // ========================== new nmtu 15:38 24-12
@@ -683,7 +681,10 @@ const OrderDetailShipper = () => {
               variant="warning"
               size="lg"
               className="w-100 fw-bold shadow-sm text-dark"
-              onClick={() => setShowPickupModal(true)}
+              onClick={() => {
+                setActualWeight(order.weight); // <--- THÊM DÒNG NÀY: Set giá trị mặc định từ đơn hàng
+                setShowPickupModal(true);
+              }}
             >
               <BoxSeam className="me-2" /> Confirm Pickup
             </Button>
@@ -777,8 +778,16 @@ const OrderDetailShipper = () => {
                 type="number"
                 value={actualWeight}
                 onChange={(e) => setActualWeight(e.target.value)}
+                placeholder={order.weight}
               />
             </div>
+            {actualWeight &&
+              parseInt(actualWeight) !== parseInt(order.weight) && (
+                <Form.Text className="text-warning">
+                  <ExclamationTriangleFill className="me-1" size={12} />
+                  Weight changed! Penalty fee may apply.
+                </Form.Text>
+              )}
           </Form.Group>
           <Form.Group>
             <Form.Label>
@@ -949,21 +958,13 @@ const OrderDetailShipper = () => {
             >
               <option value="">-- Select reason --</option>
 
-              <option value="customer_unreachable">
-                Customer Unreachable
-              </option>
+              <option value="customer_unreachable">Customer Unreachable</option>
 
-              <option value="customer_refused">
-                Customer Refused
-              </option>
+              <option value="customer_refused">Customer Refused</option>
 
-              <option value="package_damaged">
-                Package Damaged
-              </option>
+              <option value="package_damaged">Package Damaged</option>
 
-              <option value="weather_delay">
-                Weather Delay
-              </option>
+              <option value="weather_delay">Weather Delay</option>
 
               <option value="other">Other reason</option>
             </Form.Select>
