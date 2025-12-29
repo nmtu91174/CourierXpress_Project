@@ -1,0 +1,130 @@
+/* Import font hiện đại nếu chưa có (Ví dụ Roboto hoặc Inter) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
+
+.sitemap-wrapper {
+  background-color: #ffffff; /* Nền trắng sạch */
+  color: #1a1a1a; /* Chữ đen đậm (không đen tuyền #000 để đỡ mỏi mắt) */
+  font-family: 'Inter', sans-serif;
+  padding: 60px 20px;
+  min-height: 100vh;
+}
+
+.sitemap-container {
+  max-width: 1400px; /* Rộng hơn bình thường để giống layout tạp chí */
+  margin: 0 auto;
+}
+
+/* --- HEADER --- */
+.sitemap-header {
+  margin-bottom: 60px;
+  border-bottom: 1px solid #e5e5e5; /* Đường kẻ mờ ngăn cách */
+  padding-bottom: 20px;
+}
+
+.sitemap-title {
+  font-size: 3rem; /* Chữ to bản */
+  font-weight: 800; /* Rất đậm */
+  letter-spacing: -1px;
+  margin: 0 0 10px 0;
+  text-transform: uppercase;
+}
+
+.sitemap-breadcrumb {
+  font-size: 0.85rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  gap: 10px;
+}
+
+.sitemap-breadcrumb a {
+  text-decoration: none;
+  color: #666;
+  transition: color 0.3s;
+}
+
+.sitemap-breadcrumb a:hover {
+  color: #000;
+}
+
+/* --- GRID LAYOUT --- */
+.sitemap-grid {
+  display: grid;
+  /* Responsive Grid: Tự động chia cột, tối thiểu 250px/cột */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  column-gap: 40px;
+  row-gap: 60px;
+}
+
+/* --- COLUMN STYLES --- */
+.sitemap-column {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tiêu đề nhóm (Giống mục MODELS, OWNERSHIP của Lamborghini) */
+.column-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 25px;
+  text-transform: uppercase;
+  letter-spacing: 2px; /* Khoảng cách chữ rộng tạo cảm giác sang trọng */
+  color: #000;
+  position: relative;
+  display: inline-block;
+}
+
+/* Đường gạch chéo trang trí nhỏ (Option - tạo điểm nhấn) */
+.column-title::after {
+  content: '';
+  display: block;
+  width: 30px;
+  height: 2px;
+  background-color: #f97316; /* Màu cam thương hiệu CourierXpress */
+  margin-top: 10px;
+}
+
+.column-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list-item {
+  margin-bottom: 12px;
+}
+
+/* --- LINKS --- */
+.sitemap-link {
+  text-decoration: none;
+  color: #444;
+  font-size: 1rem;
+  font-weight: 400;
+  transition: all 0.3s ease;
+  position: relative;
+  display: inline-block;
+}
+
+/* Hiệu ứng Hover: Chữ đậm lên và chuyển màu */
+.sitemap-link:hover {
+  color: #000;
+  transform: translateX(5px); /* Trượt nhẹ sang phải */
+}
+
+/* --- RESPONSIVE MOBILE --- */
+@media (max-width: 768px) {
+  .sitemap-title {
+    font-size: 2rem;
+  }
+  
+  .sitemap-grid {
+    grid-template-columns: 1fr; /* 1 cột trên mobile */
+    row-gap: 40px;
+  }
+
+  .column-title {
+    font-size: 1rem;
+    margin-bottom: 15px;
+  }
+}

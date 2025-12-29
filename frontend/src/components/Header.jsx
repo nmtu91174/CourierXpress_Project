@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Navbar, Container, Nav, Button, NavDropdown } from "react-bootstrap";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { FaShippingFast } from "react-icons/fa";
+import { FaShippingFast, FaSitemap } from "react-icons/fa";
 import UserMenu from "./layout/UserMenu";
 
 const Header = ({ className = "" }) => {
@@ -27,10 +27,7 @@ const Header = ({ className = "" }) => {
   // ==========================
   // NORMALIZE ROLE (VERY IMPORTANT)
   // ==========================
-  const role = useMemo(
-    () => user?.role?.toLowerCase()?.trim(),
-    [user]
-  );
+  const role = useMemo(() => user?.role?.toLowerCase()?.trim(), [user]);
 
   // ==========================
   // LOGOUT
@@ -85,7 +82,6 @@ const Header = ({ className = "" }) => {
         <Navbar.Toggle />
         <Navbar.Collapse>
           <Nav className="ms-auto align-items-center">
-
             {/* HOME – chỉ customer hoặc chưa login */}
             {(!user || role === "customer") && (
               <Nav.Link as={Link} to="/" className="fw-bold fs-10 text-dark">
@@ -99,10 +95,7 @@ const Header = ({ className = "" }) => {
               id="tracking-nav"
               className="fw-bold fs-10 text-dark"
             >
-              <NavDropdown.Item
-                as={Link}
-                to={user ? "/orders" : "/tracking"}
-              >
+              <NavDropdown.Item as={Link} to={user ? "/orders" : "/tracking"}>
                 {user ? "Orders" : "Tracking"}
               </NavDropdown.Item>
 
@@ -112,7 +105,6 @@ const Header = ({ className = "" }) => {
                 Make An Order
               </NavDropdown.Item>
             </NavDropdown>
-
 
             {/* SHIPPER MENU */}
             {role === "shipper" && (
@@ -132,7 +124,7 @@ const Header = ({ className = "" }) => {
                   Contact
                 </NavDropdown.Item>
                 <NavDropdown.Item as={Link} to="/shipper/on-the-way">
-                 Delivery In Progress
+                  Delivery In Progress
                 </NavDropdown.Item>
                 <NavDropdown.Item as={Link} to="/shipper/order-history">
                   OrderHistory
@@ -189,6 +181,18 @@ const Header = ({ className = "" }) => {
               </Button>
             )}
 
+            {/* --- SITEMAP INTEGRATION START --- */}
+            <Nav.Link
+              as={Link}
+              to="/sitemap"
+              className="ms-3 text-secondary d-flex align-items-center"
+              title="Site Map"
+              style={{ fontSize: "0.9rem" }}
+            >
+              <FaSitemap className="me-1" /> {/* Icon Sitemap (Optional) */}
+              <span>Sitemap</span>
+            </Nav.Link>
+            {/* --- SITEMAP INTEGRATION END --- */}
           </Nav>
         </Navbar.Collapse>
       </Container>
