@@ -271,8 +271,16 @@ export default function CreateOrderForm() {
                 </div>
               ))}
               <div style={{borderTop:'1px solid #e2e8f0', marginTop:'8px', paddingTop:'8px', display:'flex', justifyContent:'space-between', fontWeight:'bold'}}>
-                <span>Total Shipping Fee:</span>
+                <span>Subtotal (Shipping Fee):</span>
                 <span>{total_shipping_fee.toLocaleString()} đ</span>
+              </div>
+              <div style={{display:'flex', justifyContent:'space-between', fontWeight:'bold'}}>
+                <span>VAT (10%):</span>
+                <span>{Math.round(total_shipping_fee * 0.1).toLocaleString()} đ</span>
+              </div>
+              <div style={{borderTop:'1px solid #e2e8f0', marginTop:'8px', paddingTop:'8px', display:'flex', justifyContent:'space-between', fontWeight:'bold'}}>
+                <span>Total Shipping Fee (incl. VAT):</span>
+                <span>{Math.round(total_shipping_fee * 1.1).toLocaleString()} đ</span>
               </div>
               <div style={{borderTop:'1px solid #e2e8f0', marginTop:'8px', paddingTop:'8px', display:'flex', justifyContent:'space-between', fontWeight:'bold'}}>
                 <span>COD Amount (Collected from Receiver):</span>
@@ -283,7 +291,7 @@ export default function CreateOrderForm() {
               <p style={{ fontSize:'0.7rem', margin:0, opacity:0.9 }}>
                 {formData.payer_type === 2 ? 'AMOUNT TO COLLECT FROM RECEIVER' : 'FINAL TOTAL (SHIPPING + COD)'}
               </p>
-              <p style={{ fontSize:'1.4rem', fontWeight:'800', margin:'5px 0' }}>{total_amount_with_cod.toLocaleString()} đ</p>
+              <p style={{ fontSize:'1.4rem', fontWeight:'800', margin:'5px 0' }}>{(Math.round(total_shipping_fee * 1.1) + cod_amount).toLocaleString()} đ</p>
             </div>
             <button type="submit" disabled={loading} className="btn-submit">
               {loading ? 'Processing...' : 'Confirm Create Order'}

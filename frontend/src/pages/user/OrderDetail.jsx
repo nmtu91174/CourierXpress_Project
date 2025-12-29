@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Container, Row, Col, Card, Badge, Spinner } from "react-bootstrap";
-import { FaTruck, FaCheckCircle, FaBox } from "react-icons/fa";
+import { useParams, useNavigate } from "react-router-dom";
+import { Container, Row, Col, Card, Badge, Spinner, Button } from "react-bootstrap";
+import { FaTruck, FaCheckCircle, FaBox, FaFileInvoice } from "react-icons/fa";
 import axios from "axios";
 import Swal from "sweetalert2";
 import styles from "../../assets/styles/TrackingResult.module.css";
+import { translateStatus, translateFeeName } from "../../utils/translations";
 
 const OrderDetail = () => {
   const { id } = useParams(); // order_code
+  const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
   const userId = user?.id;
 
@@ -32,7 +34,8 @@ const OrderDetail = () => {
         );
 
         if (res.data.status === "success") {
-          setOrder(res.data.order);
+          const orderData = res.data.order;
+          setOrder(orderData);
         } else {
           Swal.fire("Error", res.data.message, "error");
         }
@@ -72,12 +75,31 @@ const OrderDetail = () => {
   };
 
 
+  const handleViewInvoice = () => {
+    // Navigate to invoice page using order ID
+    if (order.id) {
+      navigate(`/user/orders/${order.id}/invoice`);
+    } else {
+      Swal.fire("Error", "Order ID not found. Cannot view invoice.", "error");
+    }
+  };
+
   return (
     <Container className={`py-5 ${styles.container}`}>
-      <h2 className={`fw-bold mb-4 ${styles.heading}`}>
-        Order Details:{" "}
-        <span className={styles.highlight}>{order.order_code}</span>
-      </h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className={`fw-bold mb-0 ${styles.heading}`}>
+          Order Details:{" "}
+          <span className={styles.highlight}>{order.order_code}</span>
+        </h2>
+        {/* View Invoice Button - Always show (backend will validate) */}
+        <Button
+          variant="outline"
+          className="btn-action-export-pdf d-flex align-items-center gap-2"
+          onClick={handleViewInvoice}
+        >
+          <FaFileInvoice /> View Invoice
+        </Button>
+      </div>
 
       <Row>
         {/* Package Information */}
@@ -93,7 +115,7 @@ const OrderDetail = () => {
               <hr />
               <p>
                 <strong>Status:</strong>{" "}
-                <Badge bg="warning">{order.statusDesc}</Badge>
+                <Badge bg="warning">{translateStatus(order.statusDesc)}</Badge>
               </p>
 
               {order.notes && (
@@ -160,7 +182,7 @@ const OrderDetail = () => {
                         </div>
 
                         <span className={styles.timelineLabel}>
-                            {status.label}
+                            {translateStatus(status.label)}
                         </span>
 
                         <small className={styles.timelineTime}>
@@ -199,7 +221,7 @@ const OrderDetail = () => {
                 {order.fees.length > 0 ? (
                   order.fees.map((fee, idx) => (
                     <li key={idx} className="list-group-item d-flex justify-content-between">
-                      {fee.name}
+                      {translateFeeName(fee.name)}
                       <span>{formatCurrency(fee.amount)} đ</span>
                     </li>
                   ))
@@ -210,8 +232,9 @@ const OrderDetail = () => {
 
               <Row>
                 <Col md={6}><strong>Total Amount:</strong> {formatCurrency(order.total_amount)} đ</Col>
-                <Col md={6}><strong>COD:</strong> {formatCurrency(order.cod_amount)} đ</Col>
+                <Col md={6}><strong>COD Amount:</strong> {formatCurrency(order.cod_amount)} đ</Col>
               </Row>
+
             </Card.Body>
           </Card>
         </Col>

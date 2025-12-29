@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import "../../assets/styles/Orders.css";
 import { useNavigate } from "react-router-dom";
+import { translateStatus } from "../../utils/translations";
 
 
 export default function Orders() {
@@ -144,10 +145,10 @@ export default function Orders() {
 
                 <select className="sort-select">
                     <option>Sort By</option>
-                    <option>Mới nhất</option>
-                    <option>Cũ nhất</option>
-                    <option>Giá cao → thấp</option>
-                    <option>Giá thấp → cao</option>
+                    <option>Newest</option>
+                    <option>Oldest</option>
+                    <option>Price: High to Low</option>
+                    <option>Price: Low to High</option>
                 </select>
             </div>
 
@@ -156,22 +157,22 @@ export default function Orders() {
                 <table>
                     <thead>
                         <tr>
-                            <th>Id</th>
+                            <th>Order Code</th>
                             <th>Product</th>
                             <th>Payment</th>
                             <th>Service</th>
-                            <th>Create At</th>
+                            <th>Created At</th>
                             <th>Total</th>
                             <th>Status</th>
-                            <th>Detail</th> 
+                            <th>Actions</th> 
                         </tr>
                     </thead>
 
                     <tbody>
                         {filteredOrders.length === 0 && (
                             <tr>
-                                <td colSpan="7" className="no-orders">
-                                    Không có đơn hàng.
+                                <td colSpan="8" className="no-orders">
+                                    No orders found.
                                 </td>
                             </tr>
                         )}
@@ -202,7 +203,7 @@ export default function Orders() {
 
                                 <td>
                                     <span className={`status ${getStatusColor(order.status)}`}>
-                                        {order.status_text}
+                                        {translateStatus(order.status_text)}
                                     </span>
                                 </td>
 
@@ -211,7 +212,7 @@ export default function Orders() {
                                         className="btn-detail"
                                         onClick={() => navigate(`/user/orders/${order.order_code}`)}
                                     >
-                                        <i className="fa-regular fa-eye"></i> Chi tiết
+                                        <i className="fa-regular fa-eye"></i> Details
                                     </button>
                                 </td>
                             </tr>

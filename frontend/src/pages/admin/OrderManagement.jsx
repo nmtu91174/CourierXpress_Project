@@ -2349,11 +2349,21 @@ export default function OrderManagement() {
                   <hr className="my-2" />
 
                   <div className="d-flex justify-content-between fw-bold text-primary">
-                    <span>Total Shipping Fee:</span>
+                    <span>Subtotal (Shipping Fee):</span>
                     <strong>{Number(calculateFees.total_shipping_fee).toLocaleString("en-US")} VND</strong>
                   </div>
 
-                  <div className="d-flex justify-content-between fw-bold text-warning mt-2">
+                  <div className="d-flex justify-content-between fw-bold mt-2">
+                    <span>VAT (10%):</span>
+                    <strong>{Math.round(Number(calculateFees.total_shipping_fee) * 0.1).toLocaleString("en-US")} VND</strong>
+                  </div>
+
+                  <div className="d-flex justify-content-between fw-bold text-primary mt-2" style={{borderTop:'1px solid #e2e8f0', paddingTop:'8px'}}>
+                    <span>Total Shipping Fee (incl. VAT):</span>
+                    <strong>{Math.round(Number(calculateFees.total_shipping_fee) * 1.1).toLocaleString("en-US")} VND</strong>
+                  </div>
+
+                  <div className="d-flex justify-content-between fw-bold text-warning mt-2" style={{borderTop:'1px solid #e2e8f0', paddingTop:'8px'}}>
                     <span>COD Amount (Collected from Receiver):</span>
                     <strong>
                       {Number(calculateFees.cod_amount || 0).toLocaleString("en-US")} VND
@@ -2367,7 +2377,7 @@ export default function OrderManagement() {
                       {createData.payer_type === 2 ? 'Amount to Collect from Receiver:' : 'Final Total (Shipping + COD):'}
                     </span>
                         <strong>
-                          {Number(calculateFees.total_amount_with_cod).toLocaleString("en-US")} VND
+                          {(Math.round(Number(calculateFees.total_shipping_fee) * 1.1) + Number(calculateFees.cod_amount || 0)).toLocaleString("en-US")} VND
                         </strong>
                       </div>
                 </div>

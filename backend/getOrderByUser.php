@@ -161,6 +161,7 @@ while ($row = $statusRes->fetch_assoc()) {
 echo json_encode([
     "status" => "success",
     "order" => [
+        "id"                => (int)$order['id'], // Order ID for invoice route
         "order_code"        => $order['order_code'],
         "sender"            => $order['sender_name'] . " - " . $order['sender_phone'],
         "receiver"          => $order['receiver_name'] . " - " . $order['receiver_phone'],

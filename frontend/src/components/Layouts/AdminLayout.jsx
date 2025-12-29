@@ -6,6 +6,7 @@ import {
     FaBoxOpen,
     FaUsers,
     FaChartBar,
+    FaFileInvoice,
     FaSignOutAlt
 } from "react-icons/fa";
 import UserMenu from "../layout/UserMenu";
@@ -135,6 +136,14 @@ const AdminLayout = () => {
                             data-title="Agent Management"
                         >
                             <FaUsers /> <span>Agent Management</span>
+                        </Link>
+
+                        <Link
+                            to="/admin/invoices"
+                            className={`sidebar-link ${isActive("/admin/invoices") || location.pathname.startsWith("/admin/invoices/") ? "active" : ""}`}
+                            data-title="Invoice Management"
+                        >
+                            <FaFileInvoice /> <span>Invoices</span>
                         </Link>
 
                         <Link

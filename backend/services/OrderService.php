@@ -907,14 +907,9 @@ class OrderService extends BaseService
 
     private function generateInvoiceNumber(): string
     {
-        do {
-            $code = "INV" . rand(1000, 9999);
-            $stmt = $this->prepare("SELECT id FROM invoices WHERE invoice_number = ?");
-            $stmt->bind_param("s", $code);
-            $stmt->execute();
-        } while ($stmt->get_result()->num_rows > 0);
-
-        return $code;
+        require_once __DIR__ . "/../utils/InvoiceNumberGenerator.php";
+        global $conn;
+        return InvoiceNumberGenerator::generate($conn);
     }
 
     /**

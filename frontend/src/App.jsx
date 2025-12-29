@@ -40,6 +40,11 @@ import OrderManagement from "./pages/admin/OrderManagement.jsx";
 import AgentsManagement from "./pages/admin/AgentsManagement.jsx";
 import Reports from "./pages/admin/Reports.jsx";
 
+// Invoice pages
+import InvoiceList from './pages/Invoice/InvoiceList.jsx';
+import InvoiceView from './pages/Invoice/InvoiceView.jsx';
+import CustomerInvoiceView from './pages/Invoice/CustomerInvoiceView.jsx';
+
 // Agent pages
 import AgentLayout from "./components/Layouts/AgentLayout.jsx";
 import AgentDashboard from "./pages/agent/AgentDashboard.jsx";
@@ -260,6 +265,17 @@ export default function App() {
         }
       />
 
+      <Route
+        path="/user/orders/:orderId/invoice"
+        element={
+          <ProtectedRoute allowed={['customer']}>
+            <PublicLayout>
+              <CustomerInvoiceView />
+            </PublicLayout>
+          </ProtectedRoute>
+        }
+      />
+
       {/* ================= ADMIN PORTAL ================= */}
 
       <Route
@@ -275,6 +291,8 @@ export default function App() {
         <Route path="orders" element={<OrderManagement />} />
         <Route path="agents" element={<AgentsManagement />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="invoices" element={<InvoiceList />} />
+        <Route path="invoices/:id" element={<InvoiceView />} />
         <Route path="profile" element={<UserIdentityDashboard />} />
         <Route path="account-settings" element={<AccountSettingsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />

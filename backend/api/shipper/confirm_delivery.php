@@ -157,6 +157,38 @@ try {
     $hisStmt->execute();
     $hisStmt->close();
 
+    // 4. Ensure invoice exists (create if not exists)
+    $checkInvoiceStmt = $conn->prepare("SELECT id FROM invoices WHERE order_id = ?");
+    $checkInvoiceStmt->bind_param("i", $orderId);
+    $checkInvoiceStmt->execute();
+    $invoiceExists = $checkInvoiceStmt->get_result()->num_rows > 0;
+    $checkInvoiceStmt->close();
+
+    if (!$invoiceExists) {
+        // Generate invoice number (enterprise format: INV-YYYY-XXXXXX)
+        require_once __DIR__ . "/../../utils/InvoiceNumberGenerator.php";
+        $invoiceNumber = InvoiceNumberGenerator::generate($conn);
+
+        // Get order total_shipping_fee and payment_method_id
+        $orderInfoStmt = $conn->prepare("SELECT total_shipping_fee, payment_method_id FROM orders WHERE id = ?");
+        $orderInfoStmt->bind_param("i", $orderId);
+        $orderInfoStmt->execute();
+        $orderInfo = $orderInfoStmt->get_result()->fetch_assoc();
+        $orderInfoStmt->close();
+
+        $totalAmount = (float)($orderInfo["total_shipping_fee"] ?? 0);
+        $paymentMethodId = $orderInfo["payment_method_id"] ? (int)$orderInfo["payment_method_id"] : null;
+
+        // Create invoice
+        $createInvStmt = $conn->prepare("
+            INSERT INTO invoices (order_id, invoice_number, total_amount, status, payment_method_id, created_at)
+            VALUES (?, ?, ?, 'unpaid', ?, NOW())
+        ");
+        $createInvStmt->bind_param("isdi", $orderId, $invoiceNumber, $totalAmount, $paymentMethodId);
+        $createInvStmt->execute();
+        $createInvStmt->close();
+    }
+
     $conn->commit();
 
     // ==========================
