@@ -1,609 +1,544 @@
-import { useState } from "react";
-import "../../assets/styles/HomePage.css";
+import React, { useState } from "react";
+import "bootstrap/dist/css/bootstrap.min.css"; // Đừng quên import CSS của Bootstrap
 import {
-  Package,
-  TrendingUp,
-  Shield,
-  Clock,
-  Search,
+  Container,
+  Navbar,
+  Nav,
+  Button,
+  Row,
+  Col,
+  Card,
+  Form,
+  InputGroup,
+  Badge,
+} from "react-bootstrap";
+import {
   Truck,
-  Smartphone,
-  MapPin,
-  Headphones,
-  Globe,
-  Building2,
-  Users,
-  Award,
-  PackageSearch,
-  Calendar,
-  CheckCircle2,
-  ArrowRight,
+  Search,
+  BoxSeam,
+  GeoAlt,
+  Telephone,
+  Envelope,
   Facebook,
   Twitter,
   Instagram,
   Youtube,
-  Mail,
-  Phone,
-} from "lucide-react";
+  Airplane,
+  Tsunami, // Thay thế cho tàu biển
+  GooglePlay,
+  Apple,
+  LightningCharge, // Bolt
+  ShieldCheck, // Verified User
+  Map, // Map/Location
+  ArrowRight,
+  ChevronRight,
+  Android,
+  Person,
+  Bell,
+} from "react-bootstrap-icons";
+
+// Style tùy chỉnh nhỏ để giữ màu sắc cam chủ đạo (nếu không dùng file CSS riêng)
+const styles = {
+  textOrange: { color: "#FF4500" },
+  bgOrangeLight: { backgroundColor: "rgba(255, 69, 0, 0.1)" },
+  btnOrange: {
+    backgroundColor: "#FF4500",
+    borderColor: "#FF4500",
+    color: "white",
+    fontWeight: "bold",
+  },
+  sectionBg: { backgroundColor: "#f8f9fa" },
+  appSection: { backgroundColor: "#1a1a1a", color: "white" }, // Dark background
+};
 
 function App() {
   const [trackingId, setTrackingId] = useState("");
 
-  // Sửa lỗi cú pháp Typescript (id: string) -> (id)
-  const handleTrackingSearch = (id) => {
-    if (id.trim()) {
-      alert(`Tracking: ${id}`);
+  const handleTrackingSearch = () => {
+    if (trackingId.trim()) {
+      alert(`Tracking: ${trackingId}`);
     } else {
-      alert("Vui lòng nhập mã vận đơn để tra cứu.");
+      alert("Please enter a valid tracking ID.");
     }
   };
 
-  // Sửa lỗi cú pháp Typescript (e: React.FormEvent) -> (e)
   const handleSubmit = (e) => {
     e.preventDefault();
-    handleTrackingSearch(trackingId);
+    handleTrackingSearch();
   };
 
-  const currentYear = new Date().getFullYear();
-
   return (
-    <div className="home-page min-h-screen">
-      {/* KHỐI STYLE CHO HIỆU ỨNG ANIMATION (GIỮ LẠI TRONG JSX) */}
-      <style>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-20px);
-          }
-        }
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 0.3;
-          }
-          50% {
-            opacity: 0.5;
-          }
-        }
-
-        .animate-fade-in {
-          animation: fade-in 1s ease-out;
-        }
-
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
-        }
-        .animate-pulse {
-          animation: pulse 4s ease-in-out infinite;
-        }
-      `}</style>
-      {/* END KHỐI STYLE */}
-
-      {/* 1. HERO SECTION */}
-      <section className="hero-section1">
-        <div className="home-hero-overlay"></div>
-
-        <div className="container hero-content">
-          <div className="hero-grid">
-            <div className="animate-fade-in">
-              <div className="hero-tag">
-                <TrendingUp className="icon-tiny" />
-                <span className="text-sm font-medium">
-                  Dẫn đầu ngành logistics Việt Nam
+    <div
+      className="App"
+      style={{ overflowX: "hidden", fontFamily: "'Inter', sans-serif" }}
+    >
+      {/* --- 2. HERO SECTION --- */}
+      <section id="home" className="py-5 position-relative overflow-hidden">
+        {/* Background blobs giả lập bằng div rỗng nếu cần, ở đây giữ đơn giản */}
+        <Container className="position-relative z-1">
+          <Row className="align-items-center gy-5">
+            <Col lg={6} className="text-center text-lg-start">
+              <Badge
+                bg="light"
+                text="danger"
+                className="mb-3 px-3 py-2 border border-danger border-opacity-25 rounded-pill"
+              >
+                <LightningCharge className="me-1" /> Next-Gen Logistics
+              </Badge>
+              <h1 className="display-3 fw-bolder mb-4 lh-sm">
+                Shipping <br />
+                <span
+                  style={styles.textOrange}
+                  className="position-relative d-inline-block"
+                >
+                  Fast, Safe
+                  {/* SVG gạch chân giả lập */}
+                  <svg
+                    className="position-absolute w-100 start-0"
+                    style={{
+                      bottom: "-5px",
+                      height: "8px",
+                      color: "rgba(255,69,0,0.2)",
+                    }}
+                    viewBox="0 0 100 10"
+                    preserveAspectRatio="none"
+                  >
+                    <path
+                      d="M0 5 Q 50 10 100 5"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      fill="none"
+                    />
+                  </svg>
                 </span>
-              </div>
-
-              <h1 className="hero-title">
-                Giao hàng
-                <span className="hero-title-highlight">Nhanh, An toàn</span>
-                <span className="hero-title-gradient">Đúng Hẹn</span>
+                <br /> & On Time
               </h1>
-
-              <p className="hero-subtitle">
-                CourierXpress - Giải pháp logistics toàn diện với công nghệ hiện
-                đại, mang đến trải nghiệm giao nhận hàng hóa vượt trội cho khách
-                hàng.
+              <p className="lead text-muted mb-4">
+                Global logistics solutions powered by modern technology. We
+                ensure your cargo reaches its destination safely and
+                efficiently.
               </p>
 
-              <div className="hero-actions">
-                <button className="btn btn-large btn-primary">
-                  Gửi hàng ngay
-                </button>
-                <button className="btn btn-large btn-secondary">
-                  Xem bảng giá
-                </button>
+              <div className="d-flex gap-3 justify-content-center justify-content-lg-start mb-5">
+                <Button
+                  size="lg"
+                  style={styles.btnOrange}
+                  className="px-4 rounded-3 d-flex align-items-center gap-2"
+                >
+                  Start Shipping <ArrowRight />
+                </Button>
+                <Button
+                  variant="outline-dark"
+                  size="lg"
+                  className="px-4 rounded-3 d-flex align-items-center gap-2"
+                >
+                  Get Estimate
+                </Button>
               </div>
 
-              <div className="stats-grid">
-                <div className="stat-item">
-                  <div className="stat-value">500K+</div>
-                  <div className="stat-label">Đơn hàng/tháng</div>
+              <div className="d-flex gap-5 justify-content-center justify-content-lg-start border-top pt-4">
+                <div>
+                  <div className="d-flex align-items-center gap-2">
+                    <h2 className="fw-bold mb-0">500K+</h2>
+                    <span
+                      className="position-relative d-flex bg-danger rounded-circle"
+                      style={{ width: 10, height: 10 }}
+                    ></span>
+                  </div>
+                  <small className="text-muted fw-bold">Monthly Orders</small>
                 </div>
-                <div className="stat-item">
-                  <div className="stat-value">63/63</div>
-                  <div className="stat-label">Tỉnh thành</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-value">98%</div>
-                  <div className="stat-label">Hài lòng</div>
+                <div>
+                  <h2 className="fw-bold mb-0">99.8%</h2>
+                  <small className="text-muted fw-bold">On-Time Delivery</small>
                 </div>
               </div>
-            </div>
+            </Col>
 
-            <div className="hero-image-placeholder animate-float">
-              <div className="hero-info-box">
-                <div className="info-grid">
-                  <div className="info-card info-card-orange">
-                    <Package className="icon-medium icon-white mb-4" />
-                    <div className="info-title">Giao hàng</div>
-                    <div className="info-subtitle">Siêu tốc</div>
-                  </div>
-
-                  <div className="info-card info-card-blue">
-                    <Shield className="icon-medium icon-white mb-4" />
-                    <div className="info-title">Bảo hiểm</div>
-                    <div className="info-subtitle">100%</div>
-                  </div>
-
-                  <div className="info-card info-card-blue-dark">
-                    <Clock className="icon-medium icon-white mb-4" />
-                    <div className="info-title">Tracking</div>
-                    <div className="info-subtitle">Real-time</div>
-                  </div>
-
-                  <div className="info-card info-card-orange-dark">
-                    <TrendingUp className="icon-medium icon-white mb-4" />
-                    <div className="info-title">Tăng trưởng</div>
-                    <div className="info-subtitle">150%/năm</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="hero-bottom-fade"></div>
-      </section>
-
-      {/* 3. FEATURES SECTION */}
-      <section className="features-section">
-        <div className="container">
-          <div className="section-header">
-            <div className="section-tag section-tag-blue">
-              Tính năng nổi bật
-            </div>
-            <h2 className="section-title">Tại sao chọn CourierXpress?</h2>
-            <p className="section-subtitle">
-              Chúng tôi mang đến giải pháp logistics toàn diện với công nghệ
-              hiện đại và dịch vụ chuyên nghiệp
-            </p>
-          </div>
-
-          <div className="features-grid">
-            {[
-              {
-                icon: Truck,
-                title: "Giao hàng siêu tốc",
-                description:
-                  "Cam kết giao hàng nhanh chóng với mạng lưới logistics rộng khắp cả nước.",
-                color: "feature-icon-orange",
-              },
-              {
-                icon: Shield,
-                title: "An toàn tuyệt đối",
-                description:
-                  "Bảo hiểm hàng hóa 100% và quy trình xử lý chuyên nghiệp, cẩn trọng.",
-                color: "feature-icon-blue",
-              },
-              {
-                icon: Clock,
-                title: "Tracking 24/7",
-                description:
-                  "Theo dõi đơn hàng thời gian thực, cập nhật liên tục mọi lúc mọi nơi.",
-                color: "feature-icon-green",
-              },
-              {
-                icon: Smartphone,
-                title: "Ứng dụng thông minh",
-                description:
-                  "Quản lý đơn hàng dễ dàng qua app mobile với giao diện thân thiện.",
-                color: "feature-icon-blue-dark",
-              },
-              {
-                icon: MapPin,
-                title: "Phủ sóng toàn quốc",
-                description:
-                  "Mạng lưới 63/63 tỉnh thành, giao đến tận tay khách hàng mọi địa điểm.",
-                color: "feature-icon-red",
-              },
-              {
-                icon: Headphones,
-                title: "Hỗ trợ tận tâm",
-                description:
-                  "Đội ngũ CSKH chuyên nghiệp, sẵn sàng hỗ trợ 24/7 qua mọi kênh.",
-                color: "feature-icon-blue-light",
-              },
-            ].map((feature, index) => (
-              <div key={index} className="feature-card">
-                <div className={`feature-icon ${feature.color}`}>
-                  <feature.icon className="icon-medium icon-white" />
-                </div>
-
-                <h3 className="feature-title">{feature.title}</h3>
-
-                <p className="feature-description">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 4. SERVICES SECTION */}
-      <section className="services-section">
-        <div className="container">
-          <div className="section-header">
-            <div className="section-tag section-tag-orange">
-              Dịch vụ của chúng tôi
-            </div>
-            <h2 className="section-title">Giải pháp logistics đa dạng</h2>
-            <p className="section-subtitle">
-              Lựa chọn dịch vụ phù hợp với nhu cầu của bạn
-            </p>
-          </div>
-
-          <div className="services-grid">
-            {[
-              {
-                icon: Package,
-                title: "Giao hàng tiêu chuẩn",
-                description:
-                  "Dịch vụ giao hàng nội thành và liên tỉnh với giá cả hợp lý, thời gian giao hàng 2-3 ngày.",
-                features: [
-                  "Phù hợp mọi loại hàng hóa",
-                  "Giá cả cạnh tranh",
-                  "Tracking realtime",
-                ],
-                price: "Từ 15.000đ",
-                color: "blue",
-                image: "🚚",
-              },
-              {
-                icon: Truck,
-                title: "Giao hàng nhanh",
-                description:
-                  "Dịch vụ express với cam kết giao hàng trong vòng 24h trong cùng thành phố, 48h liên tỉnh.",
-                features: [
-                  "Ưu tiên xử lý",
-                  "Giao hàng trong ngày",
-                  "Bồi thường 100%",
-                ],
-                price: "Từ 25.000đ",
-                color: "orange",
-                image: "⚡",
-              },
-              {
-                icon: Globe,
-                title: "Giao hàng quốc tế",
-                description:
-                  "Kết nối toàn cầu với dịch vụ chuyển phát nhanh quốc tế đến hơn 200 quốc gia.",
-                features: [
-                  "Thông quan nhanh",
-                  "Tracking toàn cầu",
-                  "Tư vấn miễn phí",
-                ],
-                price: "Liên hệ",
-                color: "green",
-                image: "🌏",
-              },
-              {
-                icon: Building2,
-                title: "Giải pháp doanh nghiệp",
-                description:
-                  "Dịch vụ logistics toàn diện cho doanh nghiệp với giá ưu đãi và hỗ trợ chuyên biệt.",
-                features: ["Giá đặc biệt", "Quản lý tập trung", "API tích hợp"],
-                price: "Báo giá riêng",
-                color: "blue",
-                image: "🏢",
-              },
-            ].map((service, index) => (
-              <div key={index} className="service-card">
-                <div className="flex items-start gap-6">
-                  <div className="service-emoji">{service.image}</div>
-
-                  <div className="flex-1">
-                    <div className="service-details">
+            <Col lg={6}>
+              <div className="position-relative">
+                {/* Tracking Card Layer */}
+                {/* <Card className="border-0 shadow-lg rounded-4 p-2 mb-4">
+                  <Card.Body className="bg-light rounded-4 p-4">
+                    <div className="d-flex align-items-center gap-3 mb-3">
                       <div
-                        className={`service-icon-wrapper service-icon-wrapper-${service.color}`}
+                        className="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center shadow"
+                        style={{ width: 40, height: 40 }}
                       >
-                        <service.icon className="icon-small icon-white" />
+                        <Search />
                       </div>
                       <div>
-                        <h3 className="service-title">{service.title}</h3>
-                        <p className="service-price">{service.price}</p>
+                        <h5 className="fw-bold mb-0">Track Shipment</h5>
+                        <small className="text-muted">
+                          Real-time status updates
+                        </small>
                       </div>
                     </div>
+                    <Form onSubmit={handleSubmit} className="position-relative">
+                      <Form.Control
+                        type="text"
+                        placeholder="Enter tracking ID (e.g., CX-123456)"
+                        className="py-3 ps-4 pe-5 rounded-3 border-0 shadow-sm"
+                        value={trackingId}
+                        onChange={(e) => setTrackingId(e.target.value)}
+                      />
+                      <Button
+                        type="submit"
+                        variant="danger"
+                        className="position-absolute top-50 end-0 translate-middle-y me-2 py-1 px-3 fw-bold rounded-3"
+                        style={{
+                          fontSize: "0.8rem",
+                          backgroundColor: "#FF4500",
+                        }}
+                      >
+                        Track
+                      </Button>
+                    </Form>
+                  </Card.Body>
+                </Card> */}
 
-                    <p className="service-description">{service.description}</p>
-
-                    <ul className="service-features-list">
-                      {/* Sửa lỗi cú pháp Typescript (feature: string, idx: number) -> (feature, idx) */}
-                      {service.features.map((feature, idx) => (
-                        <li key={idx} className="service-feature-item">
-                          <div className="feature-dot"></div>
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-
-                    <a href="#" className="service-link-more">
-                      Tìm hiểu thêm
-                      <span>→</span>
-                    </a>
-                  </div>
-                </div>
+                {/* Floating Cards Grid */}
+                <Row className="g-3">
+                  <Col md={6}>
+                    <div
+                      className="bg-danger text-white p-4 rounded-4 shadow position-relative overflow-hidden h-100"
+                      style={{ backgroundColor: "#FF4500" }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start mb-4 position-relative z-1">
+                        <div className="bg-white bg-opacity-25 p-2 rounded-3">
+                          <BoxSeam size={24} />
+                        </div>
+                        <ArrowRight />
+                      </div>
+                      <div className="position-relative z-1">
+                        <h5 className="fw-bold">Express Delivery</h5>
+                        <small className="text-white-50 fw-bold text-uppercase">
+                          Global Reach
+                        </small>
+                      </div>
+                    </div>
+                  </Col>
+                  <Col md={6}>
+                    <div className="bg-dark text-white p-4 rounded-4 shadow position-relative overflow-hidden h-100">
+                      <div className="d-flex justify-content-between align-items-start mb-4 position-relative z-1">
+                        <div className="bg-white bg-opacity-10 border border-white border-opacity-10 p-2 rounded-3">
+                          <ShieldCheck size={24} />
+                        </div>
+                        <ArrowRight />
+                      </div>
+                      <div className="position-relative z-1">
+                        <h5 className="fw-bold">Cargo Insurance</h5>
+                        <small className="text-white-50 fw-bold text-uppercase">
+                          Full Protection
+                        </small>
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
               </div>
-            ))}
-          </div>
-        </div>
+            </Col>
+          </Row>
+        </Container>
       </section>
 
-      {/* 5. STATS SECTION */}
-      <section className="stats-section">
-        <div className="stats-overlay"></div>
-
-        <div className="container stats-content">
-          <div className="section-header section-header-white">
-            <div className="section-tag section-tag-orange-dark">
-              Con số ấn tượng
-            </div>
-            <h2 className="section-title">CourierXpress trong con số</h2>
-            <p className="section-subtitle">
-              Những thành tựu đáng tự hào trong hành trình phát triển của chúng
-              tôi
+      {/* --- 3. WHY CHOOSE US --- */}
+      <section className="py-5" style={styles.sectionBg}>
+        <Container>
+          <div
+            className="text-center mb-5 mw-100 mx-auto"
+            style={{ maxWidth: "700px" }}
+          >
+            <h2 className="fw-bold display-6 mb-3">Why Choose CourierXpress</h2>
+            <p className="text-muted lead">
+              We provide the fastest and most reliable logistics services in the
+              industry, backed by cutting-edge technology.
             </p>
           </div>
 
-          <div className="stats-cards-grid">
+          <Row className="g-4">
             {[
               {
-                icon: Package,
-                value: "500K+",
-                label: "Đơn hàng mỗi tháng",
-                description: "Xử lý và vận chuyển",
-                color: "stat-card-icon-orange",
+                icon: <LightningCharge size={30} />,
+                title: "Express Delivery",
+                desc: "Guaranteed next-day delivery for urgent shipments with priority handling.",
               },
               {
-                icon: Users,
-                value: "100K+",
-                label: "Khách hàng tin tưởng",
-                description: "Cá nhân và doanh nghiệp",
-                color: "stat-card-icon-blue",
+                icon: <ShieldCheck size={30} />,
+                title: "Secure Packaging",
+                desc: "Tamper-proof packaging and comprehensive insurance options.",
               },
               {
-                icon: MapPin,
-                value: "63/63",
-                label: "Tỉnh thành phủ sóng",
-                description: "Khắp Việt Nam",
-                color: "stat-card-icon-green",
+                icon: <GeoAlt size={30} />,
+                title: "Live GPS Tracking",
+                desc: "Real-time updates on your shipment's location 24/7 via our app.",
               },
-              {
-                icon: Award,
-                value: "98%",
-                label: "Độ hài lòng",
-                description: "Từ khách hàng",
-                color: "stat-card-icon-red",
-              },
-            ].map((stat, index) => (
-              <div key={index} className="stat-card">
-                <div className="stat-card-inner">
-                  <div className={`stat-card-icon ${stat.color}`}>
-                    <stat.icon className="icon-medium icon-white" />
-                  </div>
-
-                  <div className="stat-card-value">{stat.value}</div>
-
-                  <div className="stat-card-label">{stat.label}</div>
-
-                  <div className="stat-card-description">
-                    {stat.description}
-                  </div>
-                </div>
-              </div>
+            ].map((item, idx) => (
+              <Col md={4} key={idx}>
+                <Card className="h-100 border-0 shadow-sm rounded-4 hover-shadow transition-all p-3">
+                  <Card.Body>
+                    <div
+                      className="d-flex align-items-center justify-content-center rounded-3 mb-4 text-danger"
+                      style={{ width: 60, height: 60, ...styles.bgOrangeLight }}
+                    >
+                      {item.icon}
+                    </div>
+                    <Card.Title className="fw-bold fs-4 mb-3">
+                      {item.title}
+                    </Card.Title>
+                    <Card.Text className="text-muted">{item.desc}</Card.Text>
+                  </Card.Body>
+                </Card>
+              </Col>
             ))}
-          </div>
-
-          <div className="partners-info">
-            <p className="partners-text">
-              Đồng hành cùng hơn 5,000 doanh nghiệp lớn nhỏ trên toàn quốc
-            </p>
-            <div className="partners-logos">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="partner-logo-placeholder">
-                  Logo
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+          </Row>
+        </Container>
       </section>
 
-      {/* 6. PROCESS SECTION */}
-      <section className="process-section">
-        <div className="container">
-          <div className="section-header">
-            <div className="section-tag section-tag-green">
-              Quy trình đơn giản
-            </div>
-            <h2 className="section-title">Gửi hàng chỉ với 4 bước</h2>
-            <p className="section-subtitle">
-              Quy trình giao nhận đơn giản, nhanh chóng và minh bạch
-            </p>
+      {/* --- 4. PROCESS SECTION --- */}
+      <section className="py-5 bg-white">
+        <Container>
+          <div className="text-center mb-5">
+            <small style={styles.textOrange} className="fw-bold text-uppercase">
+              How it works
+            </small>
+            <h2 className="fw-bold display-6">Simple 4-Step Shipping</h2>
           </div>
-
-          <div className="process-flow">
-            <div className="process-line"></div>
-
-            <div className="process-grid">
-              {[
-                {
-                  icon: PackageSearch,
-                  title: "Đặt đơn hàng",
-                  description:
-                    "Đăng ký thông tin gửi hàng qua website, app hoặc hotline. Nhập đầy đủ thông tin người gửi và người nhận.",
-                  step: "01",
-                },
-                {
-                  icon: Calendar,
-                  title: "Xác nhận & lấy hàng",
-                  description:
-                    "Nhân viên xác nhận đơn hàng và đến lấy hàng tại địa chỉ của bạn trong vòng 2-4 giờ.",
-                  step: "02",
-                },
-                {
-                  icon: Truck,
-                  title: "Vận chuyển",
-                  description:
-                    "Hàng hóa được vận chuyển qua mạng lưới logistics hiện đại. Theo dõi realtime qua mã tracking.",
-                  step: "03",
-                },
-                {
-                  icon: CheckCircle2,
-                  title: "Giao hàng thành công",
-                  description:
-                    "Shipper giao hàng đến tay người nhận. Thu hộ COD (nếu có) và chuyển tiền về cho bạn.",
-                  step: "04",
-                },
-              ].map((step, index) => (
-                <div key={index} className="process-step-wrapper">
-                  <div className="process-step-card">
-                    <div className="step-number">{step.step}</div>
-
-                    <div className="step-content">
-                      <div className="step-icon-wrapper">
-                        <step.icon className="icon-medium icon-white" />
-                      </div>
-
-                      <h3 className="step-title">{step.title}</h3>
-
-                      <p className="step-description">{step.description}</p>
-                    </div>
-                  </div>
-
-                  {index < 3 && (
-                    <div className="process-connector">
-                      <div className="connector-circle">
-                        <ArrowRight
-                          className="icon-tiny icon-white"
-                          strokeWidth={3}
-                        />
-                      </div>
-                    </div>
-                  )}
+          <Row className="text-center g-4 position-relative">
+            {/* Note: Connecting lines are hard in pure Bootstrap, skipped for cleanliness */}
+            {[
+              {
+                title: "1. Book Online",
+                sub: "Schedule pickup",
+                icon: "calendar_month",
+              },
+              {
+                title: "2. We Pack",
+                sub: "Professionals handle items",
+                icon: "package_2",
+              },
+              {
+                title: "3. In Transit",
+                sub: "Real-time tracking",
+                icon: "local_shipping",
+              },
+              { title: "4. Delivered", sub: "Safe arrival", icon: "home_pin" },
+            ].map((step, idx) => (
+              <Col md={3} key={idx}>
+                <div
+                  className="d-inline-flex align-items-center justify-content-center bg-white border rounded-4 shadow-sm mb-3 position-relative z-1"
+                  style={{ width: 80, height: 80 }}
+                >
+                  {/* Using Bootstrap Icons instead of material strings */}
+                  {idx === 0 && <BoxSeam className="text-danger" size={30} />}
+                  {idx === 1 && <Truck className="text-danger" size={30} />}
+                  {idx === 2 && <Map className="text-danger" size={30} />}
+                  {idx === 3 && <GeoAlt className="text-danger" size={30} />}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="process-cta">
-            <button className="btn btn-primary btn-large">
-              Bắt đầu gửi hàng ngay
-            </button>
-          </div>
-        </div>
+                <h5 className="fw-bold">{step.title}</h5>
+                <p className="text-muted small">{step.sub}</p>
+              </Col>
+            ))}
+          </Row>
+        </Container>
       </section>
 
-      {/* 7. CTA APP SECTION */}
-      <section className="app-cta-section">
-        <div className="app-cta-overlay"></div>
-
-        <div className="container app-cta-content">
-          <div className="app-cta-grid">
+      {/* --- 5. SERVICES SECTION --- */}
+      <section id="services" className="py-5" style={styles.sectionBg}>
+        <Container>
+          <div className="d-flex justify-content-between align-items-end mb-5">
             <div>
-              <div className="app-cta-tag">Ưu đãi đặc biệt</div>
-
-              <h2 className="app-cta-title">
-                Trải nghiệm ngay
-                <span className="app-cta-title-block">
-                  ứng dụng CourierXpress
-                </span>
-              </h2>
-
-              <p className="app-cta-subtitle">
-                Tải app ngay hôm nay để nhận voucher giảm giá 50% cho đơn hàng
-                đầu tiên. Quản lý đơn hàng dễ dàng, theo dõi realtime, thanh
-                toán nhanh chóng.
-              </p>
-
-              <div className="app-cta-buttons">
-                <button className="btn btn-app-store">
-                  <Smartphone className="icon-small" />
-                  <span>Tải trên App Store</span>
-                  <ArrowRight className="icon-tiny" />
-                </button>
-
-                <button className="btn btn-google-play">
-                  <Smartphone className="icon-small" />
-                  <span>Tải trên Google Play</span>
-                  <ArrowRight className="icon-tiny" />
-                </button>
-              </div>
-
-              <div className="app-cta-features">
-                <div className="app-feature-item">
-                  <CheckCircle2 className="icon-tiny" />
-                  <span>Miễn phí tải về</span>
-                </div>
-                <div className="app-feature-item">
-                  <CheckCircle2 className="icon-tiny" />
-                  <span>Giao diện thân thiện</span>
-                </div>
-                <div className="app-feature-item">
-                  <CheckCircle2 className="icon-tiny" />
-                  <span>Bảo mật cao</span>
-                </div>
-              </div>
+              <small
+                style={styles.textOrange}
+                className="fw-bold text-uppercase"
+              >
+                What we do
+              </small>
+              <h2 className="fw-bold display-6">Our Services</h2>
             </div>
+            <Button
+              variant="link"
+              className="text-decoration-none fw-bold d-none d-md-block"
+              style={{ color: styles.textOrange.color }}
+            >
+              View all services <ArrowRight />
+            </Button>
+          </div>
 
-            <div className="app-mockup">
-              <div className="app-mockup-box">
-                <div className="app-mockup-display">
-                  <div className="text-center">
-                    <div className="app-mockup-emoji">📱</div>
-                    <div className="app-mockup-title">CourierXpress</div>
-                    <div className="app-mockup-subtitle">Mobile App</div>
+          <Row className="g-4">
+            {[
+              {
+                title: "Air Freight",
+                desc: "Fast international shipping for time-sensitive cargo. We handle customs and documentation seamlessly.",
+                icon: <Airplane />,
+                color: "primary",
+                img: "https://lh3.googleusercontent.com/aida-public/AB6AXuCdJGZTNfPKG2MdkRtA3jEW54T2APo207qC2Ve5TB9UE4MC1ZRqoORsPDkPL5ch5XaMmVwFBK3_NeGysw2yNBhJh6nn2Cr__mAyzH2JFYdsDAx02tVNrm0G0oyML69qn9ENhnlg-6ODITVTYbWHZH4MtRY0JL4A-zyQi6XP0E181ZNkOkQeMAi1C2JlMFGoGgjLK-IZ8JWaUUoBnf3l8ILf7baaDu9VVNZ4wzE0-qzfeuEPDIuT4RRYUGVVjTt1-D5lbVJdjkVTWDH8",
+              },
+              {
+                title: "Ocean Cargo",
+                desc: "Cost-effective solutions for large bulk shipments. FCL and LCL options available globally.",
+                icon: <Tsunami />,
+                color: "info",
+                img: "https://lh3.googleusercontent.com/aida-public/AB6AXuB8F2nZPPpmc-_qzsyrPYWTUDFlN1n6QcIK6XnxMnxT9VSME1GoM-dUiB-3XMAtpxQ-Dqbx6T2YjE-QWDYvS1BaB6Pw1okMEAbtRt5ZvOvBZ0c5ZIJn2GBrodYA5Gl8CZ5H8gBZqo6H8yrD8lquHY_3VROsZJQ7Tev7UnaoL6Lkj88JG_XujfzcFuxQ6w9HeTpN6pI6q36p9ucbX32jSzyGdLKFY4Ow5D6UO-s22r73Nic6M0SMo5BR4veD43sbC9zQTx_x-6hH1DYb",
+              },
+              {
+                title: "Road Transport",
+                desc: "Reliable domestic and cross-border trucking. Flexible fleet options for every cargo size.",
+                icon: <Truck />,
+                color: "warning",
+                img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAWFPnVDDEv_oGrpXrmTJxB1pViedY59X5Kiqm2JvxWT8LVHW8gSoZTCNgGZYoUkWtceuc5NTJ3PZCm7V99O1L31PgoveO64OmtJjREYy9396eW4cqP0oIoixNIkWSzIj0M_QqVQRcpxqAVBZSDXk7aSKkOckIf4IhreknjJYQgBafFIgKY4gYacfT82apOVZQ2MEnIBTSpatfyF65kgCRZd3fDxttS4w6WcDIDLVvhaWxglsAJ009Pnkf-6w5mkGobW8JmqgZ1U5yR",
+              },
+              {
+                title: "Warehousing",
+                desc: "Secure storage solutions with modern inventory management systems. Short and long-term.",
+                icon: <BoxSeam />,
+                color: "secondary",
+                img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBZusvrDQZUMQHyU6iKgj7aTYUDQC2hq904obUqbEMZ1Q_A4S5zUon43TEwJzHKAIFWqmrmfECRLkKdym41idOU1k3uPDxKzJrX1xF_dxXVDv0kkS0H-TY2nNU11WwOqmuTlUvpquHZBaRxx3yDrG0ButfpCkpPNqCTZMw3eBnDUGBkVoO0gutz1_96BJB5TLGD4B3AzE2mNW3C9JAOPGJWNA6m6O1ebh0kFSxqQS5_3p3ju8xKkWDw84_aig20jh4dW1TA7tdjsqZm",
+              },
+            ].map((svc, idx) => (
+              <Col lg={6} key={idx}>
+                <Card className="h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                  <Row className="g-0 h-100">
+                    <Col md={5}>
+                      <img
+                        src={svc.img}
+                        alt={svc.title}
+                        className="w-100 h-100 object-fit-cover"
+                        style={{ minHeight: "200px" }}
+                      />
+                    </Col>
+                    <Col md={7}>
+                      <Card.Body className="d-flex flex-column justify-content-center h-100 p-4">
+                        <div
+                          className={`text-${svc.color} bg-${svc.color} bg-opacity-10 p-2 rounded mb-3 d-inline-block w-auto`}
+                        >
+                          {svc.icon}
+                        </div>
+                        <Card.Title className="fw-bold">{svc.title}</Card.Title>
+                        <Card.Text className="text-muted small">
+                          {svc.desc}
+                        </Card.Text>
+                        <a
+                          href="#"
+                          className="fw-bold text-decoration-none text-dark mt-auto d-flex align-items-center gap-1"
+                        >
+                          Details <ChevronRight size={14} />
+                        </a>
+                      </Card.Body>
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Container>
+      </section>
+
+      {/* --- 6. APP DOWNLOAD SECTION --- */}
+      <section className="py-5">
+        <Container>
+          <div
+            className="p-5 rounded-5 position-relative overflow-hidden"
+            style={styles.appSection}
+          >
+            <Row className="align-items-center position-relative z-1">
+              <Col lg={6} className="text-center text-lg-start mb-5 mb-lg-0">
+                <Badge
+                  bg="white"
+                  text="dark"
+                  className="bg-opacity-10 text-white border border-white border-opacity-25 rounded-pill mb-3 px-3"
+                >
+                  MOBILE APP
+                </Badge>
+                <h2 className="display-4 fw-bold mb-3">
+                  Track on the go.
+                  <br />
+                  Download the App.
+                </h2>
+                <p className="text-white-50 lead mb-5">
+                  Get real-time notifications and manage shipments from
+                  anywhere.
+                </p>
+                <div className="d-flex gap-3 justify-content-center justify-content-lg-start">
+                  <Button
+                    variant="light"
+                    size="lg"
+                    className="d-flex align-items-center gap-3 rounded-3 px-4"
+                  >
+                    <GooglePlay size={28} />
+                    <div className="text-start lh-1">
+                      <small
+                        className="d-block text-muted"
+                        style={{ fontSize: "0.7rem" }}
+                      >
+                        GET IT ON
+                      </small>
+                      <span className="fw-bold">Google Play</span>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="light"
+                    size="lg"
+                    className="d-flex align-items-center gap-3 rounded-3 px-4"
+                  >
+                    <Apple size={28} />
+                    <div className="text-start lh-1">
+                      <small
+                        className="d-block text-muted"
+                        style={{ fontSize: "0.7rem" }}
+                      >
+                        DOWNLOAD ON
+                      </small>
+                      <span className="fw-bold">App Store</span>
+                    </div>
+                  </Button>
+                </div>
+              </Col>
+
+              {/* Phone Mockup Simplified */}
+              <Col lg={6} className="d-flex justify-content-center">
+                <div
+                  className="bg-white rounded-4 p-3 shadow-lg"
+                  style={{ maxWidth: "300px", transform: "rotate(-3deg)" }}
+                >
+                  <div className="bg-danger text-white p-3 rounded-top-4">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <small className="fw-bold">CourierXpress</small>
+                      <Bell size={16} />
+                    </div>
+                    <h5 className="mt-3 mb-0 fw-bold">Hello, Alex!</h5>
+                    <small className="opacity-75">3 packages on the way</small>
+                  </div>
+                  <div className="p-3 bg-light rounded-bottom-4">
+                    <div className="bg-white p-2 rounded shadow-sm mb-2 border-start border-4 border-danger">
+                      <div className="d-flex justify-content-between">
+                        <small className="fw-bold text-muted">CX-883921</small>
+                        <Badge
+                          bg="danger"
+                          className="bg-opacity-10 text-danger"
+                        >
+                          In Transit
+                        </Badge>
+                      </div>
+                      <div className="d-flex align-items-center gap-2 mt-2">
+                        <Truck className="text-danger" />
+                        <div>
+                          <div className="fw-bold small text-dark">
+                            MacBook Pro M3
+                          </div>
+                          <div
+                            className="text-muted"
+                            style={{ fontSize: "0.7rem" }}
+                          >
+                            Arriving tomorrow
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </Col>
+            </Row>
           </div>
-
-          <div className="app-stats-footer">
-            <div>
-              <div className="app-stat-value">4.8★</div>
-              <div className="app-stat-label">Đánh giá trung bình</div>
-            </div>
-            <div>
-              <div className="app-stat-value">50K+</div>
-              <div className="app-stat-label">Lượt tải về</div>
-            </div>
-            <div>
-              <div className="app-stat-value">10K+</div>
-              <div className="app-stat-label">Đánh giá 5 sao</div>
-            </div>
-          </div>
-        </div>
+        </Container>
       </section>
     </div>
   );
