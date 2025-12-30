@@ -36,6 +36,7 @@ import {
   Person,
   Bell,
 } from "react-bootstrap-icons";
+import HeroVideo from "../../components/HeroVideo";
 
 // Style tùy chỉnh nhỏ để giữ màu sắc cam chủ đạo (nếu không dùng file CSS riêng)
 const styles = {
@@ -72,6 +73,7 @@ function App() {
       className="App"
       style={{ overflowX: "hidden", fontFamily: "'Inter', sans-serif" }}
     >
+      <HeroVideo />
       {/* --- 2. HERO SECTION --- */}
       <section id="home" className="py-5 position-relative overflow-hidden">
         {/* Background blobs giả lập bằng div rỗng nếu cần, ở đây giữ đơn giản */}
