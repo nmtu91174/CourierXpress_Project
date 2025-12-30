@@ -170,13 +170,36 @@ export default function UserMenu({ user = null }) {
           }
         );
 
+        // Handle 401 (Unauthorized) gracefully - user not logged in or session expired
+        if (response.status === 401) {
+          // Silently handle - this is expected when user is not authenticated
+          setUnreadCount(0);
+          setTotalCount(0);
+          return;
+        }
+
+        // Handle other errors
+        if (!response.ok) {
+          // Only log non-401 errors
+          console.warn(`Failed to fetch notification counts: ${response.status}`);
+          setUnreadCount(0);
+          setTotalCount(0);
+          return;
+        }
+
         const result = await response.json();
         if (result.status === "success") {
           setUnreadCount(result.data.unread_count || 0);
           setTotalCount(result.data.total_count || 0);
         }
       } catch (error) {
+        // Only log unexpected errors (network errors, etc.)
+        // Don't log 401 as it's expected for unauthenticated users
+        if (!error.message?.includes("401")) {
         console.error("Failed to fetch notification counts:", error);
+        }
+        setUnreadCount(0);
+        setTotalCount(0);
       }
     };
 

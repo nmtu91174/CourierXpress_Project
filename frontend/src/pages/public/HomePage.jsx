@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "bootstrap/dist/css/bootstrap.min.css"; // Đừng quên import CSS của Bootstrap
 import {
   Container,
@@ -35,16 +35,29 @@ import {
   Android,
   Person,
   Bell,
+  ShieldLock, // ISO/Security
+  Clock, // SLA
+  Headset, // 24/7 Support
+  FileEarmarkCheck, // Insurance
+  Calculator, // Estimate
+  Building, // Enterprise/Trust
 } from "react-bootstrap-icons";
 import HeroVideo from "../../components/HeroVideo";
+import { initEnterpriseLogoCarousel } from "../../animations/enterpriseLogoCarousel";
+import { initEnterpriseTrustAnimations, initWhyChooseAnimation, initProcessAnimation, initServicesAnimation } from "../../animations/enterpriseTrustAnimations";
+import { initHeroTimeline } from "../../animations/heroTimeline";
+import "../../assets/styles/enterprise-logo-carousel.css";
+import "../../assets/styles/hero-introduction.css";
+import "../../assets/styles/HomePage.css";
 
-// Style tùy chỉnh nhỏ để giữ màu sắc cam chủ đạo (nếu không dùng file CSS riêng)
+
+// Style tùy chỉnh nhỏ để giữ màu sắc cam chủ đạo (Burnt Orange - Enterprise)
 const styles = {
-  textOrange: { color: "#FF4500" },
-  bgOrangeLight: { backgroundColor: "rgba(255, 69, 0, 0.1)" },
+  textOrange: { color: "#D04A02" }, // Burnt Orange
+  bgOrangeLight: { backgroundColor: "rgba(208, 74, 2, 0.15)" },
   btnOrange: {
-    backgroundColor: "#FF4500",
-    borderColor: "#FF4500",
+    backgroundColor: "#D04A02",
+    borderColor: "#D04A02",
     color: "white",
     fontWeight: "bold",
   },
@@ -52,8 +65,73 @@ const styles = {
   appSection: { backgroundColor: "#1a1a1a", color: "white" }, // Dark background
 };
 
-function App() {
+function HomePage() {
   const [trackingId, setTrackingId] = useState("");
+  const [estimateForm, setEstimateForm] = useState({
+    from: "",
+    to: "",
+    weight: "",
+  });
+  const logoTrackRef = useRef(null);
+
+  // Enterprise partner logos from public/images/logo
+  const logos = [
+    "/images/logo/Aeon.png",
+    "/images/logo/Bosch.png",
+    "/images/logo/Decathlon.png",
+    "/images/logo/Foxconn.png",
+    "/images/logo/Ikea.webp",
+    "/images/logo/LG.webp",
+    "/images/logo/Nestle.png",
+    "/images/logo/Nike.png",
+    "/images/logo/Panasonic.png",
+    "/images/logo/PG.png",
+    "/images/logo/Samsung.png",
+    "/images/logo/Unilever.webp",
+  ];
+
+  useEffect(() => {
+    // Initialize Hero Timeline (runs once on load)
+    const heroTimer = setTimeout(() => {
+      initHeroTimeline();
+    }, 100);
+
+    // Initialize logo carousel
+    if (logoTrackRef.current) {
+      initEnterpriseLogoCarousel(logoTrackRef.current, 40);
+    }
+
+    // Initialize GSAP animations for Enterprise Trust section
+    // Delay slightly to ensure DOM is ready
+    const trustTimer = setTimeout(() => {
+      initEnterpriseTrustAnimations();
+    }, 200);
+
+    // Initialize GSAP animations for Why Choose Us section
+    const whyChooseTimer = setTimeout(() => {
+      initWhyChooseAnimation();
+    }, 250);
+
+    // Initialize GSAP animations for Process section (4-Step Shipping)
+    const processTimer = setTimeout(() => {
+      initProcessAnimation();
+    }, 300);
+
+    // Initialize GSAP animations for Services section
+    const servicesTimer = setTimeout(() => {
+      initServicesAnimation();
+    }, 350);
+
+    // Cleanup on unmount
+    return () => {
+      clearTimeout(heroTimer);
+      clearTimeout(trustTimer);
+      clearTimeout(whyChooseTimer);
+      clearTimeout(processTimer);
+      clearTimeout(servicesTimer);
+      // ScrollTrigger cleanup is handled in the animation file
+    };
+  }, []);
 
   const handleTrackingSearch = () => {
     if (trackingId.trim()) {
@@ -74,33 +152,33 @@ function App() {
       style={{ overflowX: "hidden", fontFamily: "'Inter', sans-serif" }}
     >
       <HeroVideo />
-      {/* --- 2. HERO SECTION --- */}
-      <section id="home" className="py-5 position-relative overflow-hidden">
+      {/* --- Introduction SECTION --- */}
+      <section id="home" className="position-relative overflow-hidden" style={{ paddingTop: "3rem", paddingBottom: "2rem" }}>
         {/* Background blobs giả lập bằng div rỗng nếu cần, ở đây giữ đơn giản */}
-        <Container className="position-relative z-1">
-          <Row className="align-items-center gy-5">
-            <Col lg={6} className="text-center text-lg-start">
+        <Container fluid="xl" className="position-relative z-1">
+          <Row className="align-items-end gy-5">
+            <Col lg={6} className="text-center text-lg-start d-flex flex-column">
+              <div>
               <Badge
                 bg="light"
                 text="danger"
-                className="mb-3 px-3 py-2 border border-danger border-opacity-25 rounded-pill"
+                  className="hero-eyebrow mb-3 px-3 py-2 border border-danger border-opacity-25 rounded-pill"
               >
                 <LightningCharge className="me-1" /> Next-Gen Logistics
               </Badge>
               <h1 className="display-3 fw-bolder mb-4 lh-sm">
-                Shipping <br />
+                  <span className="hero-title-line">Shipping</span> <br />
                 <span
+                    className="hero-title-highlight position-relative d-inline-block"
                   style={styles.textOrange}
-                  className="position-relative d-inline-block"
                 >
                   Fast, Safe
-                  {/* SVG gạch chân giả lập */}
+                    {/* SVG underline */}
                   <svg
-                    className="position-absolute w-100 start-0"
+                      className="hero-underline position-absolute w-100 start-0"
                     style={{
                       bottom: "-5px",
                       height: "8px",
-                      color: "rgba(255,69,0,0.2)",
                     }}
                     viewBox="0 0 100 10"
                     preserveAspectRatio="none"
@@ -113,15 +191,16 @@ function App() {
                     />
                   </svg>
                 </span>
-                <br /> & On Time
+                  <br /> <span className="hero-title-line">& On Time</span>
               </h1>
-              <p className="lead text-muted mb-4">
+                <p className="hero-description lead text-muted mb-4">
                 Global logistics solutions powered by modern technology. We
                 ensure your cargo reaches its destination safely and
                 efficiently.
               </p>
+              </div>
 
-              <div className="d-flex gap-3 justify-content-center justify-content-lg-start mb-5">
+              <div className="hero-actions d-flex gap-3 justify-content-center justify-content-lg-start mt-auto">
                 <Button
                   size="lg"
                   style={styles.btnOrange}
@@ -136,23 +215,6 @@ function App() {
                 >
                   Get Estimate
                 </Button>
-              </div>
-
-              <div className="d-flex gap-5 justify-content-center justify-content-lg-start border-top pt-4">
-                <div>
-                  <div className="d-flex align-items-center gap-2">
-                    <h2 className="fw-bold mb-0">500K+</h2>
-                    <span
-                      className="position-relative d-flex bg-danger rounded-circle"
-                      style={{ width: 10, height: 10 }}
-                    ></span>
-                  </div>
-                  <small className="text-muted fw-bold">Monthly Orders</small>
-                </div>
-                <div>
-                  <h2 className="fw-bold mb-0">99.8%</h2>
-                  <small className="text-muted fw-bold">On-Time Delivery</small>
-                </div>
               </div>
             </Col>
 
@@ -199,17 +261,18 @@ function App() {
                 </Card> */}
 
                 {/* Floating Cards Grid */}
+                <div className="hero-cards-wrapper">
                 <Row className="g-3">
                   <Col md={6}>
                     <div
-                      className="bg-danger text-white p-4 rounded-4 shadow position-relative overflow-hidden h-100"
-                      style={{ backgroundColor: "#FF4500" }}
+                        className="hero-card bg-danger text-white p-4 rounded-4 shadow position-relative overflow-hidden h-100"
+                        style={{ backgroundColor: "#D04A02" }}
                     >
                       <div className="d-flex justify-content-between align-items-start mb-4 position-relative z-1">
                         <div className="bg-white bg-opacity-25 p-2 rounded-3">
                           <BoxSeam size={24} />
                         </div>
-                        <ArrowRight />
+                          <ArrowRight className="hero-card-arrow" />
                       </div>
                       <div className="position-relative z-1">
                         <h5 className="fw-bold">Express Delivery</h5>
@@ -220,12 +283,12 @@ function App() {
                     </div>
                   </Col>
                   <Col md={6}>
-                    <div className="bg-dark text-white p-4 rounded-4 shadow position-relative overflow-hidden h-100">
+                      <div className="hero-card hero-card-dark bg-dark text-white p-4 rounded-4 shadow position-relative overflow-hidden h-100">
                       <div className="d-flex justify-content-between align-items-start mb-4 position-relative z-1">
                         <div className="bg-white bg-opacity-10 border border-white border-opacity-10 p-2 rounded-3">
                           <ShieldCheck size={24} />
                         </div>
-                        <ArrowRight />
+                          <ArrowRight className="hero-card-arrow" />
                       </div>
                       <div className="position-relative z-1">
                         <h5 className="fw-bold">Cargo Insurance</h5>
@@ -235,7 +298,34 @@ function App() {
                       </div>
                     </div>
                   </Col>
-                </Row>
+                    {/* Enterprise Card - Full Width */}
+                    <Col md={12}>
+                      <div className="hero-card hero-card-wide bg-dark text-white p-4 rounded-4 shadow position-relative overflow-hidden">
+                        <div className="d-flex justify-content-between align-items-start mb-3 position-relative z-1">
+                          <div className="hero-card-icon">
+                            <Building size={22} />
+                          </div>
+                          <ArrowRight className="hero-card-arrow" />
+                        </div>
+                        <div className="position-relative z-1">
+                          <h5 className="fw-bold mb-2 text-white">
+                            Trusted by Enterprises
+                          </h5>
+                          <p className="text-white-50 small mb-3">
+                            Mission-critical logistics trusted by growing and enterprise-level businesses.
+                          </p>
+                          {/* Pills */}
+                          <div className="d-flex flex-wrap gap-2">
+                            <span className="hero-pill">✓ Proven Reliability</span>
+                            <span className="hero-pill">✓ Compliance-Ready</span>
+                            <span className="hero-pill">✓ Scalable Infrastructure</span>
+                            <span className="hero-pill">✓ Enterprise Support</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
+                </div>
               </div>
             </Col>
           </Row>
@@ -243,123 +333,238 @@ function App() {
       </section>
 
       {/* --- 3. WHY CHOOSE US --- */}
-      <section className="py-5" style={styles.sectionBg}>
-        <Container>
+<section className="why-choose-section">
+  <Container fluid="xl">
+    {/* ===== Header ===== */}
           <div
-            className="text-center mb-5 mw-100 mx-auto"
-            style={{ maxWidth: "700px" }}
+      className="text-center mb-5 mx-auto"
+      style={{ maxWidth: "720px" }}
           >
-            <h2 className="fw-bold display-6 mb-3">Why Choose CourierXpress</h2>
-            <p className="text-muted lead">
-              We provide the fastest and most reliable logistics services in the
-              industry, backed by cutting-edge technology.
+      <small
+        className="fw-semibold text-uppercase d-block mb-2"
+        style={styles.textOrange}
+      >
+        Why Businesses Trust CourierXpress
+      </small>
+
+      <h2 className="fw-bold display-6 mb-3">
+        Built for Speed, Safety & Reliability
+      </h2>
+
+      <p className="text-muted mt-3 lead">
+        From express delivery to real-time tracking, our logistics
+        infrastructure is designed to support businesses at every scale.
             </p>
           </div>
 
+    {/* ===== Cards ===== */}
           <Row className="g-4">
             {[
               {
-                icon: <LightningCharge size={30} />,
+          icon: <LightningCharge size={28} />,
                 title: "Express Delivery",
                 desc: "Guaranteed next-day delivery for urgent shipments with priority handling.",
               },
               {
-                icon: <ShieldCheck size={30} />,
+          icon: <ShieldCheck size={28} />,
                 title: "Secure Packaging",
                 desc: "Tamper-proof packaging and comprehensive insurance options.",
               },
               {
-                icon: <GeoAlt size={30} />,
+          icon: <GeoAlt size={28} />,
                 title: "Live GPS Tracking",
                 desc: "Real-time updates on your shipment's location 24/7 via our app.",
               },
             ].map((item, idx) => (
               <Col md={4} key={idx}>
-                <Card className="h-100 border-0 shadow-sm rounded-4 hover-shadow transition-all p-3">
+          <Card className="why-choose-card h-100 rounded-4">
                   <Card.Body>
+              {/* Icon */}
                     <div
-                      className="d-flex align-items-center justify-content-center rounded-3 mb-4 text-danger"
-                      style={{ width: 60, height: 60, ...styles.bgOrangeLight }}
+                className="why-choose-icon"
+                style={{
+                  background: styles.bgOrangeLight.background,
+                  color: styles.textOrange.color,
+                }}
                     >
                       {item.icon}
                     </div>
-                    <Card.Title className="fw-bold fs-4 mb-3">
+
+              {/* Content */}
+              <Card.Title className="fs-4 mb-3">
                       {item.title}
                     </Card.Title>
-                    <Card.Text className="text-muted">{item.desc}</Card.Text>
+
+              <Card.Text>
+                {item.desc}
+              </Card.Text>
                   </Card.Body>
                 </Card>
               </Col>
             ))}
           </Row>
+
+    {/* ===== Soft Trust Signal ===== */}
+    <div className="trust-signal mt-5 pt-4 border-top text-center">
+      <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 gap-md-5 text-muted small">
+        <span>✓ 99.9% On-time delivery</span>
+        <span>✓ ISO-aligned logistics workflow</span>
+        <span>✓ Real-time audit & tracking system</span>
+      </div>
+    </div>
+  </Container>
+</section>
+
+
+      {/* --- 3.5. ENTERPRISE TRUST SECTION --- */}
+      <section id="enterprise-trust" className="py-5 enterprise-trust">
+        <Container fluid="xl">
+          <div
+            className="p-5 rounded-5 position-relative overflow-hidden"
+            style={styles.appSection}
+          >
+            <div className="position-relative z-1">
+              <div
+                className="text-center mb-5 mx-auto"
+                style={{ maxWidth: "700px" }}
+              >
+                <Badge
+                  bg="white"
+                  text="dark"
+                  className="enterprise-eyebrow bg-opacity-10 text-white border border-white border-opacity-25 rounded-pill mb-3 px-3"
+                >
+                  ENTERPRISE TRUST
+                </Badge>
+                <h2 className="enterprise-title fw-bold display-6 mb-3 text-white">
+                  Trusted by 500+ Businesses Worldwide
+                </h2>
+                <p className="enterprise-subtitle text-white-50 lead">
+                  Enterprise-grade logistics infrastructure built for scale and
+                  reliability.
+                </p>
+              </div>
+
+              {/* --- TRUST METRICS --- */}
+              <div className="trust-metrics d-flex justify-content-center gap-5 mb-5">
+                <div className="metric text-center">
+                  <div className="d-flex align-items-baseline justify-content-center gap-1">
+                    <span
+                      className="metric-value fw-bold display-5 text-white"
+                      data-count="500"
+                    >
+                      0
+                    </span>
+                    <span className="text-white-50 fw-bold">K+</span>
+                  </div>
+                  <p className="text-white-50 small mb-0 mt-2">Monthly Orders</p>
+                </div>
+                <div className="metric text-center">
+                  <div className="d-flex align-items-baseline justify-content-center gap-1">
+                    <span
+                      className="metric-value fw-bold display-5 text-white"
+                      data-count="99.8"
+                    >
+                      0
+                    </span>
+                    <span className="text-white-50 fw-bold">%</span>
+                  </div>
+                  <p className="text-white-50 small mb-0 mt-2">On-Time Delivery</p>
+                </div>
+              </div>
+
+              {/* --- ENTERPRISE LOGO CAROUSEL --- */}
+              <div className="enterprise-logo-wrapper">
+                <div className="enterprise-logo-track" ref={logoTrackRef}>
+                  {logos.concat(logos).map((logo, idx) => (
+                    <div className="enterprise-logo-item" key={idx}>
+                      <img src={logo} alt="Enterprise Partner" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </Container>
       </section>
 
-      {/* --- 4. PROCESS SECTION --- */}
-      <section className="py-5 bg-white">
-        <Container>
+      {/* --- PROCESS SECTION --- */}
+      <section className="process-section bg-white">
+        <Container fluid="xl">
           <div className="text-center mb-5">
-            <small style={styles.textOrange} className="fw-bold text-uppercase">
+            <small className="fw-bold text-uppercase text-danger">
               How it works
             </small>
             <h2 className="fw-bold display-6">Simple 4-Step Shipping</h2>
+            <p className="text-muted mt-2">
+              A clear, transparent logistics process designed for speed and trust.
+            </p>
           </div>
-          <Row className="text-center g-4 position-relative">
-            {/* Note: Connecting lines are hard in pure Bootstrap, skipped for cleanliness */}
+
+          <div className="process-grid">
             {[
               {
-                title: "1. Book Online",
-                sub: "Schedule pickup",
-                icon: "calendar_month",
+                step: "01",
+                title: "Book Online",
+                desc: "Schedule pickup in seconds via website or app.",
+                icon: BoxSeam,
               },
               {
-                title: "2. We Pack",
-                sub: "Professionals handle items",
-                icon: "package_2",
+                step: "02",
+                title: "We Pack",
+                desc: "Our professionals handle and secure your items.",
+                icon: Truck,
               },
               {
-                title: "3. In Transit",
-                sub: "Real-time tracking",
-                icon: "local_shipping",
+                step: "03",
+                title: "In Transit",
+                desc: "Track your shipment in real time across the network.",
+                icon: Map,
               },
-              { title: "4. Delivered", sub: "Safe arrival", icon: "home_pin" },
-            ].map((step, idx) => (
-              <Col md={3} key={idx}>
-                <div
-                  className="d-inline-flex align-items-center justify-content-center bg-white border rounded-4 shadow-sm mb-3 position-relative z-1"
-                  style={{ width: 80, height: 80 }}
-                >
-                  {/* Using Bootstrap Icons instead of material strings */}
-                  {idx === 0 && <BoxSeam className="text-danger" size={30} />}
-                  {idx === 1 && <Truck className="text-danger" size={30} />}
-                  {idx === 2 && <Map className="text-danger" size={30} />}
-                  {idx === 3 && <GeoAlt className="text-danger" size={30} />}
+              {
+                step: "04",
+                title: "Delivered",
+                desc: "Safe and confirmed delivery to the recipient.",
+                icon: GeoAlt,
+              },
+            ].map((item, idx) => (
+              <div key={idx} className="process-card">
+                <div className="process-step-number">{item.step}</div>
+
+                <div className="process-content text-center">
+                  <div className="process-icon mb-3">
+                    <item.icon size={32} className="text-white" />
+                  </div>
+                  <h5 className="fw-bold mb-2">{item.title}</h5>
+                  <p className="process-desc">{item.desc}</p>
                 </div>
-                <h5 className="fw-bold">{step.title}</h5>
-                <p className="text-muted small">{step.sub}</p>
-              </Col>
+                </div>
             ))}
-          </Row>
+          </div>
         </Container>
       </section>
 
       {/* --- 5. SERVICES SECTION --- */}
-      <section id="services" className="py-5" style={styles.sectionBg}>
-        <Container>
+      <section id="services" className="py-5">
+        <Container fluid="xl">
+          <div
+            className="p-5 rounded-5 position-relative overflow-hidden"
+            style={styles.appSection}
+          >
+            <div className="position-relative z-1">
           <div className="d-flex justify-content-between align-items-end mb-5">
             <div>
               <small
-                style={styles.textOrange}
-                className="fw-bold text-uppercase"
+                    className="fw-bold text-uppercase text-white-50"
+                    style={{ letterSpacing: "0.1em" }}
               >
                 What we do
               </small>
-              <h2 className="fw-bold display-6">Our Services</h2>
+                  <h2 className="fw-bold display-6 text-white mt-2">Our Services</h2>
             </div>
             <Button
               variant="link"
-              className="text-decoration-none fw-bold d-none d-md-block"
-              style={{ color: styles.textOrange.color }}
+                  className="service-view-all text-decoration-none fw-bold d-none d-md-block text-white-50"
+                  style={{ color: "rgba(255, 255, 255, 0.7)" }}
             >
               View all services <ArrowRight />
             </Button>
@@ -372,6 +577,7 @@ function App() {
                 desc: "Fast international shipping for time-sensitive cargo. We handle customs and documentation seamlessly.",
                 icon: <Airplane />,
                 color: "primary",
+                useCase: "Enterprise",
                 img: "https://lh3.googleusercontent.com/aida-public/AB6AXuCdJGZTNfPKG2MdkRtA3jEW54T2APo207qC2Ve5TB9UE4MC1ZRqoORsPDkPL5ch5XaMmVwFBK3_NeGysw2yNBhJh6nn2Cr__mAyzH2JFYdsDAx02tVNrm0G0oyML69qn9ENhnlg-6ODITVTYbWHZH4MtRY0JL4A-zyQi6XP0E181ZNkOkQeMAi1C2JlMFGoGgjLK-IZ8JWaUUoBnf3l8ILf7baaDu9VVNZ4wzE0-qzfeuEPDIuT4RRYUGVVjTt1-D5lbVJdjkVTWDH8",
               },
               {
@@ -379,6 +585,7 @@ function App() {
                 desc: "Cost-effective solutions for large bulk shipments. FCL and LCL options available globally.",
                 icon: <Tsunami />,
                 color: "info",
+                useCase: "Enterprise",
                 img: "https://lh3.googleusercontent.com/aida-public/AB6AXuB8F2nZPPpmc-_qzsyrPYWTUDFlN1n6QcIK6XnxMnxT9VSME1GoM-dUiB-3XMAtpxQ-Dqbx6T2YjE-QWDYvS1BaB6Pw1okMEAbtRt5ZvOvBZ0c5ZIJn2GBrodYA5Gl8CZ5H8gBZqo6H8yrD8lquHY_3VROsZJQ7Tev7UnaoL6Lkj88JG_XujfzcFuxQ6w9HeTpN6pI6q36p9ucbX32jSzyGdLKFY4Ow5D6UO-s22r73Nic6M0SMo5BR4veD43sbC9zQTx_x-6hH1DYb",
               },
               {
@@ -386,6 +593,7 @@ function App() {
                 desc: "Reliable domestic and cross-border trucking. Flexible fleet options for every cargo size.",
                 icon: <Truck />,
                 color: "warning",
+                useCase: "E-commerce",
                 img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAWFPnVDDEv_oGrpXrmTJxB1pViedY59X5Kiqm2JvxWT8LVHW8gSoZTCNgGZYoUkWtceuc5NTJ3PZCm7V99O1L31PgoveO64OmtJjREYy9396eW4cqP0oIoixNIkWSzIj0M_QqVQRcpxqAVBZSDXk7aSKkOckIf4IhreknjJYQgBafFIgKY4gYacfT82apOVZQ2MEnIBTSpatfyF65kgCRZd3fDxttS4w6WcDIDLVvhaWxglsAJ009Pnkf-6w5mkGobW8JmqgZ1U5yR",
               },
               {
@@ -393,50 +601,95 @@ function App() {
                 desc: "Secure storage solutions with modern inventory management systems. Short and long-term.",
                 icon: <BoxSeam />,
                 color: "secondary",
+                useCase: "SME",
                 img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBZusvrDQZUMQHyU6iKgj7aTYUDQC2hq904obUqbEMZ1Q_A4S5zUon43TEwJzHKAIFWqmrmfECRLkKdym41idOU1k3uPDxKzJrX1xF_dxXVDv0kkS0H-TY2nNU11WwOqmuTlUvpquHZBaRxx3yDrG0ButfpCkpPNqCTZMw3eBnDUGBkVoO0gutz1_96BJB5TLGD4B3AzE2mNW3C9JAOPGJWNA6m6O1ebh0kFSxqQS5_3p3ju8xKkWDw84_aig20jh4dW1TA7tdjsqZm",
               },
-            ].map((svc, idx) => (
+            ].map((svc, idx) => {
+              const isFeatured = idx < 2; // Air Freight & Ocean Cargo are featured
+              return (
               <Col lg={6} key={idx}>
-                <Card className="h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                  <Card
+                    className={`service-card h-100 border-0 rounded-4 overflow-hidden ${
+                      isFeatured ? "service-card--featured" : ""
+                    }`}
+                  >
                   <Row className="g-0 h-100">
                     <Col md={5}>
+                        <div className="service-card__image position-relative h-100">
                       <img
                         src={svc.img}
                         alt={svc.title}
                         className="w-100 h-100 object-fit-cover"
                         style={{ minHeight: "200px" }}
                       />
+                        </div>
                     </Col>
                     <Col md={7}>
-                      <Card.Body className="d-flex flex-column justify-content-center h-100 p-4">
+                        <Card.Body
+                          className="d-flex flex-column justify-content-center h-100 p-4"
+                          style={{ backgroundColor: "#2a2a2a" }}
+                        >
+                          <div className="d-flex align-items-center gap-2 mb-3">
                         <div
-                          className={`text-${svc.color} bg-${svc.color} bg-opacity-10 p-2 rounded mb-3 d-inline-block w-auto`}
+                              className={`service-icon-wrapper service-icon--${svc.title.toLowerCase().replace(/\s+/g, '-')} p-2 rounded d-inline-block w-auto`}
                         >
                           {svc.icon}
                         </div>
-                        <Card.Title className="fw-bold">{svc.title}</Card.Title>
-                        <Card.Text className="text-muted small">
+                            {svc.useCase && (
+                              <Badge
+                                className={`service-badge service-badge--${svc.useCase.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-')} rounded-pill`}
+                                style={{ 
+                                  backgroundColor: svc.useCase === "Enterprise" ? "#4c6fff" : 
+                                                  svc.useCase === "E-commerce" ? "#8b5cf6" : 
+                                                  svc.useCase === "SME" ? "#059669" : "transparent",
+                                  color: "#ffffff",
+                                  border: svc.useCase === "Enterprise" ? "1px solid rgba(76, 111, 255, 0.35)" :
+                                         svc.useCase === "E-commerce" ? "1px solid rgba(139, 92, 246, 0.35)" :
+                                         svc.useCase === "SME" ? "1px solid rgba(5, 150, 105, 0.35)" : "none"
+                                }}
+                              >
+                                {svc.useCase}
+                              </Badge>
+                            )}
+                          </div>
+                          <Card.Title className="fw-bold text-white mb-2">
+                            {svc.title}
+                          </Card.Title>
+                          <Card.Text className="text-white-50 small mb-3">
                           {svc.desc}
                         </Card.Text>
                         <a
                           href="#"
-                          className="fw-bold text-decoration-none text-dark mt-auto d-flex align-items-center gap-1"
+                            className="service-card__cta mt-auto d-flex align-items-center gap-1"
                         >
-                          Details <ChevronRight size={14} />
+                            Explore service <ChevronRight size={14} />
                         </a>
                       </Card.Body>
                     </Col>
                   </Row>
                 </Card>
               </Col>
-            ))}
+              );
+            })}
           </Row>
+            </div>
+          </div>
         </Container>
       </section>
 
+      {/* --- Section Divider --- */}
+      <div className="text-center my-5">
+        <small
+          className="text-uppercase fw-semibold text-muted"
+          style={{ letterSpacing: "0.18em", fontSize: "0.85rem" }}
+        >
+          From Logistics Services to Digital Experience
+        </small>
+      </div>
+
       {/* --- 6. APP DOWNLOAD SECTION --- */}
       <section className="py-5">
-        <Container>
+        <Container fluid="xl">
           <div
             className="p-5 rounded-5 position-relative overflow-hidden"
             style={styles.appSection}
@@ -546,4 +799,4 @@ function App() {
   );
 }
 
-export default App;
+export default HomePage;

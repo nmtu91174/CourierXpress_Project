@@ -4,7 +4,7 @@
         background-color: black;
         z-index: 0;
         width: 100%;
-        height: 92vh;
+        height: 93vh;
         /* Chiều cao bằng 85% màn hình thiết bị */
         min-height: 500px;
         /* Chiều cao tối thiểu để không bị quá bé trên mobile */

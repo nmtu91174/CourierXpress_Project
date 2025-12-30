@@ -29,7 +29,7 @@ const HeroVideo = () => {
       <Container>
         <div className="hero-content">
           <h1 ref={titleRef} className="hero-title">
-            Delivery at <span className="text-danger">Light Speed</span>
+            Delivery at <span className="text-danger">PRECISION Speed</span>
           </h1>
           <p ref={subtitleRef} className="hero-subtitle">
             Reliable logistics solutions for your business. We deliver packages

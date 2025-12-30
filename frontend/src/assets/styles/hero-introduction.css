@@ -1,0 +1,151 @@
+/* ======================================================
+   HERO (INTRODUCTION) SECTION - DQN LUXURY STYLE
+   ====================================================== */
+
+/* Color Tokens - Burnt Orange (Enterprise) */
+:root {
+  --cx-orange: #D04A02;
+  --cx-orange-hover: #B63F02;
+  --cx-orange-soft: rgba(208, 74, 2, 0.15);
+}
+
+/* Hero Highlight Text */
+.hero-title-highlight {
+  color: var(--cx-orange);
+}
+
+/* Hero Underline */
+.hero-underline {
+  color: var(--cx-orange-soft);
+}
+
+.hero-underline path {
+  stroke: var(--cx-orange-soft);
+  fill: none;
+}
+
+/* Primary CTA Button */
+.hero-actions .btn-primary,
+.hero-actions .btn[style*="FF4500"] {
+  background-color: var(--cx-orange) !important;
+  border-color: var(--cx-orange) !important;
+  color: white !important;
+  font-weight: bold;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.hero-actions .btn-primary:hover,
+.hero-actions .btn[style*="FF4500"]:hover {
+  background-color: var(--cx-orange-hover) !important;
+  border-color: var(--cx-orange-hover) !important;
+}
+
+/* Hero Cards */
+.hero-card {
+  will-change: transform, opacity;
+}
+
+/* Hero Cards Wrapper */
+.hero-cards-wrapper {
+  max-width: 560px;
+  margin-left: 0;
+}
+
+@media (max-width: 991px) {
+  .hero-cards-wrapper {
+    max-width: 100%;
+  }
+}
+
+/* Card Dark (Insurance) - Lighter depth, supporting role */
+.hero-card-dark {
+  background: linear-gradient(135deg, #3a4147, #2a2f35) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.hero-card-dark:hover {
+  transform: translate3d(0, -2px, 0);
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Wide Enterprise Card - Deeper depth, premium feel */
+.hero-card-wide {
+  background: linear-gradient(135deg, #2d3339, #1a1d22) !important;
+  min-height: 180px;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+.hero-card-wide:hover {
+  transform: translate3d(0, -2px, 0);
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Arrow Icon - Reduced dominance */
+.hero-card-arrow {
+  opacity: 0.65;
+  transition: opacity 0.25s ease;
+}
+
+.hero-card:hover .hero-card-arrow {
+  opacity: 0.85;
+}
+
+/* Icon in Wide Card */
+.hero-card-icon {
+  background: rgba(255, 255, 255, 0.12);
+  padding: 10px;
+  border-radius: 10px;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+}
+
+.hero-card-wide:hover .hero-card-icon {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Enterprise Pills */
+.hero-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: all 0.25s ease;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.hero-pill:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translate3d(0, -1px, 0);
+}
+
+/* Hero Actions Alignment */
+.hero-actions {
+  margin-top: auto;
+}
+
+@media (max-width: 991px) {
+  .hero-actions {
+    margin-top: 2rem;
+  }
+}
+
+/* Performance Optimization */
+.hero-eyebrow,
+.hero-title-line,
+.hero-title-highlight,
+.hero-underline,
+.hero-description,
+.hero-actions > * {
+  will-change: transform, opacity;
+}
+

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Navbar, Container, Nav, Button, NavDropdown } from "react-bootstrap";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { FaShippingFast, FaSitemap } from "react-icons/fa";
+import { FaSitemap } from "react-icons/fa";
 import UserMenu from "./layout/UserMenu";
 
 const Header = ({ className = "" }) => {
@@ -59,24 +59,22 @@ const Header = ({ className = "" }) => {
   };
 
   return (
-    <Navbar bg="white" expand="lg" className={`shadow-sm ${className}`}>
-      <Container>
+    <Navbar 
+      bg="white" 
+      expand="lg" 
+      className={`shadow-sm ${className}`}
+      style={{ 
+        position: "sticky",
+        top: 0,
+        zIndex: 1030
+      }}
+    >
+      <Container fluid="xl">
         {/* BRAND */}
         <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
-          <FaShippingFast
-            size={46}
-            style={{ transform: "scaleX(-1)" }}
-            className="me-2 text-danger"
-          />
-          <div className="d-flex flex-column">
-            <span className="fw-bold fs-3 lh-1">CourierXpress</span>
-            <span
-              className="fw-bold fs-10 text-dark lh-1"
-              style={{ letterSpacing: "1px" }}
-            >
-              Logistics
-            </span>
-          </div>
+          <h4 className="fw-bold m-0 text-dark mb-0">
+            Courier<span style={{ color: "#ff4d24" }}>X</span>press
+          </h4>
         </Navbar.Brand>
 
         <Navbar.Toggle />

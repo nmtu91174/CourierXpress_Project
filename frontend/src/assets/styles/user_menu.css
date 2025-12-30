@@ -28,7 +28,7 @@
 
 .user-menu-trigger:focus {
   outline: none;
-  background: rgba(46, 144, 250, 0.1);
+  background: rgba(208, 74, 2, 0.1);
 }
 
 /* Avatar in trigger */
@@ -67,7 +67,7 @@
 
 .chevron-icon.open {
   transform: rotate(180deg);
-  color: #2e90fa;
+  color: #D04A02;
 }
 
 /* ================== DROPDOWN PANEL ================== */
@@ -193,8 +193,8 @@
 
 .user-menu-item:focus {
   outline: none;
-  background: rgba(46, 144, 250, 0.08);
-  color: #2e90fa;
+  background: rgba(208, 74, 2, 0.08);
+  color: #D04A02;
 }
 
 .user-menu-item.logout {
