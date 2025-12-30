@@ -1,9 +1,9 @@
 // frontend/src/pages/admin/CustomerManagement.jsx
 // Admin Customer Search / Filter Page - REAL DATA - DQN LUXURY
 
-import React, { useEffect, useState } from "react";
-import { Card, Table, Form, InputGroup, Spinner } from "react-bootstrap";
-import { FaSearch, FaUser, FaPhone, FaEnvelope, FaShoppingCart } from "react-icons/fa";
+import React, { useEffect, useState, useMemo } from "react";
+import { Card, Table, Form, InputGroup, Spinner, Button } from "react-bootstrap";
+import { FaSearch, FaUser, FaPhone, FaEnvelope, FaShoppingCart, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import "../../assets/styles/admin.css";
 import "../../assets/styles/order-table.css";
 import "../../assets/styles/StatusBadge.css";
@@ -15,6 +15,10 @@ export default function CustomerManagement() {
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     fetchCustomers();
@@ -75,6 +79,20 @@ export default function CustomerManagement() {
     }
   };
 
+  // Pagination calculation
+  const paginatedCustomers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredCustomers.slice(startIndex, endIndex);
+  }, [filteredCustomers, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredCustomers.length / pageSize);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchText]);
+
   if (loading) {
     return (
       <div className="container-fluid py-4">
@@ -91,7 +109,12 @@ export default function CustomerManagement() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="fw-bold mb-0">Customer Management</h2>
         <div className="text-muted">
-          Tổng: <strong>{filteredCustomers.length}</strong> khách hàng
+          Total: <strong>{filteredCustomers.length}</strong> customers
+          {filteredCustomers.length > 0 && (
+            <span className="ms-2">
+              (Page {currentPage}/{totalPages})
+            </span>
+          )}
         </div>
       </div>
 
@@ -136,7 +159,7 @@ export default function CustomerManagement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCustomers.map((customer) => (
+                  {paginatedCustomers.map((customer) => (
                     <tr key={customer.id} className="customer-row">
                       <td>
                         <div className="d-flex align-items-center">
@@ -180,6 +203,85 @@ export default function CustomerManagement() {
           )}
         </Card.Body>
       </Card>
+
+      {/* Pagination UI */}
+      {filteredCustomers.length > 0 && (
+        <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+          {/* Page size selector */}
+          <div className="d-flex align-items-center mb-2">
+            <span className="me-2 small text-muted">Rows per page:</span>
+            <Form.Select
+              size="sm"
+              style={{ width: "90px" }}
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </Form.Select>
+          </div>
+
+          {/* Pagination controls */}
+          <div className="d-flex align-items-center gap-3 mb-2">
+            <Button
+              variant="outline-primary"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              style={{
+                minWidth: "100px",
+                padding: "8px 20px",
+                borderRadius: "8px",
+                border: "1px solid rgba(37, 99, 235, 0.3)",
+                background: currentPage === 1 
+                  ? "rgba(0, 0, 0, 0.05)" 
+                  : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
+                color: currentPage === 1 ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+                fontWeight: 600,
+                transition: "all 0.3s ease",
+                boxShadow: currentPage === 1 ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+              }}
+            >
+              <FaChevronLeft className="me-1" />
+              Previous
+            </Button>
+
+            <div className="d-flex align-items-center gap-2">
+              <span className="small text-muted">
+                Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+              </span>
+            </div>
+
+            <Button
+              variant="outline-primary"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              style={{
+                minWidth: "100px",
+                padding: "8px 20px",
+                borderRadius: "8px",
+                border: "1px solid rgba(37, 99, 235, 0.3)",
+                background: currentPage === totalPages 
+                  ? "rgba(0, 0, 0, 0.05)" 
+                  : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
+                color: currentPage === totalPages ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+                fontWeight: 600,
+                transition: "all 0.3s ease",
+                boxShadow: currentPage === totalPages ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+              }}
+            >
+              Next
+              <FaChevronRight className="ms-1" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

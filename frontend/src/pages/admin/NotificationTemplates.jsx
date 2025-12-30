@@ -9,6 +9,7 @@ import "../../assets/styles/admin.css";
 import "../../assets/styles/order-table.css";
 import "../../assets/styles/order.css";
 import "../../assets/styles/notification-templates.css";
+import "../../assets/styles/dashboard.css";
 
 export default function NotificationTemplates() {
   const API_BASE = "http://localhost:8888/api/admin";
@@ -220,7 +221,11 @@ export default function NotificationTemplates() {
     <div className="container-fluid py-4 notification-templates-page">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="fw-bold mb-0">Notification Template Management</h2>
-        <Button variant="primary" onClick={() => handleOpenModal()}>
+        <Button 
+          variant="primary" 
+          onClick={() => handleOpenModal()}
+          className="btn-lux-primary"
+        >
           <FaPlus className="me-2" />
           Add Template
         </Button>
@@ -232,7 +237,11 @@ export default function NotificationTemplates() {
             <div className="text-center py-5">
               <FaBell size={48} className="text-muted mb-3" />
               <p className="text-muted">Chưa có template nào</p>
-              <Button variant="primary" onClick={() => handleOpenModal()}>
+              <Button 
+                variant="primary" 
+                onClick={() => handleOpenModal()}
+                className="btn-lux-primary"
+              >
                 <FaPlus className="me-2" />
                 Create First Template
               </Button>
