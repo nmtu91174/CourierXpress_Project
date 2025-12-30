@@ -72,9 +72,14 @@ const Header = ({ className = "" }) => {
       <Container fluid="xl">
         {/* BRAND */}
         <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
-          <h4 className="fw-bold m-0 text-dark mb-0">
-            Courier<span style={{ color: "#ff4d24" }}>X</span>press
-          </h4>
+          <div className="d-flex flex-column align-items-center">
+            <h4 className="fw-bold m-0 text-dark mb-0">
+              Courier<span style={{ color: "#ff4d24" }}>X</span>press
+            </h4>
+            <small className="fw-bold text-dark" style={{ fontSize: "0.9rem", letterSpacing: "1px", lineHeight: "1" }}>
+              Logistics
+            </small>
+          </div>
         </Navbar.Brand>
 
         <Navbar.Toggle />
