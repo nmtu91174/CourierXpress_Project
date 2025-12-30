@@ -162,5 +162,120 @@ export const invoiceService = {
       throw error;
     }
   },
+
+  /**
+   * Get guest invoice by order code (public, no authentication required)
+   * @param {string} orderCode - Order code (e.g., "ORD0001")
+   * @returns {Promise<Object>} Invoice data with order and fees
+   */
+  async getGuestInvoiceByOrderCode(orderCode) {
+    try {
+      const response = await fetch(`${API_BASE}/public/get_guest_invoice.php?order_code=${encodeURIComponent(orderCode)}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.status !== "success") {
+        throw new Error(result.message || "Failed to fetch invoice. Please check the order code.");
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error("invoiceService.getGuestInvoiceByOrderCode error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get invoice by token (public, for email links)
+   * @param {string} token - Invoice access token
+   * @param {string} orderCode - Order code (required with token)
+   * @returns {Promise<Object>} Invoice data with order and fees
+   */
+  async getInvoiceByToken(token, orderCode) {
+    try {
+      const queryParams = new URLSearchParams({
+        token: token,
+        order_code: orderCode,
+      });
+
+      const response = await fetch(`${API_BASE}/public/get_invoice_by_token.php?${queryParams}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.status !== "success") {
+        throw new Error(result.message || "Failed to fetch invoice. Invalid or expired token.");
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error("invoiceService.getInvoiceByToken error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Mark invoice as paid
+   * @param {number} invoiceId - Invoice ID
+   * @param {number} paymentMethodId - Payment method ID (optional)
+   * @param {number} amount - Payment amount (optional, defaults to invoice total_amount)
+   * @returns {Promise<Object>} Success response with updated invoice data
+   */
+  async markAsPaid(invoiceId, paymentMethodId = null, amount = null) {
+    try {
+      const payload = {
+        invoice_id: invoiceId,
+      };
+
+      if (paymentMethodId !== null) {
+        payload.payment_method_id = paymentMethodId;
+      }
+
+      if (amount !== null) {
+        payload.amount = amount;
+      }
+
+      const response = await fetch(`${API_BASE}/admin/invoices/mark_paid.php`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.status !== "success") {
+        throw new Error(result.message || "Failed to mark invoice as paid");
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error("invoiceService.markAsPaid error:", error);
+      throw error;
+    }
+  },
 };
 

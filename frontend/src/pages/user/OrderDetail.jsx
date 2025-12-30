@@ -91,14 +91,6 @@ const OrderDetail = () => {
           Order Details:{" "}
           <span className={styles.highlight}>{order.order_code}</span>
         </h2>
-        {/* View Invoice Button - Always show (backend will validate) */}
-        <Button
-          variant="outline"
-          className="btn-action-export-pdf d-flex align-items-center gap-2"
-          onClick={handleViewInvoice}
-        >
-          <FaFileInvoice /> View Invoice
-        </Button>
       </div>
 
       <Row>
@@ -235,6 +227,26 @@ const OrderDetail = () => {
                 <Col md={6}><strong>COD Amount:</strong> {formatCurrency(order.cod_amount)} đ</Col>
               </Row>
 
+              {/* Invoice Section - Same as TrackingResult (guest) */}
+              <Row className="mt-4">
+                <Col>
+                  <hr />
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong>Invoice</strong>
+                      <p className="text-muted small mb-0">View and download your invoice for this order</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="d-flex align-items-center gap-2"
+                      onClick={handleViewInvoice}
+                    >
+                      <FaFileInvoice className="me-2" /> View Invoice
+                    </Button>
+                  </div>
+                </Col>
+              </Row>
             </Card.Body>
           </Card>
         </Col>

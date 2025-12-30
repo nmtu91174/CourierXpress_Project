@@ -1,10 +1,12 @@
 // frontend/src/components/orders/OrderDetailPanel.jsx
 import React, { useEffect, useState } from "react";
-import { FaTimes, FaUserCheck, FaImage, FaWeight, FaRuler, FaTag, FaTruck, FaMoneyBillWave, FaUser, FaPhone, FaMapMarkerAlt, FaEnvelope, FaBox, FaInfoCircle } from "react-icons/fa";
+import { FaTimes, FaUserCheck, FaImage, FaWeight, FaRuler, FaTag, FaTruck, FaMoneyBillWave, FaUser, FaPhone, FaMapMarkerAlt, FaEnvelope, FaBox, FaInfoCircle, FaCalendarAlt, FaSave } from "react-icons/fa";
+import { Form, Button } from "react-bootstrap";
 import StatusBadge from "../common/StatusBadge";
 import ImageModal from "../common/ImageModal";
 import { ORDER_STATUS, canAdminAssignShipper, isTerminalStatus } from "../../constants/orderStatus";
 import hanoiData from "../../data/hanoi.json";
+import Swal from "sweetalert2";
 
 import "../../assets/styles/orderDetailPanel.css";
 import "../../assets/styles/imageModal.css";
@@ -31,6 +33,8 @@ export default function OrderDetailPanel({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [allImages, setAllImages] = useState([]); // Combined pickup + delivery + failed images
   const [fullOrderDetail, setFullOrderDetail] = useState(null); // Full order detail from API
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState(""); // Expected delivery date
+  const [savingDeliveryDate, setSavingDeliveryDate] = useState(false); // Loading state for save
 
   // Fetch full order detail from API when order.id changes
   // This ensures we have complete data (weight, service_type_name, etc.) even if passed order is incomplete
@@ -73,12 +77,25 @@ export default function OrderDetailPanel({
       const data = await res.json();
       if (data.status === "success" && data.data) {
         setFullOrderDetail(data.data);
+        // Set expected delivery date if available
+        if (data.data.expected_delivery_date) {
+          // Format date for input (YYYY-MM-DD)
+          const dateStr = data.data.expected_delivery_date;
+          const date = new Date(dateStr);
+          if (!isNaN(date.getTime())) {
+            setExpectedDeliveryDate(date.toISOString().split("T")[0]);
+          }
+        } else {
+          setExpectedDeliveryDate("");
+        }
       } else {
         setFullOrderDetail(null);
+        setExpectedDeliveryDate("");
       }
     } catch (error) {
       console.error("Error fetching order detail:", error);
       setFullOrderDetail(null);
+      setExpectedDeliveryDate("");
     }
   };
 
@@ -331,6 +348,59 @@ export default function OrderDetailPanel({
     setShowImageModal(true);
   };
 
+  // Handle save expected delivery date (Admin only)
+  const handleSaveDeliveryDate = async () => {
+    if (!normalizedOrder.id) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Order ID is missing",
+      });
+      return;
+    }
+
+    try {
+      setSavingDeliveryDate(true);
+      const res = await fetch("http://localhost:8888/api/admin/set_delivery_date.php", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          order_id: normalizedOrder.id,
+          expected_delivery_date: expectedDeliveryDate || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.status === "success") {
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Expected delivery date updated successfully",
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        // Refresh order detail to get updated data
+        if (normalizedOrder.id) {
+          fetchFullOrderDetail(normalizedOrder.id);
+        }
+      } else {
+        throw new Error(data.message || "Failed to update delivery date");
+      }
+    } catch (error) {
+      console.error("Error saving delivery date:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message || "Failed to update delivery date",
+      });
+    } finally {
+      setSavingDeliveryDate(false);
+    }
+  };
+
   return (
     <>
       {/* OVERLAY BACKGROUND - DQN Luxury Modal Style */}
@@ -396,6 +466,51 @@ export default function OrderDetailPanel({
               <small className="text-muted">Created Date</small>
               <div>{formatDate(normalizedOrder.created_at)}</div>
             </div>
+            {/* Expected Delivery Date - Admin only */}
+            {userRole === "admin" && (
+              <div className="luxury-info-item">
+                <small className="text-muted d-flex align-items-center">
+                  <FaCalendarAlt className="me-1" style={{ fontSize: "0.75rem" }} />
+                  Expected Delivery Date
+                </small>
+                <div className="d-flex align-items-center gap-2">
+                  <Form.Control
+                    type="date"
+                    value={expectedDeliveryDate}
+                    onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                    style={{ maxWidth: "200px" }}
+                    size="sm"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSaveDeliveryDate}
+                    disabled={savingDeliveryDate}
+                    className="d-flex align-items-center gap-1"
+                  >
+                    {savingDeliveryDate ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-1" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <FaSave /> Save
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+            {userRole !== "admin" && normalizedOrder.expected_delivery_date && (
+              <div className="luxury-info-item">
+                <small className="text-muted d-flex align-items-center">
+                  <FaCalendarAlt className="me-1" style={{ fontSize: "0.75rem" }} />
+                  Expected Delivery Date
+                </small>
+                <div>{formatDate(normalizedOrder.expected_delivery_date)}</div>
+              </div>
+            )}
             <div className="luxury-info-item">
               <small className="text-muted">Payment Method</small>
               <div>{paymentLabel}</div>

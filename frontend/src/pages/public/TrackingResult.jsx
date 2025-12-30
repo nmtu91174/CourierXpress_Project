@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { Container, Row, Col, Card, Badge, Spinner } from "react-bootstrap";
-import { FaTruck, FaCheckCircle, FaBox, FaMapMarkerAlt } from "react-icons/fa";
+import { useParams, useNavigate } from "react-router-dom";
+import { Container, Row, Col, Card, Badge, Spinner, Button } from "react-bootstrap";
+import { FaTruck, FaCheckCircle, FaBox, FaMapMarkerAlt, FaFileInvoice } from "react-icons/fa";
 import axios from "axios";
 import Swal from "sweetalert2";
 import styles from "../../assets/styles/TrackingResult.module.css";
@@ -25,6 +25,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const TrackingResult = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -244,6 +245,27 @@ const TrackingResult = () => {
               <Row className="mt-2">
                 <Col md={6}>
                   <strong>Payer:</strong> {formatPayerType(order.payer_type)}
+                </Col>
+              </Row>
+
+              {/* Invoice Section - Same as OrderDetail (customer) */}
+              <Row className="mt-4">
+                <Col>
+                  <hr />
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong>Invoice</strong>
+                      <p className="text-muted small mb-0">View and download your invoice for this order</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="d-flex align-items-center gap-2"
+                      onClick={() => navigate(`/invoice/${order.order_code}`)}
+                    >
+                      <FaFileInvoice className="me-2" /> View Invoice
+                    </Button>
+                  </div>
                 </Col>
               </Row>
             </Card.Body>

@@ -468,27 +468,145 @@
   margin: 0;
 }
 
-/* ================== PRINT STYLES ================== */
+/* ================== PRINT STYLES (window.print()) ================== */
 @media print {
+  /* 1. Reset toàn bộ layout app */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* 2. Ẩn toàn bộ UI không liên quan (header, sidebar, navigation, topbar) */
+  header,
+  .admin-content > header,
+  .admin-wrapper .admin-content > header,
+  .admin-content header,
+  nav:not(.invoice-section),
+  aside,
+  .sidebar,
+  .sidebar-overlay,
+  .sidebar-toggle-mobile,
+  .topbar,
+  .admin-sidebar,
+  .admin-header,
+  .admin-topbar,
+  .navbar,
+  .admin-navbar,
+  .admin-wrapper > header,
+  .admin-wrapper > aside,
+  /* Ẩn UserMenu và các phần tử liên quan */
+  .user-menu-wrapper,
+  .user-menu-trigger,
+  .user-menu-panel,
+  .user-menu-overlay,
+  .user-menu,
+  .dropdown-toggle,
+  .dropdown-menu,
+  [class*="user-menu"],
+  [class*="UserMenu"],
+  .no-print {
+    display: none !important;
+  }
+
+  /* 3. Ẩn action bars và buttons */
+  .invoice-view-page > .d-flex:first-child,
+  .invoice-view-page > div:first-child,
+  .invoice-view-page .d-flex.justify-content-between:first-child,
+  .invoice-view-page .btn,
+  .invoice-view-page a.btn,
+  .invoice-view-page .btn-action-export-pdf,
+  .invoice-view-page .btn-action-print,
+  .invoice-view-page .btn-action-export-excel,
+  .customer-invoice-view-page > .d-flex:first-child,
+  .customer-invoice-view-page > div:first-child,
+  .customer-invoice-view-page .btn,
+  .customer-invoice-view-page a.btn {
+    display: none !important;
+  }
+
+  /* 4. Ẩn container padding và background */
+  .invoice-view-page,
+  .customer-invoice-view-page {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 5. Chỉ in vùng invoice-content */
+  .invoice-content {
+    display: block !important;
+    width: 210mm !important;
+    min-height: 297mm;
+    margin: 0 auto !important;
+    padding: 15mm !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  /* 6. BẮT BUỘC bỏ scroll */
+  * {
+    overflow: visible !important;
+  }
+
+  body,
+  html {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* 7. Invoice content styles for print */
+  .invoice-content .card-lux {
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .invoice-content .card-body {
+    padding: 0 !important;
+  }
+
   .invoice-header,
   .invoice-cost-breakdown,
   .invoice-tax-table,
   .invoice-footer {
-    box-shadow: none;
-    border: 1px solid #dee2e6;
-    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #dee2e6 !important;
+    page-break-inside: avoid !important;
+    background: white !important;
   }
 
-  .invoice-print-header {
-    padding: 20px;
+  /* 8. Ngắt trang đúng */
+  .page-break {
+    page-break-before: always !important;
   }
 
-  .invoice-print-footer {
-    padding: 20px;
+  .invoice-header {
+    page-break-after: avoid !important;
   }
 
-  .no-print {
-    display: none !important;
+  .invoice-footer {
+    page-break-before: avoid !important;
+  }
+
+  /* 9. Fix màu khi in */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 10. Ẩn admin layout wrapper if exists */
+  .admin-wrapper,
+  .admin-content {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 

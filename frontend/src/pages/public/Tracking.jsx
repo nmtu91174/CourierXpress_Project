@@ -35,8 +35,8 @@ const Home = () => {
     if (!trackingid.trim()) {
       Swal.fire({
         icon: "warning",
-        title: "Chưa nhập mã vận đơn",
-        text: "Vui lòng nhập mã vận đơn để tra cứu.",
+        title: "Tracking code not entered",
+        text: "Please enter a tracking code to search.",
       });
       return;
     }
@@ -50,8 +50,8 @@ const Home = () => {
       if (response.data.exists) {
         Swal.fire({
           icon: "success",
-          title: "Mã vận đơn hợp lệ!",
-          text: "Chuyển sang trang chi tiết đơn hàng...",
+          title: "Valid tracking code!",
+          text: "Redirecting to order details...",
           timer: 1500,
           timerProgressBar: true,
           showConfirmButton: false,
@@ -62,16 +62,16 @@ const Home = () => {
       } else {
         Swal.fire({
           icon: "error",
-          title: "Không tìm thấy",
-          text: response.data.message || "Mã vận đơn không tồn tại.",
+          title: "Not found",
+          text: response.data.message || "Tracking code does not exist.",
         });
       }
     } catch (error) {
       console.error(error);
       Swal.fire({
         icon: "error",
-        title: "Lỗi server",
-        text: "Có lỗi xảy ra khi kiểm tra mã vận đơn.",
+        title: "Server error",
+        text: "An error occurred while checking the tracking code.",
       });
     }
   };
@@ -82,16 +82,16 @@ const Home = () => {
       <section className="hero-section">
         <div className="tracking-box tracking-box-lux">
           <h3 className="fw-bold mb-4 text-center tracking-title">
-            Theo dõi đơn hàng
+            Track Order
           </h3>
           <p className="text-muted text-center mb-4 tracking-subtitle">
-            Nhập mã vận đơn của bạn để tra cứu hành trình (VD: ORD1234)
+            Enter your tracking code to check the journey (e.g., ORD1234)
           </p>
 
           <Form className="d-flex gap-2 tracking-form">
             <Form.Control
               type="text"
-              placeholder="Nhập mã vận đơn..."
+              placeholder="Enter tracking code..."
               size="lg"
               className="tracking-input"
               value={trackingid}
@@ -111,7 +111,7 @@ const Home = () => {
       <section className="py-5 features-section">
         <Container>
           <h2 className="text-center fw-bold mb-5 section-title-lux">
-            Tại sao chọn CourierXpress?
+            Why choose CourierXpress?
           </h2>
           <Row>
             <Col md={4} className="mb-4">
@@ -119,9 +119,9 @@ const Home = () => {
                 <div className="feature-icon-wrap mb-3">
                   <FaShippingFast className="feature-icon" />
                 </div>
-                <Card.Title className="fw-semibold">Giao hàng siêu tốc</Card.Title>
+                <Card.Title className="fw-semibold">Super fast delivery</Card.Title>
                 <Card.Text className="text-muted">
-                  Cam kết giao hàng đúng hẹn với mạng lưới logistics rộng khắp.
+                  Commitment to on-time delivery with a wide logistics network.
                 </Card.Text>
               </Card>
             </Col>
@@ -131,9 +131,9 @@ const Home = () => {
                 <div className="feature-icon-wrap mb-3">
                   <FaUserShield className="feature-icon" />
                 </div>
-                <Card.Title className="fw-semibold">An toàn tuyệt đối</Card.Title>
+                <Card.Title className="fw-semibold">Absolute safety</Card.Title>
                 <Card.Text className="text-muted">
-                  Bảo hiểm hàng hóa 100% và quy trình xử lý chuyên nghiệp.
+                  100% cargo insurance and professional handling process.
                 </Card.Text>
               </Card>
             </Col>
@@ -143,9 +143,9 @@ const Home = () => {
                 <div className="feature-icon-wrap mb-3">
                   <FaGlobeAsia className="feature-icon" />
                 </div>
-                <Card.Title className="fw-semibold">Tra cứu thời gian thực</Card.Title>
+                <Card.Title className="fw-semibold">Real-time tracking</Card.Title>
                 <Card.Text className="text-muted">
-                  Tracking System giúp bạn biết đơn hàng đang ở đâu.
+                  Tracking System helps you know where your order is.
                 </Card.Text>
               </Card>
             </Col>
@@ -158,17 +158,17 @@ const Home = () => {
           <Row className="small">
             <Col>
               <a href="/" className="text-decoration-none text-secondary">
-                Trang chủ
+                Home
               </a>
             </Col>
             <Col>
               <a href="/tracking" className="text-decoration-none text-secondary">
-                Tra cứu vận đơn
+                Track Order
               </a>
             </Col>
             <Col>
               <a href="/login" className="text-decoration-none text-secondary">
-                Đăng nhập Admin/Agent
+                Login Admin/Agent
               </a>
             </Col>
           </Row>

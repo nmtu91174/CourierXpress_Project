@@ -17,8 +17,7 @@ const HeroVideo = () => {
         className="hero-bg-video"
         autoPlay
         loop
-        muted={true}
-        defaultMuted={true}
+        muted
         playsInline
       >
         <source src="/videos/CourierXpress.mp4" type="video/mp4" />

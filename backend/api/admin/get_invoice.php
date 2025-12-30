@@ -48,15 +48,38 @@ if ($invoiceId <= 0 && $orderId <= 0) {
 if ($invoiceId > 0) {
     $sql = "
         SELECT 
-            inv.*,
-            o.*,
+            inv.id AS invoice_id,
+            inv.order_id,
+            inv.invoice_number,
+            inv.total_amount,
+            inv.status AS invoice_status,
+            inv.payment_method_id AS invoice_payment_method_id,
+            inv.created_at AS invoice_created_at,
+            inv.updated_at AS invoice_updated_at,
+            o.id AS order_id,
+            o.order_code,
+            o.status AS order_status,
+            o.sender_name,
+            o.sender_phone,
+            o.sender_address,
+            o.receiver_name,
+            o.receiver_phone,
+            o.receiver_address,
+            o.total_shipping_fee,
+            o.cod_amount,
+            o.penalty_fee,
+            o.weight,
+            o.service_type,
+            o.notes,
+            o.created_at AS order_created_at,
             pm.name AS payment_method_name,
             pm.code AS payment_method_code,
             st.name AS service_type_name,
             st.fee AS service_type_fee,
             u_agent.name AS agent_name,
             u_shipper.name AS shipper_name,
-            u_customer.name AS customer_name
+            u_customer.name AS customer_name,
+            u_customer.email AS customer_email
         FROM invoices inv
         LEFT JOIN orders o ON inv.order_id = o.id
         LEFT JOIN payment_methods pm ON inv.payment_method_id = pm.id
@@ -77,15 +100,38 @@ if ($invoiceId > 0) {
 } else {
     $sql = "
         SELECT 
-            inv.*,
-            o.*,
+            inv.id AS invoice_id,
+            inv.order_id,
+            inv.invoice_number,
+            inv.total_amount,
+            inv.status AS invoice_status,
+            inv.payment_method_id AS invoice_payment_method_id,
+            inv.created_at AS invoice_created_at,
+            inv.updated_at AS invoice_updated_at,
+            o.id AS order_id,
+            o.order_code,
+            o.status AS order_status,
+            o.sender_name,
+            o.sender_phone,
+            o.sender_address,
+            o.receiver_name,
+            o.receiver_phone,
+            o.receiver_address,
+            o.total_shipping_fee,
+            o.cod_amount,
+            o.penalty_fee,
+            o.weight,
+            o.service_type,
+            o.notes,
+            o.created_at AS order_created_at,
             pm.name AS payment_method_name,
             pm.code AS payment_method_code,
             st.name AS service_type_name,
             st.fee AS service_type_fee,
             u_agent.name AS agent_name,
             u_shipper.name AS shipper_name,
-            u_customer.name AS customer_name
+            u_customer.name AS customer_name,
+            u_customer.email AS customer_email
         FROM orders o
         LEFT JOIN invoices inv ON o.id = inv.order_id
         LEFT JOIN payment_methods pm ON inv.payment_method_id = pm.id
@@ -165,19 +211,20 @@ $feesStmt->close();
 // BUILD RESPONSE
 // ==========================
 $invoice = [
-    "id" => (int)$row["id"],
+    "id" => (int)$row["invoice_id"],
     "invoice_number" => $row["invoice_number"],
     "total_amount" => (float)$row["total_amount"],
-    "status" => $row["status"],
-    "payment_method_id" => $row["payment_method_id"] ? (int)$row["payment_method_id"] : null,
+    "status" => $row["invoice_status"], // ✅ FIX: Use invoice_status, not order status
+    "payment_method_id" => $row["invoice_payment_method_id"] ? (int)$row["invoice_payment_method_id"] : null,
     "payment_method_name" => $row["payment_method_name"],
     "payment_method_code" => $row["payment_method_code"],
-    "created_at" => $row["created_at"],
+    "created_at" => $row["invoice_created_at"],
 ];
 
 $order = [
-    "id" => (int)$row["order_id"] ?? (int)$row["id"],
+    "id" => (int)$row["order_id"],
     "order_code" => $row["order_code"],
+    "status" => (int)$row["order_status"], // ✅ FIX: Use order_status explicitly
     "sender_name" => $row["sender_name"],
     "sender_phone" => $row["sender_phone"],
     "sender_address" => $row["sender_address"],
@@ -194,6 +241,7 @@ $order = [
     "agent_name" => $row["agent_name"],
     "shipper_name" => $row["shipper_name"],
     "customer_name" => $row["customer_name"],
+    "customer_email" => $row["customer_email"],
     "notes" => $row["notes"],
     "created_at" => $row["created_at"],
     "fees" => $fees,

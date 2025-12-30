@@ -8,6 +8,7 @@ import { FaFileInvoice, FaEye, FaPrint, FaFileExcel, FaSearch, FaSync, FaDownloa
 import Swal from "sweetalert2";
 import { invoiceService } from "../../services/invoice.service";
 import InvoiceStatusBadge from "../../components/common/InvoiceStatusBadge";
+import { formatInvoiceNumber } from "../../utils/invoiceFormatter";
 import "../../assets/styles/invoice.css";
 import "../../assets/styles/order-table.css";
 
@@ -278,7 +279,7 @@ export default function InvoiceList() {
                           onClick={() => navigate(`/admin/invoices/${invoice.id}`)}
                         >
                           <td className="fw-semibold text-primary" data-label="Invoice #">
-                            <span className="order-code">{invoice.invoice_number}</span>
+                            <span className="order-code">{formatInvoiceNumber(invoice.invoice_number)}</span>
                           </td>
                           <td data-label="Order Code">
                             {invoice.order?.order_code || "N/A"}
@@ -329,12 +330,12 @@ export default function InvoiceList() {
                               >
                                 <FaDownload />
                               </Button>
-                              {/* Email - Purple (#7c3aed) */}
+                              {/* Resend Invoice Email to Customer - Purple (#7c3aed) */}
                               <Button
                                 size="sm"
                                 variant="outline"
                                 className="order-action-btn btn-action-email"
-                                title="Send Invoice via Email"
+                                title="Resend invoice email to customer"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate(`/admin/invoices/${invoice.id}?action=email`);

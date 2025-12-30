@@ -3,6 +3,7 @@
 
 import React from "react";
 import { FaFileInvoice, FaBuilding, FaCalendarAlt } from "react-icons/fa";
+import { formatInvoiceNumber } from "../../utils/invoiceFormatter";
 import "../../assets/styles/invoice.css";
 
 /**
@@ -31,7 +32,7 @@ export default function InvoiceHeader({ invoiceData, orderData, isPrint = false 
             <div>
               <label className="invoice-label">INVOICE</label>
               <div className="invoice-number">
-                {invoiceData?.invoice_number || orderData?.invoice_number || "N/A"}
+                {formatInvoiceNumber(invoiceData?.invoice_number || orderData?.invoice_number) || "N/A"}
               </div>
             </div>
           </div>

@@ -1,10 +1,11 @@
-// frontend/src/pages/Invoice/CustomerInvoiceView.jsx
-// Customer Invoice View Page (Read-only, Enterprise UX)
+// frontend/src/pages/Invoice/PublicInvoiceView.jsx
+// Public Invoice View - Token-based access (for email links)
+// Route: /invoice/view?token=xxx&order_code=ORD0004
 
 import React, { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { Card, Row, Col, Button } from "react-bootstrap";
-import { FaArrowLeft, FaDownload } from "react-icons/fa";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { Card, Row, Col, Button, Spinner, Alert } from "react-bootstrap";
+import { FaDownload, FaArrowLeft } from "react-icons/fa";
 import { invoiceService } from "../../services/invoice.service";
 import { exportService } from "../../services/export.service";
 import { formatInvoiceNumber } from "../../utils/invoiceFormatter";
@@ -14,9 +15,12 @@ import TaxTable from "../../components/invoice/TaxTable";
 import InvoiceFooter from "../../components/invoice/InvoiceFooter";
 import "../../assets/styles/invoice.css";
 
-export default function CustomerInvoiceView() {
-  const { orderId } = useParams(); // order ID from route
+export default function PublicInvoiceView() {
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const token = searchParams.get("token");
+  const orderCode = searchParams.get("order_code");
+  
   const [invoiceData, setInvoiceData] = useState(null);
   const [orderData, setOrderData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,36 +28,40 @@ export default function CustomerInvoiceView() {
   const printRef = useRef(null);
 
   useEffect(() => {
-    fetchInvoiceDetail();
-  }, [orderId]);
+    if (token && orderCode) {
+      fetchInvoiceByToken();
+    } else {
+      setError("Token and order code are required");
+      setLoading(false);
+    }
+  }, [token, orderCode]);
 
-  const fetchInvoiceDetail = async () => {
+  const fetchInvoiceByToken = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Get invoice by order ID (backend will validate ownership)
-      const data = await invoiceService.getCustomerInvoiceByOrderId(parseInt(orderId));
+      const data = await invoiceService.getInvoiceByToken(token, orderCode);
       setInvoiceData(data.invoice || data);
       setOrderData(data.order || data);
-    } catch (error) {
-      console.error("Error fetching customer invoice:", error);
-      setError(error.message || "Failed to load invoice. Please check if this invoice belongs to your order.");
+    } catch (err) {
+      console.error("Error fetching invoice by token:", err);
+      setError(err.message || "Failed to load invoice. Invalid or expired token.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExportPDF = async () => {
+  const handleDownloadPDF = async () => {
     if (printRef.current) {
       try {
         await exportService.exportInvoiceToPDF(
           printRef.current,
-          invoiceData?.invoice_number || `INV-${orderId}`
+          invoiceData?.invoice_number || `INV_${orderCode}`
         );
-      } catch (error) {
-        console.error("Error exporting PDF:", error);
-        alert("Failed to export PDF. Please try again.");
+      } catch (err) {
+        console.error("Error exporting PDF:", err);
+        alert("Failed to download PDF. Please try again.");
       }
     }
   };
@@ -62,37 +70,22 @@ export default function CustomerInvoiceView() {
     return (
       <div className="container-fluid py-4">
         <div className="text-center py-5">
-          <div className="spinner-border text-primary" role="status">
+          <Spinner animation="border" role="status">
             <span className="visually-hidden">Loading...</span>
-          </div>
+          </Spinner>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || (!invoiceData && !orderData)) {
     return (
       <div className="container-fluid py-4">
         <Card className="card-lux">
           <Card.Body className="text-center py-5">
-            <p className="text-danger mb-3">{error}</p>
-            <Link to="/orders" className="btn btn-primary">
-              <FaArrowLeft className="me-2" /> Back to My Orders
-            </Link>
-          </Card.Body>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!invoiceData && !orderData) {
-    return (
-      <div className="container-fluid py-4">
-        <Card className="card-lux">
-          <Card.Body className="text-center py-5">
-            <p className="text-muted">Invoice not found for this order.</p>
-            <Link to="/orders" className="btn btn-primary">
-              <FaArrowLeft className="me-2" /> Back to My Orders
+            <Alert variant="danger">{error || "Invoice not found. Please check the link."}</Alert>
+            <Link to="/" className="btn btn-primary mt-3">
+              <FaArrowLeft className="me-2" /> Back to Home
             </Link>
           </Card.Body>
         </Card>
@@ -101,14 +94,11 @@ export default function CustomerInvoiceView() {
   }
 
   // Calculate subtotal for tax table
-  // Subtotal = invoice total / (1 + VAT rate)
-  // NOTE: COD amount is NOT included in invoice calculation
   const vatRate = 0.1;
-  const subtotal = invoiceData?.total_amount 
-    ? invoiceData.total_amount / (1 + vatRate) // Exclude VAT from total
+  const subtotal = invoiceData?.total_amount
+    ? invoiceData.total_amount / (1 + vatRate)
     : (() => {
-        // Fallback: calculate from order fees (excluding COD)
-        const feesTotal = orderData?.fees 
+        const feesTotal = orderData?.fees
           ? orderData.fees
               .filter(f => f.fee_code !== "cod_amount_value")
               .reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0)
@@ -118,22 +108,22 @@ export default function CustomerInvoiceView() {
       })();
 
   return (
-    <div className="invoice-view-page container-fluid py-4">
-      {/* Action Bar - Customer View (Simple) - Hidden when printing */}
+    <div className="customer-invoice-view-page container-fluid py-4">
+      {/* Action Bar - Public Token View (Simple) - Hidden when printing */}
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 no-print">
         <div>
-          <Link to="/orders" className="btn btn-outline-secondary mb-2">
-            <FaArrowLeft className="me-2" /> Back to My Orders
+          <Link to="/" className="btn btn-outline-secondary mb-2">
+            <FaArrowLeft className="me-2" /> Back to Home
           </Link>
           <h2 className="fw-bold mb-0 mt-2">
-            Invoice #{formatInvoiceNumber(invoiceData?.invoice_number) || orderId}
+            Invoice #{formatInvoiceNumber(invoiceData?.invoice_number) || orderCode}
           </h2>
         </div>
-        {/* Customer: Only Download PDF button */}
+        {/* Public: Only Download PDF button */}
         <div className="d-flex gap-2">
           <Button
             variant="outline"
-            onClick={handleExportPDF}
+            onClick={handleDownloadPDF}
             className="btn-action-export-pdf d-flex align-items-center gap-2"
           >
             <FaDownload /> Download PDF
@@ -145,7 +135,6 @@ export default function CustomerInvoiceView() {
       <div ref={printRef} className="invoice-content">
         <Card className="card-lux">
           <Card.Body>
-            {/* Invoice Header */}
             <InvoiceHeader
               invoiceData={invoiceData}
               orderData={orderData}
@@ -166,23 +155,18 @@ export default function CustomerInvoiceView() {
               </Col>
               <Col md={6}>
                 <div className="invoice-section">
-                  <h5 className="section-title">Delivery Information</h5>
+                  <h5 className="section-title">Order Information</h5>
                   <div className="info-details">
-                    <p><strong>Receiver:</strong> {orderData?.receiver_name || "N/A"}</p>
-                    <p><strong>Phone:</strong> {orderData?.receiver_phone || "N/A"}</p>
-                    <p><strong>Address:</strong> {orderData?.receiver_address || "N/A"}</p>
+                    <p><strong>Order Code:</strong> {orderData?.order_code || "N/A"}</p>
+                    <p><strong>Service Type:</strong> {orderData?.service_type_name || "Standard"}</p>
+                    <p><strong>Created Date:</strong> {orderData?.created_at ? new Date(orderData.created_at).toLocaleString() : "N/A"}</p>
                   </div>
                 </div>
               </Col>
             </Row>
 
-            {/* Cost Breakdown */}
             <CostBreakdown invoiceData={invoiceData} orderData={orderData} />
-
-            {/* Tax Table */}
-            <TaxTable subtotal={subtotal} vatRate={0.1} />
-
-            {/* Invoice Footer */}
+            <TaxTable subtotal={subtotal} vatRate={vatRate} />
             <InvoiceFooter
               invoiceData={invoiceData}
               orderData={orderData}
@@ -192,7 +176,7 @@ export default function CustomerInvoiceView() {
         </Card>
       </div>
 
-      {/* Additional Info - Simplified for Customer - Hidden when printing */}
+      {/* Additional Info - Hidden when printing */}
       {orderData && (
         <Card className="card-lux mt-4 no-print">
           <Card.Body>

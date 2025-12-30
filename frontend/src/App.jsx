@@ -39,11 +39,15 @@ import Dashboard from "./pages/admin/Dashboard";
 import OrderManagement from "./pages/admin/OrderManagement.jsx";
 import AgentsManagement from "./pages/admin/AgentsManagement.jsx";
 import Reports from "./pages/admin/Reports.jsx";
+import CustomerManagement from "./pages/admin/CustomerManagement.jsx";
+import NotificationTemplates from "./pages/admin/NotificationTemplates.jsx";
 
 // Invoice pages
 import InvoiceList from './pages/Invoice/InvoiceList.jsx';
 import InvoiceView from './pages/Invoice/InvoiceView.jsx';
 import CustomerInvoiceView from './pages/Invoice/CustomerInvoiceView.jsx';
+import GuestInvoiceView from './pages/Invoice/GuestInvoiceView.jsx';
+import PublicInvoiceView from './pages/Invoice/PublicInvoiceView.jsx';
 
 // Agent pages
 import AgentLayout from "./components/Layouts/AgentLayout.jsx";
@@ -51,6 +55,7 @@ import AgentDashboard from "./pages/agent/AgentDashboard.jsx";
 import MyOrders from "./pages/agent/MyOrders.jsx";
 import AssignShipper from "./pages/agent/AssignShipper.jsx";
 import AgentNotifications from "./pages/agent/Notifications.jsx";
+import OrderReport from "./pages/agent/OrderReport.jsx";
 import RequireRole from "./components/guards/RequireRole.jsx";
 
 // Shipper pages
@@ -109,6 +114,25 @@ export default function App() {
         element={
           <PublicLayout>
             <TrackingResult />
+          </PublicLayout>
+        }
+      />
+
+      <Route
+        path="/invoice/:orderCode"
+        element={
+          <PublicLayout>
+            <GuestInvoiceView />
+          </PublicLayout>
+        }
+      />
+
+      {/* Token-based invoice view (for email links) */}
+      <Route
+        path="/invoice/view"
+        element={
+          <PublicLayout>
+            <PublicInvoiceView />
           </PublicLayout>
         }
       />
@@ -291,6 +315,8 @@ export default function App() {
         <Route path="orders" element={<OrderManagement />} />
         <Route path="agents" element={<AgentsManagement />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="customers" element={<CustomerManagement />} />
+        <Route path="notification-templates" element={<NotificationTemplates />} />
         <Route path="invoices" element={<InvoiceList />} />
         <Route path="invoices/:id" element={<InvoiceView />} />
         <Route path="profile" element={<UserIdentityDashboard />} />
@@ -312,6 +338,7 @@ export default function App() {
         <Route path="dashboard" element={<AgentDashboard />} />
         <Route path="orders" element={<MyOrders />} />
         <Route path="assign-shipper" element={<AssignShipper />} />
+        <Route path="reports" element={<OrderReport />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="profile" element={<UserIdentityDashboard />} />
         <Route path="account-settings" element={<AccountSettingsPage />} />

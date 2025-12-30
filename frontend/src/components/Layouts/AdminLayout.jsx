@@ -7,7 +7,9 @@ import {
     FaUsers,
     FaChartBar,
     FaFileInvoice,
-    FaSignOutAlt
+    FaSignOutAlt,
+    FaUserFriends,
+    FaBell
 } from "react-icons/fa";
 import UserMenu from "../layout/UserMenu";
 
@@ -152,6 +154,22 @@ const AdminLayout = () => {
                             data-title="Reports"
                         >
                             <FaChartBar /> <span>Reports</span>
+                        </Link>
+
+                        <Link
+                            to="/admin/customers"
+                            className={`sidebar-link ${isActive("/admin/customers")}`}
+                            data-title="Customer Management"
+                        >
+                            <FaUserFriends /> <span>Customers</span>
+                        </Link>
+
+                        <Link
+                            to="/admin/notification-templates"
+                            className={`sidebar-link ${isActive("/admin/notification-templates")}`}
+                            data-title="Notification Templates"
+                        >
+                            <FaBell /> <span>Notification Templates</span>
                         </Link>
                     </nav>
                 </div>

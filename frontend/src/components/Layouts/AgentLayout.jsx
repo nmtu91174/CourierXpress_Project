@@ -9,7 +9,8 @@ import {
     FaUserTie,
     FaBell,
     FaUser,
-    FaMapMarkerAlt
+    FaMapMarkerAlt,
+    FaFileAlt
 } from "react-icons/fa";
 import UserMenu from "../layout/UserMenu";
 
@@ -169,6 +170,15 @@ const AgentLayout = () => {
                             onClick={() => setSidebarOpen(false)}
                         >
                             <FaUserTie /> <span>Assign Shipper</span>
+                        </Link>
+
+                        <Link
+                            to="/agent/reports"
+                            className={`sidebar-link ${isActive("/agent/reports")}`}
+                            data-title="Order Report"
+                            onClick={() => setSidebarOpen(false)}
+                        >
+                            <FaFileAlt /> <span>Order Report</span>
                         </Link>
 
                     </nav>
