@@ -164,7 +164,7 @@ function HomePage() {
                 text="danger"
                   className="hero-eyebrow mb-3 px-3 py-2 border border-danger border-opacity-25 rounded-pill"
               >
-                <LightningCharge className="me-1" /> Next-Gen Logistics
+                <LightningCharge className="me-1" /> Modern Logistics Platform
               </Badge>
               <h1 className="display-3 fw-bolder mb-4 lh-sm">
                   <span className="hero-title-line">Shipping</span> <br />
@@ -194,9 +194,8 @@ function HomePage() {
                   <br /> <span className="hero-title-line">& On Time</span>
               </h1>
                 <p className="hero-description lead text-muted mb-4">
-                Global logistics solutions powered by modern technology. We
-                ensure your cargo reaches its destination safely and
-                efficiently.
+                Global logistics solutions built on reliable systems and real-time visibility.
+                We help shipments move safely, efficiently, and on schedule.
               </p>
               </div>
 
@@ -309,17 +308,17 @@ function HomePage() {
                         </div>
                         <div className="position-relative z-1">
                           <h5 className="fw-bold mb-2 text-white">
-                            Trusted by Enterprises
+                            Trusted by Growing Businesses
                           </h5>
                           <p className="text-white-50 small mb-3">
-                            Mission-critical logistics trusted by growing and enterprise-level businesses.
+                            Reliable logistics solutions used by fast-growing and established companies.
                           </p>
                           {/* Pills */}
                           <div className="d-flex flex-wrap gap-2">
-                            <span className="hero-pill">✓ Proven Reliability</span>
-                            <span className="hero-pill">✓ Compliance-Ready</span>
-                            <span className="hero-pill">✓ Scalable Infrastructure</span>
-                            <span className="hero-pill">✓ Enterprise Support</span>
+                            <span className="hero-pill">✓ Proven reliability</span>
+                            <span className="hero-pill">✓ Standards-aligned operations</span>
+                            <span className="hero-pill">✓ Scalable delivery network</span>
+                            <span className="hero-pill">✓ Dedicated support</span>
                           </div>
                         </div>
                       </div>
@@ -348,12 +347,12 @@ function HomePage() {
       </small>
 
       <h2 className="fw-bold display-6 mb-3">
-        Built for Speed, Safety & Reliability
+        Designed for Speed, Safety, and Operational Reliability
       </h2>
 
       <p className="text-muted mt-3 lead">
         From express delivery to real-time tracking, our logistics
-        infrastructure is designed to support businesses at every scale.
+        systems are designed to support businesses of all sizes.
             </p>
           </div>
 
@@ -407,9 +406,9 @@ function HomePage() {
     {/* ===== Soft Trust Signal ===== */}
     <div className="trust-signal mt-5 pt-4 border-top text-center">
       <div className="d-flex flex-wrap justify-content-center align-items-center gap-3 gap-md-5 text-muted small">
-        <span>✓ 99.9% On-time delivery</span>
-        <span>✓ ISO-aligned logistics workflow</span>
-        <span>✓ Real-time audit & tracking system</span>
+        <span>✓ 99.9% on-time delivery</span>
+        <span>✓ ISO-aligned operational workflows</span>
+        <span>✓ Real-time tracking and audit visibility</span>
       </div>
     </div>
   </Container>
@@ -433,14 +432,13 @@ function HomePage() {
                   text="dark"
                   className="enterprise-eyebrow bg-opacity-10 text-white border border-white border-opacity-25 rounded-pill mb-3 px-3"
                 >
-                  ENTERPRISE TRUST
+                  TRUSTED BY BUSINESS
                 </Badge>
                 <h2 className="enterprise-title fw-bold display-6 mb-3 text-white">
                   Trusted by 500+ Businesses Worldwide
                 </h2>
                 <p className="enterprise-subtitle text-white-50 lead">
-                  Enterprise-grade logistics infrastructure built for scale and
-                  reliability.
+                  A logistics platform built for scale, consistency, and long-term reliability.
                 </p>
               </div>
 
@@ -496,7 +494,7 @@ function HomePage() {
             </small>
             <h2 className="fw-bold display-6">Simple 4-Step Shipping</h2>
             <p className="text-muted mt-2">
-              A clear, transparent logistics process designed for speed and trust.
+              A clear and transparent logistics process designed for speed and reliability.
             </p>
           </div>
 
@@ -662,7 +660,7 @@ function HomePage() {
                           href="#"
                             className="service-card__cta mt-auto d-flex align-items-center gap-1"
                         >
-                            Explore service <ChevronRight size={14} />
+                            Explore service details <ChevronRight size={14} />
                         </a>
                       </Card.Body>
                     </Col>
