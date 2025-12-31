@@ -35,52 +35,82 @@ export function initHeroTimeline(root = document) {
     el.style.willChange = "transform, opacity";
   });
 
-  const heroTl = gsap.timeline({
-    defaults: { ease: "power2.out", duration: 0.3 },
-  });
+  // Find the hero section element (section with id="home" or parent section)
+  const heroSection = root.querySelector ? 
+    (root.querySelector("#home") || root.querySelector("section") || root) : 
+    (root.closest ? root.closest("section") : root);
 
-  heroTl.from(q(".hero-eyebrow"), { opacity: 0, y: 12, duration: 0.2 });
-
-  heroTl.from(
-    qa(".hero-kicker, .hero-title-line, .hero-title-highlight"),
-    { opacity: 0, y: 16, stagger: 0.06, duration: 0.42 },
-    "-=0.12"
-  );
+  // Set initial hidden states for all elements
+  gsap.set(q(".hero-eyebrow"), { opacity: 0, y: 12 });
+  gsap.set(qa(".hero-kicker, .hero-title-line, .hero-title-highlight"), { opacity: 0, y: 16 });
+  gsap.set(q(".hero-description"), { opacity: 0, y: 12 });
+  gsap.set(qa(".hero-actions > *"), { opacity: 0, y: 10 });
+  gsap.set(qa(".hero-card"), { opacity: 0, y: 18 });
 
   const underlinePath = q(".hero-underline path");
   if (underlinePath && underlinePath.getTotalLength) {
     const pathLength = underlinePath.getTotalLength();
     underlinePath.style.strokeDasharray = pathLength;
     underlinePath.style.strokeDashoffset = pathLength;
+  } else {
+    gsap.set(q(".hero-underline"), { scaleX: 0, transformOrigin: "left center" });
+  }
 
+  // Create timeline that only plays when user scrolls (not on initial page load)
+  const heroTl = gsap.timeline({
+    defaults: { ease: "power2.out", duration: 0.3 },
+    paused: true, // Start paused
+  });
+
+  // Check if page is at top - if so, wait for scroll event
+  if (typeof window !== "undefined" && window.scrollY === 0) {
+    // Wait for first scroll to play animation
+    const handleFirstScroll = () => {
+      heroTl.play();
+      window.removeEventListener("scroll", handleFirstScroll);
+    };
+    window.addEventListener("scroll", handleFirstScroll, { once: true, passive: true });
+  } else {
+    // If already scrolled, play immediately
+    heroTl.play();
+  }
+
+  heroTl.to(q(".hero-eyebrow"), { opacity: 1, y: 0, duration: 0.2 });
+
+  heroTl.to(
+    qa(".hero-kicker, .hero-title-line, .hero-title-highlight"),
+    { opacity: 1, y: 0, stagger: 0.06, duration: 0.42 },
+    "-=0.12"
+  );
+
+  if (underlinePath && underlinePath.getTotalLength) {
     heroTl.to(underlinePath, {
       strokeDashoffset: 0,
       duration: 0.42,
       ease: "power1.out",
     });
   } else {
-    heroTl.from(q(".hero-underline"), {
-      scaleX: 0,
+    heroTl.to(q(".hero-underline"), {
+      scaleX: 1,
       transformOrigin: "left center",
       duration: 0.32,
     });
   }
 
-  heroTl.from(
+  heroTl.to(
     q(".hero-description"),
-    { opacity: 0, y: 12, duration: 0.32 },
+    { opacity: 1, y: 0, duration: 0.32 },
     "-=0.14"
   );
 
-  heroTl.from(
+  heroTl.to(
     qa(".hero-actions > *"),
-    { opacity: 0, y: 10, stagger: 0.07, duration: 0.42 },
+    { opacity: 1, y: 0, stagger: 0.07, duration: 0.42 },
     "-=0.14"
   );
 
-  heroTl.fromTo(
+  heroTl.to(
     qa(".hero-card"),
-    { opacity: 0, y: 18 },
     {
       opacity: 1,
       y: 0,
