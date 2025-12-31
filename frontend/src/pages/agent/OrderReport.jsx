@@ -3,12 +3,13 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { Card, Table, Button, Spinner, Form } from "react-bootstrap";
-import { FaFileCsv, FaBox, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaFileCsv, FaBox, FaChevronLeft, FaChevronRight, FaDollarSign, FaCalendarAlt } from "react-icons/fa";
 import StatusBadge from "../../components/common/StatusBadge";
 import "../../assets/styles/admin.css";
 import "../../assets/styles/order-table.css";
 import "../../assets/styles/StatusBadge.css";
 import "../../assets/styles/order-report.css";
+import "../../assets/styles/agent_dashboard.css";
 
 export default function OrderReport() {
   const API_BASE = "http://localhost:8888/api/agent";
@@ -147,27 +148,22 @@ export default function OrderReport() {
   }
 
   return (
-    <div className="container-fluid py-4 order-report-page">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold mb-0">Order Report</h2>
-        <div className="d-flex gap-2 align-items-center">
-          <div className="text-muted me-3">
-            Tổng: <strong>{orders.length}</strong> đơn hàng
-            {orders.length > 0 && (
-              <span className="ms-2">
-                (Trang {currentPage}/{totalPages})
-              </span>
-            )}
-          </div>
-          <Button variant="primary" onClick={exportToCSV}>
-            <FaFileCsv className="me-2" />
-            Export CSV
-          </Button>
+    <div className="admin-page container-fluid p-0" style={{ background: "transparent" }}>
+      {/* ================= HEADER ================= */}
+      <div className="page-header d-flex justify-content-between mb-4">
+        <div>
+          <h3 className="fw-bold">Order Report</h3>
+          <p className="text-muted mb-0">View and export your order reports</p>
         </div>
+        <Button variant="primary" onClick={exportToCSV} className="btn-lux-primary">
+          <FaFileCsv className="me-2" />
+          Export CSV
+        </Button>
       </div>
 
-      <Card className="card-lux">
-        <Card.Body className="p-0">
+      {/* ================= TABLE ================= */}
+      <Card className="card-lux mb-4">
+        <Card.Body>
           {orders.length === 0 ? (
             <div className="text-center py-5">
               <FaBox size={48} className="text-muted mb-3" />
@@ -175,32 +171,47 @@ export default function OrderReport() {
             </div>
           ) : (
             <div className="lux-table-wrapper">
-              <Table className="lux-table mb-0">
+              <Table hover responsive className="lux-table align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>Order Code</th>
-                    <th>Status</th>
-                    <th className="text-end">Total Amount</th>
-                    <th>Created At</th>
+                    <th style={{ width: "150px" }}>Order Code</th>
+                    <th style={{ width: "130px" }}>Status</th>
+                    <th className="text-end" style={{ width: "180px" }}>Total Amount</th>
+                    <th style={{ width: "200px" }}>Created At</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedOrders.map((order) => (
                     <tr key={order.id} className="order-row">
+                      {/* Order Code */}
                       <td>
                         <div className="d-flex align-items-center">
-                          <FaBox className="text-primary me-2" />
-                          <strong>{order.order_code || "N/A"}</strong>
+                          <FaBox className="text-primary me-2 flex-shrink-0" />
+                          <span className="order-code fw-semibold text-primary">
+                            {order.order_code || "N/A"}
+                          </span>
                         </div>
                       </td>
+
+                      {/* Status */}
                       <td>
                         <StatusBadge status={getStatusNumber(order.status)} />
                       </td>
+
+                      {/* Total Amount */}
                       <td className="text-end">
-                        <strong className="text-success">{formatCurrency(order.total_amount)}</strong>
+                        <div className="d-flex align-items-center justify-content-end">
+                          <FaDollarSign className="text-success me-2 flex-shrink-0" />
+                          <strong className="text-success">{formatCurrency(order.total_amount)}</strong>
+                        </div>
                       </td>
+
+                      {/* Created At */}
                       <td>
-                        <small className="text-muted">{formatDate(order.created_at)}</small>
+                        <div className="d-flex align-items-center">
+                          <FaCalendarAlt className="text-muted me-2 flex-shrink-0" />
+                          <small className="text-muted">{formatDate(order.created_at)}</small>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -211,7 +222,7 @@ export default function OrderReport() {
         </Card.Body>
       </Card>
 
-      {/* Pagination UI */}
+      {/* ===================== PAGINATION UI ===================== */}
       {orders.length > 0 && (
         <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap">
           {/* Page size selector */}
@@ -223,7 +234,7 @@ export default function OrderReport() {
               value={pageSize}
               onChange={(e) => {
                 setPageSize(Number(e.target.value));
-                setCurrentPage(1);
+                setCurrentPage(1); // Reset page when page size changes
               }}
             >
               <option value={5}>5</option>
@@ -233,9 +244,10 @@ export default function OrderReport() {
             </Form.Select>
           </div>
 
-          {/* Pagination controls */}
+          {/* Pagination controls - Luxury Style */}
           <div className="d-flex align-items-center gap-3 mb-2">
             <Button
+              className="luxury-pagination-btn"
               variant="outline-primary"
               size="sm"
               disabled={currentPage === 1}
@@ -253,38 +265,76 @@ export default function OrderReport() {
                 transition: "all 0.3s ease",
                 boxShadow: currentPage === 1 ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
               }}
+              onMouseEnter={(e) => {
+                if (currentPage !== 1) {
+                  e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.25))";
+                  e.target.style.transform = "translateY(-1px)";
+                  e.target.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.25)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (currentPage !== 1) {
+                  e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))";
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.15)";
+                }
+              }}
             >
-              <FaChevronLeft className="me-1" />
-              Previous
+              ← Previous
             </Button>
 
-            <div className="d-flex align-items-center gap-2">
-              <span className="small text-muted">
-                Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
-              </span>
-            </div>
+            <span 
+              className="small"
+              style={{
+                padding: "8px 16px",
+                borderRadius: "8px",
+                background: "linear-gradient(135deg, rgba(15, 23, 42, 0.05), rgba(15, 23, 42, 0.08))",
+                border: "1px solid rgba(15, 23, 42, 0.1)",
+                fontWeight: 600,
+                color: "#0b1220",
+              }}
+            >
+              Page <strong style={{ color: "#2563eb" }}>{currentPage}</strong> of <strong style={{ color: "#2563eb" }}>{totalPages || 1}</strong>
+              {orders.length > 0 && (
+                <span className="text-muted ms-2">({orders.length} orders)</span>
+              )}
+            </span>
 
             <Button
+              className="luxury-pagination-btn"
               variant="outline-primary"
               size="sm"
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || totalPages === 0}
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               style={{
                 minWidth: "100px",
                 padding: "8px 20px",
                 borderRadius: "8px",
                 border: "1px solid rgba(37, 99, 235, 0.3)",
-                background: currentPage === totalPages 
+                background: (currentPage === totalPages || totalPages === 0)
                   ? "rgba(0, 0, 0, 0.05)" 
                   : "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))",
-                color: currentPage === totalPages ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
+                color: (currentPage === totalPages || totalPages === 0) ? "rgba(0, 0, 0, 0.3)" : "#2563eb",
                 fontWeight: 600,
                 transition: "all 0.3s ease",
-                boxShadow: currentPage === totalPages ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+                boxShadow: (currentPage === totalPages || totalPages === 0) ? "none" : "0 2px 8px rgba(37, 99, 235, 0.15)",
+              }}
+              onMouseEnter={(e) => {
+                if (currentPage !== totalPages && totalPages !== 0) {
+                  e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(59, 130, 246, 0.25))";
+                  e.target.style.transform = "translateY(-1px)";
+                  e.target.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.25)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (currentPage !== totalPages && totalPages !== 0) {
+                  e.target.style.background = "linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.15))";
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.15)";
+                }
               }}
             >
-              Next
-              <FaChevronRight className="ms-1" />
+              Next →
             </Button>
           </div>
         </div>
