@@ -1,6 +1,7 @@
 <?php
 // backend/api/shipper/update_profile.php
-
+ob_clean(); // Xóa mọi ký tự lạ hoặc khoảng trắng trước khi output JSON
+header('Content-Type: application/json');
 require_once __DIR__ . "/../../core/Cors.php";
 Cors::handlePreflight();
 Cors::setHeaders();
@@ -110,7 +111,6 @@ $stmt->bind_param($types, ...$params);
 if (!$stmt->execute()) {
   Response::serverError("Update failed: " . $stmt->error);
 }
-
 $stmt->close();
 
 // 4) Return fresh profile
