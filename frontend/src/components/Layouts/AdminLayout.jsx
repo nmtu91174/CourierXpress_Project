@@ -6,11 +6,13 @@ import {
     FaBoxOpen,
     FaUsers,
     FaChartBar,
-    FaSignOutAlt
+    FaSignOutAlt,
+    FiLayers
 } from "react-icons/fa";
 import UserMenu from "../layout/UserMenu";
 
 import "../../assets/styles/admin.css";
+import { FiCreditCard, FiPackage, FiPercent } from "react-icons/fi";
 
 const AdminLayout = () => {
     const location = useLocation();
@@ -81,7 +83,7 @@ const AdminLayout = () => {
         return () => {
             document.body.style.overflow = '';
         };
-    }, [sidebarOpen]);
+}, [sidebarOpen]);
 
     // Close sidebar when route changes (mobile)
     useEffect(() => {
@@ -147,33 +149,33 @@ const AdminLayout = () => {
                         {/* MASTER DATA */}
                         <div className="sidebar-section-title">
                         </div>
+                        
 
                         <Link
                         to="/admin/service-types"
                         className={`sidebar-link ${isActive("/admin/service-types")}`}
                         >
-                        <FaBoxOpen /> <span>Service Types</span>
+                        <FiLayers /> <span>Service Types</span>
                         </Link>
-
-                        <Link
+<Link
                         to="/admin/payment-methods"
                         className={`sidebar-link ${isActive("/admin/payment-methods")}`}
                         >
-                        <FaBoxOpen /> <span>Payment Methods</span>
+                        <FiCreditCard /> <span>Payment Methods</span>
                         </Link>
 
                         <Link
                         to="/admin/item-categories"
                         className={`sidebar-link ${isActive("/admin/item-categories")}`}
                         >
-                        <FaBoxOpen /> <span>Item Categories</span>
+                        <FiPackage /> <span>Item Categories</span>
                         </Link>
 
                         <Link
                         to="/admin/fees"
                         className={`sidebar-link ${isActive("/admin/fees")}`}
                         >
-                        <FaBoxOpen /> <span>Fees</span>
+                        <FiPercent /> <span>Fees</span>
                         </Link>
 
                     </nav>
