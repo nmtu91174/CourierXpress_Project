@@ -1,4 +1,5 @@
 <?php
+// backend/api/shipper/upload_avatar.php
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -36,14 +37,24 @@ if ($file["error"] !== UPLOAD_ERR_OK) {
   Response::error("Upload error code: " . $file["error"]);
 }
 
-// Validate type
-$allowed = ["image/jpeg" => "jpg", "image/png" => "png", "image/webp" => "webp"];
-$mime = mime_content_type($file["tmp_name"]);
-if (!isset($allowed[$mime])) {
-  Response::error("Invalid image type. Only JPG/PNG/WebP allowed.");
+// --- PHẦN SỬA LỖI ---
+$allowed_mimes = ["image/jpeg", "image/png", "image/webp"];
+$fileInfo = @getimagesize($file["tmp_name"]); // Sử dụng hàm này an toàn hơn mime_content_type
+
+if (!$fileInfo) {
+    Response::error("File is not a valid image.");
 }
 
-$ext = $allowed[$mime];
+$mime = $fileInfo['mime'];
+
+if (!in_array($mime, $allowed_mimes)) {
+    Response::error("Invalid image type. Only JPG/PNG/WebP allowed.");
+}
+
+// Xác định đuôi file dựa trên mime type
+$ext = ($mime === "image/jpeg") ? "jpg" : (($mime === "image/png") ? "png" : "webp");
+// Đã xóa dòng $ext = $allowed[$mime]; gây lỗi xung đột
+// --------------------
 
 // Validate size (2MB)
 if ($file["size"] > 2 * 1024 * 1024) {
@@ -53,7 +64,6 @@ if ($file["size"] > 2 * 1024 * 1024) {
 // Save file
 $uploadDir = realpath(__DIR__ . "/../../uploads");
 if ($uploadDir === false) {
-  // if uploads doesn't exist yet
   $uploadDir = __DIR__ . "/../../uploads";
   @mkdir($uploadDir, 0777, true);
 }
