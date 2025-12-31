@@ -9,7 +9,7 @@ import {
   FiArrowLeft, FiRefreshCcw 
 } from "react-icons/fi";
 
-const API_BASE = "http://localhost:8890/CourierXpress_Project/backend/api/shipper";
+const API_BASE = "http://localhost:8891/CourierXpress_Project/backend/api/shipper";
 
 // --- Custom Styles ---
 const styles = {
@@ -90,23 +90,41 @@ const ShipperProfileEdit = () => {
 
   const uploadAvatar = async () => {
     if (!avatarFile) return toast.fire({ icon: "error", title: "Please select an image." });
+    
     try {
       setUploading(true);
       const form = new FormData();
       form.append("avatar", avatarFile);
+
       const res = await fetch(`${API_BASE}/upload_avatar.php`, {
         method: "POST",
         credentials: "include",
         body: form,
       });
+
+      // Nếu PHP vẫn bị lỗi Fatal error, đoạn này sẽ quăng lỗi thay vì crash trang
+      if (!res.ok) throw new Error("Server error. Please check PHP logs.");
+
       const data = await res.json();
-      if (data.status === "success") {
+if (data.status === "success") {
         toast.fire({ icon: "success", title: "Avatar updated!" });
-        await fetchProfile();
+        
+        // Cập nhật đường dẫn ảnh mới từ server trả về
+        setProfile(prev => ({ 
+          ...prev, 
+          avatar: data.data.avatar 
+        }));
+        
         setAvatarFile(null);
-      } else throw new Error(data.message);
+        
+        // Không nhất thiết phải await fetchProfile() trừ khi bạn cần đồng bộ các dữ liệu khác
+      } else {
+        throw new Error(data.message);
+      }
     } catch (e) {
-      toast.fire({ icon: "error", title: e.message });
+      // Bắt lỗi "Unexpected token <" tại đây
+      console.error("Upload detail:", e);
+      toast.fire({ icon: "error", title: "Upload failed: " + e.message });
     } finally {
       setUploading(false);
     }
@@ -140,7 +158,7 @@ const ShipperProfileEdit = () => {
     if (!profile?.avatar) return null;
     return profile.avatar.startsWith("http") 
       ? profile.avatar 
-      : `http://localhost:8890/CourierXpress_Project${profile.avatar}`;
+      : `http://localhost:8891/CourierXpress_Project${profile.avatar}`;
   }, [profile?.avatar]);
 
   if (loading) return (
@@ -178,7 +196,7 @@ const ShipperProfileEdit = () => {
       {error && <Alert variant="danger" className="rounded-4 mb-4 shadow-sm">{error}</Alert>}
 
       <Row className="g-4">
-        {/* CỘT TRÁI: AVATAR */}
+{/* CỘT TRÁI: AVATAR */}
         <Col lg={4}>
           <Card className="p-4 text-center border-0 shadow-sm mb-4" style={styles.card}>
             <div style={styles.sectionTitle} className="justify-content-center">Profile Picture</div>
@@ -245,7 +263,7 @@ const ShipperProfileEdit = () => {
                     onChange={(e) => setProfile({ ...profile, gender: e.target.value })}
                   >
                     <option value="male">Male</option>
-                    <option value="female">Female</option>
+<option value="female">Female</option>
                     <option value="other">Other</option>
                   </Form.Select>
                 </Col>
@@ -318,7 +336,7 @@ const ShipperProfileEdit = () => {
               >
                 {saving ? <Spinner size="sm" /> : <><FiSave className="me-2" /> Save Changes</>}
               </Button>
-            </div>
+</div>
           </Form>
         </Col>
       </Row>
