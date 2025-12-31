@@ -10,7 +10,7 @@ import {
   FiRefreshCcw, FiArrowLeft 
 } from "react-icons/fi";
 
-const API_BASE = "http://localhost:8890/CourierXpress_Project/backend/api/shipper";
+const API_BASE = "http://localhost:8891/CourierXpress_Project/backend/api/shipper";
 
 // --- Modern Styles ---
 const styles = {
@@ -106,7 +106,7 @@ export default function ShipperProfile() {
         localStorage.setItem("user", JSON.stringify({ ...oldUser, ...data.data }));
       } catch (storageErr) {
         console.warn("Storage sync failed", storageErr);
-      }
+}
 
     } catch (e) {
       setError("Cannot connect to server. Please check your backend connection.");
@@ -119,11 +119,12 @@ export default function ShipperProfile() {
 
   // Calculate avatarUrl inside useMemo to prevent unnecessary re-renders or crashes
   const avatarUrl = useMemo(() => {
-    if (!profile?.avatar) return "";
+    if (!profile?.avatar) return null;
+    // Nếu path đã có http thì dùng luôn, nếu chưa thì nối với Domain
     return profile.avatar.startsWith("http") 
-      ? profile.avatar 
-      : `http://localhost:8890/CourierXpress_Project${profile.avatar}`;
-  }, [profile?.avatar]);
+        ? profile.avatar 
+        : `http://localhost:8891${profile.avatar}`; 
+}, [profile?.avatar]);
 
   if (loading) return (
     <Container className="py-5 text-center">
@@ -175,7 +176,7 @@ export default function ShipperProfile() {
                  <span style={styles.pill}><FiUser /> <b>Role:</b> Shipper</span>
                  <span style={styles.pill}><FiClock /> <b>Tenure:</b> {calcWorkingTime(profile.created_at)}</span>
               </div>
-              <p className="text-muted small mb-0">Review your profile details and logistics performance.</p>
+<p className="text-muted small mb-0">Review your profile details and logistics performance.</p>
             </div>
           </div>
 
@@ -243,8 +244,7 @@ export default function ShipperProfile() {
             </div>
           </Col>
         </Row>
-
-        <div className="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+<div className="mt-4 pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
           <span className="text-muted small">Account created: {fmtDate(profile.created_at)}</span>
           <span className="text-muted small italic">Last sync: {new Date().toLocaleTimeString()}</span>
         </div>
