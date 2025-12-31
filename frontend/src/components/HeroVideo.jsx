@@ -3,7 +3,7 @@ import { Container } from "react-bootstrap";
 import { heroFadeIn } from "../animations/heroAnimation";
 import "../assets/styles/HeroVideo.css";
 
-const HeroVideo = () => {
+const HeroVideo = ({ videoSource = "/videos/CourierXpress.mp4" }) => {
   const titleRef = useRef(null);
   const subtitleRef = useRef(null);
 
@@ -20,7 +20,7 @@ const HeroVideo = () => {
         muted
         playsInline
       >
-        <source src="/videos/CourierXpress.mp4" type="video/mp4" />
+        <source src={videoSource} type="video/mp4" />
         Your browser does not support the video tag.
       </video>
 

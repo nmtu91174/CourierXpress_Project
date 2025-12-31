@@ -78,7 +78,7 @@ const Home = () => {
 
   return (
     <div className="tracking-page">
-      <HeroVideo />
+      <HeroVideo videoSource="/videos/AnyMean_Transport.mp4" />
       <section className="hero-section">
         <div className="tracking-box tracking-box-lux">
           <h3 className="fw-bold mb-4 text-center tracking-title">

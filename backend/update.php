@@ -12,33 +12,26 @@ if ($conn->connect_error) {
 
 $conn->set_charset("utf8mb4");
 
-// Danh sách mật khẩu cho các user tương ứng ID
-$accounts = [
-    1 => "Admin2024!",
-    2 => "tuan12345",
-    3 => "anh67890",
-    4 => "longship1",
-    5 => "phucship2"
-];
+// Mật khẩu chung cho TẤT CẢ user
+$plainPassword = "123456";
+$newHash = password_hash($plainPassword, PASSWORD_DEFAULT);
 
-foreach ($accounts as $id => $plainPassword) {
-    $newHash = password_hash($plainPassword, PASSWORD_DEFAULT);
+// Update toàn bộ users
+$stmt = $conn->prepare("UPDATE users SET password = ?");
 
-    $stmt = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
-    
-    if (!$stmt) {
-        die("Prepare failed: " . $conn->error);
-    }
-
-    $stmt->bind_param("si", $newHash, $id);
-
-    if (!$stmt->execute()) {
-        die("Execute failed for user $id: " . $stmt->error);
-    }
-
-    echo "✔ User $id updated!<br>";
-    
-    $stmt->close();
+if (!$stmt) {
+    die("Prepare failed: " . $conn->error);
 }
 
-echo "<br><strong>DONE — Passwords have been re-hashed successfully.</strong>";
+$stmt->bind_param("s", $newHash);
+
+if (!$stmt->execute()) {
+    die("Execute failed: " . $stmt->error);
+}
+
+$affected = $stmt->affected_rows;
+$stmt->close();
+
+echo "<strong>DONE</strong><br>";
+echo "✔ All user passwords have been reset to <b>123456</b><br>";
+echo "✔ Affected rows: $affected";

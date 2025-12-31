@@ -548,23 +548,10 @@ export default function Reports() {
   const optTopShippers = useMemo(() => {
     const top = (payload.topShippers ?? []).slice(0, 10);
     
-    // If no data, show empty chart with message
+    // If no data, show empty chart
     if (top.length === 0) {
       return withLux({
         title: { text: "Top Shippers (Highlight)", left: 12, top: 12, textStyle: { fontSize: 14, fontWeight: 800, color: palette.ink, fontFamily: "Inter, system-ui, sans-serif" } },
-        graphic: [
-          {
-            type: "text",
-            left: "center",
-            top: "middle",
-            style: {
-              text: "No shipper data available\nfor the selected period",
-              fontSize: 14,
-              fill: palette.muted,
-              textAlign: "center",
-            },
-          },
-        ],
         xAxis: { type: "category", data: [] },
         yAxis: [{ type: "value", name: "Delivered", ...axisLux }],
         series: [],
@@ -1235,16 +1222,7 @@ export default function Reports() {
                             </div>
                           </div>
                         </>
-                      ) : (
-                        <div className="text-muted small" style={{
-                          padding: "20px",
-                          textAlign: "center",
-                          color: "#94a3b8",
-                          fontStyle: "italic"
-                        }}>
-                          No shipper data in this period.
-                        </div>
-                      )}
+                      ) : null}
 
                       <hr />
                       <div className="fw-bold mb-2">Top Shippers (Table)</div>

@@ -7,6 +7,72 @@ require_once __DIR__ . "/../core/BaseService.php";
 class NotificationService extends BaseService
 {
     /* =====================================================
+     * TEMPLATE-DRIVEN: SEND NOTIFICATION FROM TEMPLATE
+     * ===================================================== */
+    /**
+     * Send notification from template (template-driven approach)
+     * 
+     * @param string $templateName Template name from notification_templates
+     * @param int $userId Target user ID
+     * @param ?int $relatedOrderId Related order ID (null for manual/promo notifications)
+     * @param array $placeholders Placeholder replacements (e.g., ['order_code' => 'ORD123', 'extra_message' => '...'])
+     * @return bool Success status
+     */
+    public function sendFromTemplate(
+        string $templateName,
+        int $userId,
+        ?int $relatedOrderId = null,
+        array $placeholders = []
+    ): bool {
+        try {
+            // Load template
+            $stmt = $this->prepare("
+                SELECT id, title_template, message_template, type
+                FROM notification_templates
+                WHERE name = ?
+                LIMIT 1
+            ");
+            
+            if (!$stmt) {
+                error_log("NotificationService::sendFromTemplate() prepare failed: " . $this->conn->error);
+                return false;
+            }
+            
+            $stmt->bind_param("s", $templateName);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $template = $result->fetch_assoc();
+            $stmt->close();
+            
+            if (!$template) {
+                error_log("NotificationService::sendFromTemplate() - Template '{$templateName}' not found");
+                return false;
+            }
+            
+            // Replace placeholders
+            $title = $template['title_template'];
+            $message = $template['message_template'];
+            $type = $template['type'];
+            
+            foreach ($placeholders as $key => $value) {
+                $placeholder = '{' . $key . '}';
+                $title = str_replace($placeholder, $value, $title);
+                $message = str_replace($placeholder, $value, $message);
+            }
+            
+            // Create notification using template
+            return $this->create($userId, $title, $message, $type, $relatedOrderId);
+            
+        } catch (Exception $e) {
+            error_log("NotificationService::sendFromTemplate() error: " . $e->getMessage());
+            return false;
+        } catch (Error $e) {
+            error_log("NotificationService::sendFromTemplate() fatal error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /* =====================================================
      * CORE: CREATE NOTIFICATION
      * ===================================================== */
     public function create(
@@ -53,6 +119,134 @@ class NotificationService extends BaseService
             return false;
         } catch (Error $e) {
             error_log("NotificationService::create() fatal error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /* =====================================================
+     * TEMPLATE-DRIVEN: EMIT NOTIFICATIONS FROM TEMPLATES
+     * ===================================================== */
+    /**
+     * Emit notifications for an order event using templates (template-driven approach)
+     * 
+     * @param string $event Event type: 'order_created', 'order_approved', 'order_assigned', 
+     *                     'order_delivered', 'order_failed'
+     * @param int $orderId Order ID
+     * @param int $actorId User ID who performed the action
+     * @param string $actorRole Role of the actor
+     * @param array $context Additional context (e.g., reason, note)
+     */
+    public function emitFromTemplate(string $event, int $orderId, int $actorId, string $actorRole, array $context = []): bool
+    {
+        try {
+            // Get order info
+            $orderStmt = $this->prepare("
+                SELECT o.id, o.order_code, o.status, o.customer_id, o.agent_id, o.shipper_id,
+                       c.name AS customer_name, a.name AS agent_name, s.name AS shipper_name
+                FROM orders o
+                LEFT JOIN users c ON o.customer_id = c.id
+                LEFT JOIN users a ON o.agent_id = a.id
+                LEFT JOIN users s ON o.shipper_id = s.id
+                WHERE o.id = ?
+            ");
+            $orderStmt->bind_param("i", $orderId);
+            $orderStmt->execute();
+            $order = $orderStmt->get_result()->fetch_assoc();
+            $orderStmt->close();
+
+            if (!$order) {
+                error_log("NotificationService::emitFromTemplate() - Order {$orderId} not found");
+                return false;
+            }
+
+            $orderCode = $order["order_code"];
+            $customerId = (int)$order["customer_id"];
+            $agentId = $order["agent_id"] ? (int)$order["agent_id"] : null;
+            $shipperId = $order["shipper_id"] ? (int)$order["shipper_id"] : null;
+
+            $placeholders = [
+                'order_code' => $orderCode,
+                'customer_name' => $order["customer_name"] ?? '',
+                'agent_name' => $order["agent_name"] ?? '',
+                'shipper_name' => $order["shipper_name"] ?? '',
+            ];
+
+            $success = true;
+
+            // Map events to templates and recipients
+            switch ($event) {
+                case 'order_created':
+                    // Notify admin
+                    $adminStmt = $this->prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+                    $adminStmt->execute();
+                    $adminResult = $adminStmt->get_result();
+                    if ($adminRow = $adminResult->fetch_assoc()) {
+                        if (!$this->sendFromTemplate('order_created', (int)$adminRow['id'], $orderId, $placeholders)) {
+                            $success = false;
+                        }
+                    }
+                    $adminStmt->close();
+                    break;
+
+                case 'order_approved':
+                    // Notify agent
+                    if ($agentId) {
+                        if (!$this->sendFromTemplate('order_approved', $agentId, $orderId, $placeholders)) {
+                            $success = false;
+                        }
+                    }
+                    break;
+
+                case 'order_assigned':
+                    // Notify shipper
+                    if ($shipperId) {
+                        if (!$this->sendFromTemplate('order_assigned', $shipperId, $orderId, $placeholders)) {
+                            $success = false;
+                        }
+                    }
+                    break;
+
+                case 'order_delivered':
+                    // Notify customer
+                    if ($customerId > 0) {
+                        if (!$this->sendFromTemplate('order_delivered', $customerId, $orderId, $placeholders)) {
+                            $success = false;
+                        }
+                    }
+                    break;
+
+                case 'order_failed':
+                    // Notify admin
+                    $adminStmt = $this->prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+                    $adminStmt->execute();
+                    $adminResult = $adminStmt->get_result();
+                    if ($adminRow = $adminResult->fetch_assoc()) {
+                        if (!$this->sendFromTemplate('order_failed', (int)$adminRow['id'], $orderId, $placeholders)) {
+                            $success = false;
+                        }
+                    }
+                    $adminStmt->close();
+                    
+                    // Notify agent
+                    if ($agentId) {
+                        if (!$this->sendFromTemplate('order_failed_agent', $agentId, $orderId, $placeholders)) {
+                            $success = false;
+                        }
+                    }
+                    break;
+
+                default:
+                    error_log("NotificationService::emitFromTemplate() - Unknown event: {$event}");
+                    return false;
+            }
+
+            return $success;
+
+        } catch (Exception $e) {
+            error_log("NotificationService::emitFromTemplate() error: " . $e->getMessage());
+            return false;
+        } catch (Error $e) {
+            error_log("NotificationService::emitFromTemplate() fatal error: " . $e->getMessage());
             return false;
         }
     }

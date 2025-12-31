@@ -42,7 +42,7 @@ import {
   Calculator, // Estimate
   Building, // Enterprise/Trust
 } from "react-bootstrap-icons";
-import HeroVideo from "../../components/HeroVideo_home";
+import HeroVideo from "../../components/HeroVideo";
 import { initEnterpriseLogoCarousel } from "../../animations/enterpriseLogoCarousel";
 import {
   initEnterpriseTrustAnimations,
@@ -155,7 +155,7 @@ function HomePage() {
       className="App"
       style={{ overflowX: "hidden", fontFamily: "'Inter', sans-serif" }}
     >
-      <HeroVideo />
+      <HeroVideo videoSource="/videos/Homepage.mp4" />
       {/* --- Introduction SECTION --- */}
       <section
         id="home"

@@ -23,6 +23,14 @@ export default function NotificationTemplates() {
     title_template: "",
     message_template: "",
   });
+  const [previewData, setPreviewData] = useState({
+    order_code: "ORD0101",
+    customer_name: "Nguyễn Văn A",
+    agent_name: "Agent Ba Đình",
+    shipper_name: "Shipper 001",
+    extra_message: "Special offer: 20% off this month!",
+  });
+  const [showPlaceholderGuide, setShowPlaceholderGuide] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
@@ -89,11 +97,35 @@ export default function NotificationTemplates() {
       title_template: "",
       message_template: "",
     });
+    setShowPlaceholderGuide(false);
+  };
+
+  // Preview function to replace placeholders
+  const previewTemplate = (text) => {
+    if (!text) return "";
+    let preview = text;
+    Object.keys(previewData).forEach((key) => {
+      const placeholder = `{${key}}`;
+      preview = preview.replace(new RegExp(placeholder.replace(/[{}]/g, "\\$&"), "g"), previewData[key]);
+    });
+    return preview;
+  };
+
+  // Validate template name format
+  const validateTemplateName = (name) => {
+    if (!name) return { valid: false, message: "Template name is required" };
+    if (name.length < 3) return { valid: false, message: "Template name must be at least 3 characters" };
+    if (name.length > 100) return { valid: false, message: "Template name must be less than 100 characters" };
+    if (!/^[a-z0-9_]+$/.test(name)) {
+      return { valid: false, message: "Template name must contain only lowercase letters, numbers, and underscores" };
+    }
+    return { valid: true, message: "" };
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate all fields
     if (!formData.name || !formData.title_template || !formData.message_template) {
       Swal.fire({
         icon: "warning",
@@ -101,6 +133,32 @@ export default function NotificationTemplates() {
         text: "Please fill in all required fields",
       });
       return;
+    }
+
+    // Validate template name format
+    const nameValidation = validateTemplateName(formData.name);
+    if (!nameValidation.valid) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Template Name",
+        text: nameValidation.message,
+      });
+      return;
+    }
+
+    // Check if template name already exists (only for new templates)
+    if (!editingTemplate) {
+      const existingTemplate = templates.find(
+        (t) => t.name.toLowerCase() === formData.name.toLowerCase()
+      );
+      if (existingTemplate) {
+        Swal.fire({
+          icon: "warning",
+          title: "Template Name Exists",
+          text: `Template name "${formData.name}" already exists. Please choose a different name.`,
+        });
+        return;
+      }
     }
 
     try {
@@ -120,6 +178,18 @@ export default function NotificationTemplates() {
         },
         body: JSON.stringify(payload),
       });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMessage = "Failed to save template";
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || `Server error: ${res.status}`;
+        }
+        throw new Error(errorMessage);
+      }
 
       const data = await res.json();
       if (data.status === "success") {
@@ -325,17 +395,32 @@ export default function NotificationTemplates() {
             <div className="dqn-modal-body">
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
-                  <Form.Label className="fw-bold">Template Name *</Form.Label>
+                  <Form.Label className="fw-bold">
+                    Template Name *
+                    {!editingTemplate && (
+                      <span className="text-muted ms-2" style={{ fontSize: "0.85rem", fontWeight: "normal" }}>
+                        (lowercase, numbers, underscores only)
+                      </span>
+                    )}
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    placeholder="e.g., Order Approved Notification"
+                    onChange={(e) => {
+                      const value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+                      setFormData({ ...formData, name: value });
+                    }}
+                    placeholder="e.g., order_approved, promo_discount"
                     className="luxury-input"
                     required
+                    disabled={editingTemplate}
                   />
+                  <Form.Text className="text-muted">
+                    {editingTemplate 
+                      ? "Template name cannot be changed after creation"
+                      : "Use lowercase letters, numbers, and underscores only (e.g., order_created, admin_announcement)"
+                    }
+                  </Form.Text>
                 </Form.Group>
 
                 <Form.Group className="mb-3">
@@ -348,14 +433,46 @@ export default function NotificationTemplates() {
                     className="luxury-select"
                     required
                   >
-                    <option value="order">Order</option>
-                    <option value="system">System</option>
-                    <option value="warning">Warning</option>
+                    <option value="order">
+                      Order - For order lifecycle notifications
+                    </option>
+                    <option value="system">
+                      System - For system announcements and promotions
+                    </option>
+                    <option value="warning">
+                      Warning - For failed deliveries and alerts
+                    </option>
                   </Form.Select>
+                  <Form.Text className="text-muted">
+                    Choose the notification category
+                  </Form.Text>
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label className="fw-bold">Title Template *</Form.Label>
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <Form.Label className="fw-bold mb-0">Title Template *</Form.Label>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 text-primary"
+                      onClick={() => setShowPlaceholderGuide(!showPlaceholderGuide)}
+                      style={{ textDecoration: "none", fontSize: "0.85rem" }}
+                    >
+                      {showPlaceholderGuide ? "Hide" : "Show"} Placeholders Guide
+                    </Button>
+                  </div>
+                  {showPlaceholderGuide && (
+                    <div className="alert alert-info mb-2" style={{ fontSize: "0.85rem" }}>
+                      <strong>Available Placeholders:</strong>
+                      <ul className="mb-0 mt-2">
+                        <li><code>{"{order_code}"}</code> - Order code (e.g., ORD0101)</li>
+                        <li><code>{"{customer_name}"}</code> - Customer name</li>
+                        <li><code>{"{agent_name}"}</code> - Agent name</li>
+                        <li><code>{"{shipper_name}"}</code> - Shipper name</li>
+                        <li><code>{"{extra_message}"}</code> - Custom message (for manual notifications)</li>
+                      </ul>
+                    </div>
+                  )}
                   <Form.Control
                     type="text"
                     value={formData.title_template}
@@ -365,17 +482,30 @@ export default function NotificationTemplates() {
                     placeholder="e.g., Order {order_code} has been approved"
                     className="luxury-input"
                     required
+                    maxLength={255}
                   />
-                  <Form.Text className="text-muted">
-                    Use placeholders like {"{order_code}"}, {"{customer_name}"}, etc.
-                  </Form.Text>
+                  <div className="d-flex justify-content-between mt-1">
+                    <Form.Text className="text-muted">
+                      Use placeholders like {"{order_code}"}, {"{customer_name}"}, etc.
+                    </Form.Text>
+                    <Form.Text className="text-muted">
+                      {formData.title_template.length}/255
+                    </Form.Text>
+                  </div>
+                  {/* Preview */}
+                  {formData.title_template && (
+                    <div className="mt-2 p-2 bg-light rounded" style={{ fontSize: "0.9rem" }}>
+                      <strong className="text-muted">Preview:</strong>{" "}
+                      <span className="text-dark">{previewTemplate(formData.title_template)}</span>
+                    </div>
+                  )}
                 </Form.Group>
 
                 <Form.Group className="mb-3">
                   <Form.Label className="fw-bold">Message Template *</Form.Label>
                   <Form.Control
                     as="textarea"
-                    rows={4}
+                    rows={5}
                     value={formData.message_template}
                     onChange={(e) =>
                       setFormData({ ...formData, message_template: e.target.value })
@@ -384,10 +514,55 @@ export default function NotificationTemplates() {
                     className="luxury-textarea"
                     required
                   />
-                  <Form.Text className="text-muted">
-                    Use placeholders like {"{order_code}"}, {"{customer_name}"}, etc.
-                  </Form.Text>
+                  <div className="d-flex justify-content-between mt-1">
+                    <Form.Text className="text-muted">
+                      Use placeholders like {"{order_code}"}, {"{customer_name}"}, etc.
+                    </Form.Text>
+                    <Form.Text className="text-muted">
+                      {formData.message_template.length} characters
+                    </Form.Text>
+                  </div>
+                  {/* Preview */}
+                  {formData.message_template && (
+                    <div className="mt-2 p-3 bg-light rounded" style={{ fontSize: "0.9rem", whiteSpace: "pre-wrap" }}>
+                      <strong className="text-muted d-block mb-2">Preview:</strong>
+                      <div className="text-dark">{previewTemplate(formData.message_template)}</div>
+                    </div>
+                  )}
                 </Form.Group>
+
+                {/* Examples Section */}
+                <div className="mb-3">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="p-0 text-primary"
+                    onClick={() => {
+                      if (formData.type === "order") {
+                        setFormData({
+                          ...formData,
+                          title_template: "Order {order_code} has been approved",
+                          message_template: "Your order {order_code} has been approved and assigned to {agent_name}. It is ready for pickup.",
+                        });
+                      } else if (formData.type === "system") {
+                        setFormData({
+                          ...formData,
+                          title_template: "System Announcement",
+                          message_template: "{extra_message}",
+                        });
+                      } else if (formData.type === "warning") {
+                        setFormData({
+                          ...formData,
+                          title_template: "Order {order_code} failed",
+                          message_template: "Order {order_code} has failed delivery. Please contact {agent_name} for assistance.",
+                        });
+                      }
+                    }}
+                    style={{ textDecoration: "none", fontSize: "0.85rem" }}
+                  >
+                    Load Example Template
+                  </Button>
+                </div>
 
                 {/* Footer */}
                 <div className="dqn-modal-footer">

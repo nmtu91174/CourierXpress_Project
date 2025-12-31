@@ -242,22 +242,25 @@
 }
 
 .btn-lux-outline-secondary {
-    border-radius: 10px;
-    font-size: 0.9rem;
-    font-weight: 600;
+    border: 1.5px solid rgba(108, 117, 125, 0.3);
+    color: #6c757d;
+    background: rgba(108, 117, 125, 0.05);
+    border-radius: 8px;
     padding: 10px 20px;
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    color: #495057;
-    transition: all 0.25s ease;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .btn-lux-outline-secondary:hover {
-  background: #6c757d;
-  color: #ffffff !important;
-  border-color: #6c757d;
-    transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+    background: linear-gradient(135deg, #6c757d, #9ca3af);
+    color: #ffffff !important;
+    border-color: #6c757d;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 
 /* ================== LUXURY SECTION HEADER ================== */

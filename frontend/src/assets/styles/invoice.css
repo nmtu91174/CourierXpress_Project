@@ -880,26 +880,33 @@
 
 /* ================== BUTTON STYLES ================== */
 .btn-lux-outline-secondary {
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  color: #495057;
-  background: #ffffff;
+  border: 1.5px solid rgba(108, 117, 125, 0.3);
+  color: #6c757d;
+  background: rgba(108, 117, 125, 0.05);
   border-radius: 8px;
   padding: 8px 16px;
   font-weight: 600;
-  transition: all 0.25s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .btn-lux-outline-secondary:hover {
-  background: #f8f9fa;
-  border-color: rgba(0, 0, 0, 0.25);
-  color: #212529;
+  background: linear-gradient(135deg, #6c757d, #9ca3af);
+  color: #ffffff !important;
+  border-color: #6c757d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 
 /* Reprint button - giữ màu xám khi hover */
 .invoice-view-page .btn-lux-outline-secondary:hover {
-  background: #f8f9fa;
-  border-color: rgba(0, 0, 0, 0.25);
-  color: #495057;
+  background: linear-gradient(135deg, #6c757d, #9ca3af);
+  color: #ffffff !important;
+  border-color: #6c757d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 
 /* Invoice View Action Buttons - Enterprise Color Scheme */

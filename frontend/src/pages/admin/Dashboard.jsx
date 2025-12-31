@@ -43,6 +43,7 @@ import OrderTable from "../../components/orders/OrderTable";
 import OrderDetailPanel from "../../components/orders/OrderDetailPanel";
 import StatusBadge from "../../components/common/StatusBadge";
 import { getStatusesInGroup } from "../../constants/orderStatusGroups";
+import hanoiData from "../../data/hanoi.json";
 
 import "../../assets/styles/dashboard.css";
 
@@ -68,6 +69,17 @@ export default function Dashboard() {
   const [systemLogs, setSystemLogs] = useState([]);     // Nhật ký hệ thống (lỗi kỹ thuật - DEV ONLY)
   const [businessLogs, setBusinessLogs] = useState([]);  // Nhật ký nghiệp vụ (lỗi business - ADMIN)
   const [notifications, setNotifications] = useState([]); // Thông báo gần đây
+  
+  // Pagination state for notifications and business logs
+  const [notificationsPage, setNotificationsPage] = useState(1);
+  const [notificationsPageSize] = useState(10);
+  const [notificationsTotalPages, setNotificationsTotalPages] = useState(1);
+  const [notificationsTotalCount, setNotificationsTotalCount] = useState(0);
+  
+  const [businessLogsPage, setBusinessLogsPage] = useState(1);
+  const [businessLogsPageSize] = useState(10);
+  const [businessLogsTotalPages, setBusinessLogsTotalPages] = useState(1);
+  const [businessLogsTotalCount, setBusinessLogsTotalCount] = useState(0);
 
   // KPI (tạm dùng state, có thể tính từ allOrders)
   const [totalOrders, setTotalOrders] = useState(0);
@@ -320,13 +332,13 @@ export default function Dashboard() {
   }, [agents, allOrdersForCharts]);
 
   // =============================
-  // 3.2. FETCH BUSINESS LOGS (Real-time warnings from DB)
+  // 3.2. FETCH BUSINESS LOGS (Real-time warnings from DB) - WITH PAGINATION
   // =============================
   useEffect(() => {
     const fetchBusinessLogs = async () => {
       try {
         const res = await fetch(
-          "http://localhost:8888/api/admin/get_business_logs.php",
+          `http://localhost:8888/api/admin/get_business_logs.php?page=${businessLogsPage}&page_size=${businessLogsPageSize}`,
           {
             method: "GET",
             credentials: "include",
@@ -347,6 +359,12 @@ export default function Dashboard() {
         if (json.status === "success") {
           const warnings = Array.isArray(json.data?.warnings) ? json.data.warnings : [];
           setBusinessLogs(warnings);
+          
+          // Update pagination info
+          if (json.data?.pagination) {
+            setBusinessLogsTotalPages(json.data.pagination.total_pages || 1);
+            setBusinessLogsTotalCount(json.data.pagination.total_count || 0);
+          }
         }
       } catch (err) {
         console.error("Lỗi load business logs:", err);
@@ -357,129 +375,74 @@ export default function Dashboard() {
     // Refresh business logs mỗi 30 giây
     const interval = setInterval(fetchBusinessLogs, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [businessLogsPage, businessLogsPageSize]);
 
   // =============================
-  // 3.2.1. FETCH SYSTEM LOGS & NOTIFICATIONS
+  // 3.2.1. FETCH NOTIFICATIONS FROM NOTIFICATIONS TABLE - WITH PAGINATION
   // =============================
   useEffect(() => {
-    const fetchLogs = async () => {
+    const fetchNotifications = async () => {
       try {
-        // Fetch audit logs (thông báo gần đây)
-        const auditRes = await fetch(
-          "http://localhost:8888/api/admin/view_logs.php?type=audit&lines=20",
+        // Fetch notifications from notifications table (not audit logs)
+        const notifRes = await fetch(
+          `http://localhost:8888/api/users/get_notifications.php?page=${notificationsPage}&page_size=${notificationsPageSize}&type=all`,
           {
             method: "GET",
             credentials: "include",
           }
         );
-        if (auditRes.ok) {
-          const auditJson = await auditRes.json();
-          if (auditJson.status === "success" && auditJson.data?.content) {
-            const lines = auditJson.data.content.split("\n").filter((l) => l.trim());
-            const notifications = lines
-              .slice(-20)
-              .reverse()
-              .slice(0, 10) // Chỉ lấy 10 mới nhất
-              .map((line) => {
-                // Parse audit log format: [timestamp] user=... role=... action=... order=... note=...
-                const timeMatch = line.match(/\[([^\]]+)\]/);
-                const userMatch = line.match(/user=(\d+)/);
-                const roleMatch = line.match(/role=(\w+)/);
-                const actionMatch = line.match(/action=(\w+)/);
-                const orderMatch = line.match(/order=(\d+)/);
-                const noteMatch = line.match(/note=([^\n]+)/);
-                
-                const action = actionMatch ? actionMatch[1] : "";
-                const orderId = orderMatch ? orderMatch[1] : null;
-                const note = noteMatch ? noteMatch[1].trim() : "";
-                const role = roleMatch ? roleMatch[1] : "";
-                
-                // Get order code from note or generate from orderId
-                let orderCode = null;
-                if (orderId) {
-                  // Try to extract ORD code from note first
-                  const ordMatch = note.match(/ORD\d+/);
-                  if (ordMatch) {
-                    orderCode = ordMatch[0];
-                  } else {
-                    orderCode = `ORD${String(orderId).padStart(4, '0')}`;
-                  }
-                }
-                
-                // Get role display name
-                const roleDisplay = role === "admin" ? "Admin" : role === "agent" ? "Agent" : role === "shipper" ? "Shipper" : "User";
-                
-                // Map action thành message thân thiện với format mới
-                let message = "";
-                switch (action) {
-                  case "CREATE_ORDER":
-                    message = orderCode ? `${roleDisplay} created order #${orderCode}` : `${roleDisplay} created order`;
-                    break;
-                  case "UPDATE_STATUS":
-                    message = orderCode ? `${roleDisplay} updated order status #${orderCode}` : `${roleDisplay} updated order status`;
-                    break;
-                  case "ASSIGN_AGENT":
-                    const agentMatch = note.match(/agent=(\d+)/);
-                    if (agentMatch) {
-                      const agentId = parseInt(agentMatch[1]);
-                      const agent = agents.find(a => a.id === agentId);
-                      const agentName = agent ? agent.name : `Agent #${agentId}`;
-                      message = orderCode ? `${roleDisplay} assigned agent ${agentName} to order #${orderCode}` : `${roleDisplay} assigned agent ${agentName}`;
-                    } else {
-                      message = orderCode ? `${roleDisplay} assigned agent to order #${orderCode}` : `${roleDisplay} assigned agent`;
-                    }
-                    break;
-                  case "ASSIGN_SHIPPER":
-                    const shipperMatch = note.match(/shipper=(\d+)/);
-                    if (shipperMatch) {
-                      const shipperId = parseInt(shipperMatch[1]);
-                      const shipper = shippers.find(s => s.id === shipperId);
-                      const shipperName = shipper ? shipper.name : `Shipper #${shipperId}`;
-                      message = orderCode ? `${roleDisplay} assigned shipper ${shipperName} to order #${orderCode}` : `${roleDisplay} assigned shipper ${shipperName}`;
-                    } else {
-                      message = orderCode ? `${roleDisplay} assigned shipper to order #${orderCode}` : `${roleDisplay} assigned shipper`;
-                    }
-                    break;
-                  case "DELETE_ORDER":
-                    message = orderCode ? `${roleDisplay} deleted order #${orderCode}` : `${roleDisplay} deleted order`;
-                    break;
-                  case "LOGIN":
-                    message = `${roleDisplay} logged in`;
-                    break;
-                  case "REGISTER":
-                    message = `${roleDisplay} registered`;
-                    break;
-                  case "RESET_PASSWORD":
-                    message = `${roleDisplay} reset password`;
-                    break;
-                  case "UPDATE_USER":
-                    message = `${roleDisplay} updated user information`;
-                    break;
-                  case "CONFIRM_PICKUP":
-                    message = orderCode ? `Shipper confirmed pickup for order #${orderCode}` : "Shipper confirmed pickup";
-                    break;
-                  case "CONFIRM_DELIVERY":
-                    message = orderCode ? `Shipper delivered order #${orderCode} successfully` : "Shipper delivered order successfully";
-                    break;
-                  default:
-                    message = note || action || "System action";
-                }
-                
-                return {
-                  time: timeMatch ? timeMatch[1] : "",
-                  event: action,
-                  message: message,
-                  orderId: orderId,
-                  orderCode: orderCode,
-                  note: note,
-                  role: role,
-                };
-              });
-            setNotifications(notifications);
+        
+        if (notifRes.ok) {
+          const notifJson = await notifRes.json();
+          if (notifJson.status === "success" && notifJson.data?.notifications) {
+            const notifs = Array.isArray(notifJson.data.notifications) ? notifJson.data.notifications : [];
+            
+            // Transform to match existing format
+            const formattedNotifications = notifs.map((n) => {
+              const timeMatch = n.created_at ? new Date(n.created_at).toLocaleString('vi-VN') : '';
+              const orderCode = n.order_code || (n.related_order_id ? `ORD${String(n.related_order_id).padStart(8, '0')}` : null);
+              
+              return {
+                id: n.id,
+                time: timeMatch,
+                user: n.user_name || `User #${n.user_id}`,
+                role: n.user_id === 1 ? 'admin' : 'agent',
+                action: n.title || 'Notification',
+                message: n.message || '',
+                order: n.related_order_id,
+                orderCode: orderCode,
+                type: n.type || 'order',
+                isRead: n.is_read === 1,
+                readAt: n.read_at
+              };
+            });
+            
+            setNotifications(formattedNotifications);
+            
+            // Update pagination info
+            if (notifJson.data?.pagination) {
+              setNotificationsTotalPages(notifJson.data.pagination.total_pages || 1);
+              setNotificationsTotalCount(notifJson.data.pagination.total_count || 0);
+            }
           }
         }
-
+      } catch (err) {
+        console.error("Lỗi load notifications:", err);
+      }
+    };
+    
+    fetchNotifications();
+    // Refresh notifications mỗi 30 giây
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [notificationsPage, notificationsPageSize]);
+  
+  // =============================
+  // 3.2.2. FETCH SYSTEM LOGS (from log files - unchanged)
+  // =============================
+  useEffect(() => {
+    const fetchSystemLogs = async () => {
+      try {
         // Fetch app logs (nhật ký hệ thống)
         const appRes = await fetch(
           "http://localhost:8888/api/admin/view_logs.php?type=app&lines=100",
@@ -523,11 +486,11 @@ export default function Dashboard() {
       }
     };
 
-    fetchLogs();
+    fetchSystemLogs();
     // Refresh logs mỗi 30 giây
-    const interval = setInterval(fetchLogs, 30000);
+    const interval = setInterval(fetchSystemLogs, 30000);
     return () => clearInterval(interval);
-  }, [agents, shippers]); // Thêm dependencies để re-parse khi agents/shippers thay đổi
+  }, []); // System logs không cần dependencies
 
   // =============================
   // 3.3. MAP BUSINESS MESSAGE (DEPRECATED - Business logs now come from API)
@@ -1430,66 +1393,69 @@ export default function Dashboard() {
               <ListGroup variant="flush">
                 {notifications.length > 0 ? (
                   notifications.map((notif, idx) => {
-                    // Parse time từ format [2025-12-13 17:29:30]
+                    // Parse time from created_at (ISO format or timestamp)
                     let timeStr = "";
-                    if (notif.time) {
+                    if (notif.time || notif.created_at) {
                       try {
-                        const date = new Date(notif.time.replace(/\[|\]/g, ""));
+                        const date = new Date(notif.time || notif.created_at);
                         if (!isNaN(date.getTime())) {
                           timeStr = date.toLocaleString("vi-VN", {
                             day: "2-digit",
                             month: "2-digit",
+                            year: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
                           });
-                        } else {
-                          // Fallback: parse format [YYYY-MM-DD HH:MM:SS]
-                          const match = notif.time.match(/(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})/);
-                          if (match) {
-                            const [datePart, timePart] = match.slice(1);
-                            const [hour, minute] = timePart.split(":");
-                            timeStr = `${datePart.split("-").reverse().join("/")} ${hour}:${minute}`;
-                          }
                         }
                       } catch (e) {
-                        timeStr = notif.time;
+                        timeStr = notif.time || notif.created_at || "";
                       }
                     }
-                      const handleNotificationClick = () => {
-                        if (notif.orderId) {
-                          // Navigate to OrderManagement with highlight
-                          navigate("/admin/orders", {
-                            state: {
-                              focusOrderId: parseInt(notif.orderId),
-                              source: "notification",
-                            },
-                          });
-                        }
-                      };
-                      
-                      return (
-                        <ListGroup.Item 
-                          key={idx} 
-                          className={`d-flex align-items-start ${notif.orderId ? 'cursor-pointer' : ''}`}
-                          style={{ cursor: notif.orderId ? "pointer" : "default" }}
-                          onClick={handleNotificationClick}
-                        >
-                          <FaInfoCircle className="me-2 mt-1" style={{ fontSize: "0.85rem", flexShrink: 0, color: "#2563eb" }} />
-                          <div className="flex-grow-1">
-                            <div className="small">{notif.message || notif.event}</div>
-                            {timeStr && (
-                              <div className="text-muted" style={{ fontSize: "0.75rem", marginTop: "2px" }}>
-                                {timeStr}
-                              </div>
-                            )}
-                            {notif.orderId && (
-                              <div className="text-primary small mt-1" style={{ fontSize: "0.7rem" }}>
-                                Click to view order
-                              </div>
-                            )}
-                          </div>
-                        </ListGroup.Item>
-                      );
+                    
+                    const handleNotificationClick = () => {
+                      if (notif.order || notif.related_order_id) {
+                        // Navigate to OrderManagement with highlight
+                        navigate("/admin/orders", {
+                          state: {
+                            focusOrderId: parseInt(notif.order || notif.related_order_id),
+                            source: "notification",
+                          },
+                        });
+                      }
+                    };
+                    
+                    const orderId = notif.order || notif.related_order_id;
+                    const orderCode = notif.orderCode || (orderId ? `ORD${String(orderId).padStart(8, '0')}` : null);
+                    
+                    return (
+                      <ListGroup.Item 
+                        key={notif.id || idx} 
+                        className={`d-flex align-items-start ${orderId ? 'cursor-pointer' : ''} ${notif.isRead ? 'opacity-75' : ''}`}
+                        style={{ cursor: orderId ? "pointer" : "default" }}
+                        onClick={handleNotificationClick}
+                      >
+                        <FaInfoCircle className="me-2 mt-1" style={{ fontSize: "0.85rem", flexShrink: 0, color: notif.type === 'warning' ? "#ef4444" : "#2563eb" }} />
+                        <div className="flex-grow-1">
+                          <div className="small fw-semibold">{notif.title || notif.message || notif.event}</div>
+                          {notif.message && notif.title && (
+                            <div className="small text-muted mt-1">{notif.message}</div>
+                          )}
+                          {timeStr && (
+                            <div className="text-muted" style={{ fontSize: "0.75rem", marginTop: "2px" }}>
+                              {timeStr}
+                            </div>
+                          )}
+                          {orderCode && (
+                            <div className="text-primary small mt-1" style={{ fontSize: "0.7rem" }}>
+                              Order: {orderCode} - Click to view
+                            </div>
+                          )}
+                        </div>
+                        {!notif.isRead && (
+                          <span className="badge bg-primary rounded-pill ms-2" style={{ fontSize: "0.6rem" }}>New</span>
+                        )}
+                      </ListGroup.Item>
+                    );
                   })
                 ) : (
                   <ListGroup.Item className="text-muted">
@@ -1497,6 +1463,36 @@ export default function Dashboard() {
                   </ListGroup.Item>
                 )}
               </ListGroup>
+              
+              {/* Notifications Pagination */}
+              {notificationsTotalPages > 1 && (
+                <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                  <small className="text-muted">
+                    Showing {((notificationsPage - 1) * notificationsPageSize) + 1} - {Math.min(notificationsPage * notificationsPageSize, notificationsTotalCount)} of {notificationsTotalCount}
+                  </small>
+                  <div className="d-flex gap-2">
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={() => setNotificationsPage(p => Math.max(1, p - 1))}
+                      disabled={notificationsPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="d-flex align-items-center px-2">
+                      Page {notificationsPage} / {notificationsTotalPages}
+                    </span>
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={() => setNotificationsPage(p => Math.min(notificationsTotalPages, p + 1))}
+                      disabled={notificationsPage >= notificationsTotalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Col>
@@ -1565,6 +1561,36 @@ export default function Dashboard() {
                   </ListGroup.Item>
                 )}
               </ListGroup>
+              
+              {/* Business Logs Pagination */}
+              {businessLogsTotalPages > 1 && (
+                <div className="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                  <small className="text-muted">
+                    Showing {((businessLogsPage - 1) * businessLogsPageSize) + 1} - {Math.min(businessLogsPage * businessLogsPageSize, businessLogsTotalCount)} of {businessLogsTotalCount}
+                  </small>
+                  <div className="d-flex gap-2">
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={() => setBusinessLogsPage(p => Math.max(1, p - 1))}
+                      disabled={businessLogsPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="d-flex align-items-center px-2">
+                      Page {businessLogsPage} / {businessLogsTotalPages}
+                    </span>
+                    <Button
+                      variant="outline-secondary"
+                      size="sm"
+                      onClick={() => setBusinessLogsPage(p => Math.min(businessLogsTotalPages, p + 1))}
+                      disabled={businessLogsPage >= businessLogsTotalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Col>

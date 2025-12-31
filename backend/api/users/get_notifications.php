@@ -31,8 +31,13 @@ $currentRole = $GLOBALS['auth_user']['role'];
 // ==========================
 // PARAMETERS
 // ==========================
-$limit = isset($_GET["limit"]) ? (int)$_GET["limit"] : 200; // Default 200 for full history
-$limit = min(500, max(1, $limit)); // Max 500, min 1
+$page = isset($_GET["page"]) ? (int)$_GET["page"] : 1;
+$page = max(1, $page); // Minimum page 1
+
+$pageSize = isset($_GET["page_size"]) ? (int)$_GET["page_size"] : 10; // Default 10 per page
+$pageSize = min(100, max(1, $pageSize)); // Max 100, min 1
+
+$offset = ($page - 1) * $pageSize;
 
 $filterType = $_GET["type"] ?? "all"; // all, order, system, warning
 $unreadOnly = isset($_GET["unread_only"]) && $_GET["unread_only"] === "1";
@@ -101,10 +106,11 @@ LEFT JOIN orders o ON n.related_order_id = o.id
 LEFT JOIN users u ON n.user_id = u.id
 {$whereClause}
 ORDER BY n.created_at DESC
-LIMIT ?";
+LIMIT ? OFFSET ?";
 
-$params[] = $limit;
-$types .= "i";
+$params[] = $pageSize;
+$params[] = $offset;
+$types .= "ii";
 
 // ==========================
 // EXECUTE
@@ -186,10 +192,18 @@ $conn->close();
 // ==========================
 // RESPONSE
 // ==========================
+$totalPages = $totalCount > 0 ? ceil($totalCount / $pageSize) : 0;
+
 Response::success("Notifications loaded", [
     "notifications" => $notifications,
-    "total" => count($notifications), // Count of notifications in result set (may be limited)
-    "total_count" => $totalCount, // Total count from DB (for badge synchronization)
+    "pagination" => [
+        "page" => $page,
+        "page_size" => $pageSize,
+        "total_count" => $totalCount,
+        "total_pages" => $totalPages,
+        "has_next" => $page < $totalPages,
+        "has_prev" => $page > 1
+    ],
     "unread_count" => $unreadCount
 ]);
 

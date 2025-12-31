@@ -17,14 +17,31 @@ class Response
      */
     public static function success($message = "Success", $data = null, $code = 200)
     {
+        // Clear any output buffer before sending JSON
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        
         http_response_code($code);
         header("Content-Type: application/json; charset=utf-8");
 
-        echo json_encode([
+        $response = [
             "status"  => "success",
             "message" => $message,
             "data"    => $data
-        ], JSON_UNESCAPED_UNICODE);
+        ];
+        
+        $json = json_encode($response, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            error_log("JSON ENCODE ERROR: " . json_last_error_msg());
+            http_response_code(500);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Internal server error: JSON encoding failed"
+            ], JSON_UNESCAPED_UNICODE);
+        } else {
+            echo $json;
+        }
 
         exit;
     }
@@ -53,13 +70,30 @@ class Response
      */
     public static function error($message = "Error", $code = 400)
     {
+        // Clear any output buffer before sending JSON
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        
         http_response_code($code);
         header("Content-Type: application/json; charset=utf-8");
 
-        echo json_encode([
+        $response = [
             "status"  => "error",
             "message" => $message
-        ], JSON_UNESCAPED_UNICODE);
+        ];
+        
+        $json = json_encode($response, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            error_log("JSON ENCODE ERROR: " . json_last_error_msg());
+            http_response_code(500);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Internal server error: JSON encoding failed"
+            ], JSON_UNESCAPED_UNICODE);
+        } else {
+            echo $json;
+        }
 
         exit;
     }
@@ -120,13 +154,30 @@ class Response
      */
     public static function serverError($message = "Internal Server Error")
     {
+        // Clear any output buffer before sending JSON
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        
         http_response_code(500);
         header("Content-Type: application/json; charset=utf-8");
 
-        echo json_encode([
+        $response = [
             "status"  => "error",
             "message" => $message
-        ], JSON_UNESCAPED_UNICODE);
+        ];
+        
+        $json = json_encode($response, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            error_log("JSON ENCODE ERROR: " . json_last_error_msg());
+            http_response_code(500);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Internal server error: JSON encoding failed"
+            ], JSON_UNESCAPED_UNICODE);
+        } else {
+            echo $json;
+        }
 
         exit;
     }

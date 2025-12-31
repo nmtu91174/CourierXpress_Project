@@ -375,14 +375,13 @@ $agentSql = "
     SELECT
         u.id AS agent_id,
         u.name AS agent_name,
-        SUM(CASE WHEN o.status = 5 THEN 1 ELSE 0 END) AS delivered,
-        SUM(CASE WHEN o.status IN (1,2,3,4) THEN 1 ELSE 0 END) AS wip,
-        SUM(CASE WHEN o.status = 6 THEN 1 ELSE 0 END) AS failed,
-        COUNT(o.id) AS total
+        SUM(CASE WHEN o.status = 5 AND o.created_at >= '$startSql' AND o.created_at < '$endSql' THEN 1 ELSE 0 END) AS delivered,
+        SUM(CASE WHEN o.status IN (1,2,3,4) AND o.created_at >= '$startSql' AND o.created_at < '$endSql' THEN 1 ELSE 0 END) AS wip,
+        SUM(CASE WHEN o.status = 6 AND o.created_at >= '$startSql' AND o.created_at < '$endSql' THEN 1 ELSE 0 END) AS failed,
+        COUNT(CASE WHEN o.created_at >= '$startSql' AND o.created_at < '$endSql' THEN o.id ELSE NULL END) AS total
     FROM users u
     LEFT JOIN orders o
       ON o.agent_id = u.id
-     AND o.created_at >= '$startSql' AND o.created_at < '$endSql'
 " . (
     ($service !== "all" && isset($serviceMap[$service])) ? " AND o.service_type = " . (int)$serviceMap[$service] : ""
 ) . (
@@ -390,8 +389,7 @@ $agentSql = "
 ) . "
     WHERE u.role = 'agent'
     GROUP BY u.id, u.name
-    HAVING total > 0
-    ORDER BY delivered DESC, total DESC
+    ORDER BY delivered DESC, total DESC, u.id DESC
     LIMIT 10
 ";
 
@@ -423,19 +421,20 @@ $topShippersSql = "
     SELECT
         u.id AS shipper_id,
         u.name AS shipper_name,
-        COUNT(o.id) AS delivered,
+        COUNT(CASE WHEN o.status = 5 AND o.created_at >= '$startSql' AND o.created_at < '$endSql' THEN o.id ELSE NULL END) AS delivered,
         AVG(CASE 
-            WHEN a.assigned_at IS NOT NULL 
+            WHEN o.status = 5 
+             AND o.created_at >= '$startSql' AND o.created_at < '$endSql'
+             AND a.assigned_at IS NOT NULL 
              AND d.delivered_at IS NOT NULL 
              AND TIMESTAMPDIFF(HOUR, a.assigned_at, d.delivered_at) >= 0
             THEN TIMESTAMPDIFF(HOUR, a.assigned_at, d.delivered_at)
             ELSE NULL
         END) AS avg_lead_time_hours
     FROM users u
-    JOIN orders o
+    LEFT JOIN orders o
       ON o.shipper_id = u.id
      AND o.status = 5
-     AND o.created_at >= '$startSql' AND o.created_at < '$endSql'
 " . (
     ($service !== "all" && isset($serviceMap[$service])) ? " AND o.service_type = " . (int)$serviceMap[$service] : ""
 ) . (
@@ -455,8 +454,7 @@ $topShippersSql = "
     ) d ON d.order_id = o.id
     WHERE u.role = 'shipper'
     GROUP BY u.id, u.name
-    HAVING delivered > 0
-    ORDER BY delivered DESC
+    ORDER BY delivered DESC, u.id DESC
     LIMIT 10
 ";
 

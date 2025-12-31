@@ -250,15 +250,34 @@ usort($warnings, function($a, $b) {
     return ($b['order_id'] ?? 0) - ($a['order_id'] ?? 0);
 });
 
-// Limit to top 20 warnings
-$warnings = array_slice($warnings, 0, 20);
+// ==========================
+// PAGINATION
+// ==========================
+$page = isset($_GET["page"]) ? (int)$_GET["page"] : 1;
+$page = max(1, $page);
+
+$pageSize = isset($_GET["page_size"]) ? (int)$_GET["page_size"] : 10;
+$pageSize = min(100, max(1, $pageSize));
+
+$totalWarnings = count($warnings);
+$totalPages = $totalWarnings > 0 ? ceil($totalWarnings / $pageSize) : 0;
+
+$offset = ($page - 1) * $pageSize;
+$paginatedWarnings = array_slice($warnings, $offset, $pageSize);
 
 // ==========================
 // RESPONSE
 // ==========================
 Response::success("Business logs loaded", [
-    "warnings" => $warnings,
-    "total" => count($warnings)
+    "warnings" => $paginatedWarnings,
+    "pagination" => [
+        "page" => $page,
+        "page_size" => $pageSize,
+        "total_count" => $totalWarnings,
+        "total_pages" => $totalPages,
+        "has_next" => $page < $totalPages,
+        "has_prev" => $page > 1
+    ]
 ]);
 
 $conn->close();

@@ -130,3 +130,11 @@ time=2025-12-26T12:08:39+00:00 event=UPDATE_USER actor_id=4 actor_role=shipper t
 [2025-12-30 08:17:30] user=0 role=guest action=CREATE_ORDER order=9 note=ORD0009
 [2025-12-30 08:20:47] user=8 role=agent action=ASSIGN_SHIPPER order=9 note=shipper=4
 [2025-12-31 02:28:43] user=8 role=agent action=ASSIGN_SHIPPER order=8 note=shipper=4
+[2025-12-31 05:21:15] user=1 role=admin action=CREATE_ORDER order=101 note=ORD0101
+[2025-12-31 05:44:06] user=1 role=admin action=CREATE_ORDER order=199 note=ORD0199
+[2025-12-31 05:48:02] user=1 role=admin action=CREATE_ORDER order=101 note=ORD0101
+[2025-12-31 05:57:05] user=1 role=admin action=CREATE_ORDER order=101 note=ORD0101
+[2025-12-31 06:13:56] user=0 role=guest action=CREATE_ORDER order=101 note=ORD0101
+[2025-12-31 07:07:50] user=0 role=guest action=CREATE_ORDER order=102 note=ORD0102
+[2025-12-31 07:13:50] user=1 role=admin action=ASSIGN_AGENT_FALLBACK order=89 note=agent=8
+[2025-12-31 07:13:58] user=1 role=admin action=ASSIGN_AGENT_FALLBACK order=73 note=agent=13
